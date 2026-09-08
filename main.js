@@ -1992,6 +1992,9 @@ function renderTimetable(plugin, containerEl) {
   for (const d of ['full', 'compact']) containerEl.removeClass('is-' + d);
   containerEl.addClass('is-' + density);
 
+  // 좁은데 카운트다운까지 있으면 왼쪽 상태를 접는다. 폭은 여기서야 알 수 있다.
+  if (density === 'compact' && bar.querySelector('.ctt-next')) bar.addClass('is-tight');
+
   const cols = 'var(--ctt-gutter) repeat(' + days.length + ', minmax(0, 1fr))';
   const scroll = containerEl.createDiv({ cls: 'ctt-scroll' });
 

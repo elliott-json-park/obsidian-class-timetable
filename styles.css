@@ -66,7 +66,7 @@
   flex: 0 0 auto;
 }
 
-.ctt-dot.is-hollow { background: transparent !important; border: 1.5px solid; }
+.ctt-dot.is-hollow { background: transparent; border: 1.5px solid; }
 
 /* 집까지 남은 시간 */
 .ctt-next {
@@ -366,8 +366,9 @@
 .ctt-root.is-compact .ctt-block { padding: 2px 4px; border-radius: 7px; }
 .ctt-root.is-compact .ctt-block-name { font-size: 10px; }
 .ctt-root.is-compact .ctt-daypill { padding: 2px 6px; }
-/* 좁아지면 왼쪽 상태를 접고 카운트다운을 남긴다 — 수업 이름은 격자에 이미 있다 */
-.ctt-root.is-compact .ctt-bar:has(.ctt-next) .ctt-status { display: none; }
+/* 좁아지면 왼쪽 상태를 접고 카운트다운을 남긴다 — 수업 이름은 격자에 이미 있다.
+   조건은 렌더 시점에 붙여 준다 (:has 는 무효화 범위가 넓어 쓰지 않는다) */
+.ctt-bar.is-tight .ctt-status { display: none; }
 
 /* ────────────────────── 모달 ────────────────────── */
 

@@ -1,7 +1,7 @@
 {
   "id": "class-timetable",
   "name": "Class Timetable",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "1.4.0",
   "description": "A weekly class timetable in the sidebar. Class times live in your notes' frontmatter, so renaming or moving folders never breaks them. Click a class to browse its folders, or create today's note from a template.",
   "author": "Elliott Park",
