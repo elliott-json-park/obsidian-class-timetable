@@ -4,17 +4,25 @@ A weekly class timetable that lives in the Obsidian sidebar — and a way into t
 
 Class times are stored in your notes' own frontmatter, not in plugin settings. Rename a folder, move a note, or edit the YAML by hand: the timetable follows. Nothing lives in a place Obsidian can't see.
 
-<!-- TODO: 스크린샷 한 장 (사이드바 + 책장 화면). 릴리스 전에 넣는다. -->
+![The timetable in the right sidebar, next to a lecture note](docs/overview.png)
 
 ## What it does
 
-**A timetable in the sidebar.** Real clock times on the vertical axis, not period numbers. Overlapping classes split the column instead of hiding each other. The current time is marked, and the top bar counts down to the end of the class you're in — or to whatever comes next.
+**A timetable in the sidebar.** Real clock times on the vertical axis, not period numbers. Overlapping classes split the column instead of hiding each other. The current time is marked, and the top bar counts down to the end of the class you're in — or to whatever comes next. When the day is done it says so instead of counting.
 
-**Click a class, get its shelves.** Obsidian can't "open a folder", so the plugin opens a view of one: the folders belonging to that class, laid out like a bookshelf. Create, rename and delete folders and notes right there — names are typed in place, on the card itself.
+<img src="docs/sidebar.png" width="420" alt="A class block showing its schedule, professor and where new notes go">
+
+**Click a class, get its shelves.** Obsidian can't "open a folder", so the plugin opens a view of one: the folders belonging to that class, laid out like a bookshelf. Square cards are folders, wide cards are files. Create, rename and delete them right there — names are typed in place, on the card itself.
+
+![The shelf view for one course](docs/shelf.png)
 
 **Start today's note in one step.** Right-click a class → *New note*. The file name and body come from a template you define (`{{course}}`, `{{date:MMDD}}`, `{{dow}}`, `{{week}}` …). If today's note already exists, it opens instead of being overwritten.
 
 **Plans, without files.** Some things don't deserve a note — a shift, a study group, a dentist appointment. Add them straight onto the grid. A one-time plan carries the date it disappears on, and removes itself once that time has passed.
+
+**One day at a time, when you want it.** Switch between the whole week and today alone.
+
+![Today mode](docs/today.png)
 
 **Four languages.** English, 한국어, 中文, 日本語 — switchable at runtime, no restart. What gets written to your files never changes with the language: weekdays are always stored as `월 화 수 목 금 토 일`, only the display is translated.
 
@@ -65,11 +73,13 @@ Finer times than 15 minutes are typed in by hand, on purpose — a shaky drag sh
 
 When a change would overlap another class or plan, a confirmation appears **before** anything is written, listing everything it collides with. Overlaps found while scanning (someone else's sync, hand-edited YAML) are only outlined in red — no dialog interrupts your typing.
 
+Mouse, touch and pen are all handled, so editing works the same on a tablet.
+
 ## Install
 
 Until this is in the community plugin list, install it by hand:
 
-1. Download `main.js`, `manifest.json` and `styles.css` from the latest release.
+1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/elliott-json-park/obsidian-class-timetable/releases/latest).
 2. Put them in `<your vault>/.obsidian/plugins/class-timetable/`.
 3. Reload Obsidian, then enable **Class Timetable** in *Settings → Community plugins*.
 
@@ -78,6 +88,8 @@ Until this is in the community plugin list, install it by hand:
 Classes live in your notes. Plans live in the plugin's `data.json`, since they have no file of their own — which also means they don't sync between devices the way your notes do.
 
 Nothing is ever deleted without asking. *Remove from timetable* clears only the `schedule:` field; the note and its folder stay.
+
+The plugin makes no network requests and collects nothing.
 
 ## 한국어
 
