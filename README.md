@@ -33,8 +33,8 @@ Any note with a `schedule:` field becomes a class. That's the whole contract.
 ```yaml
 ---
 schedule:
-  - 월 10:30-12:00 @ 202-571
-  - 수 10:30-12:00 @ 202-571
+  - 월 10:30-12:00 @ Room 301
+  - 수 10:30-12:00 @ Room 301
 ---
 ```
 
@@ -100,7 +100,7 @@ The plugin makes no network requests and collects nothing.
 ```yaml
 ---
 schedule:
-  - 월 10:30-12:00 @ 202-571
+  - 월 10:30-12:00 @ 301호
 ---
 ```
 

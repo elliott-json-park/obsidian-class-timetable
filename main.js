@@ -3734,7 +3734,7 @@ class TimetableSettingTab extends PluginSettingTab {
 
     const help = containerEl.createDiv({ cls: 'ctt-help' });
     help.createEl('pre', {
-      text: ['---', 'schedule:', '  - 월 10:30-11:50 @ 202-571', 'title: 유통전략', 'subtitle: 이상현 교수', '---'].join('\n'),
+      text: ['---', 'schedule:', '  - 월 10:30-11:50 @ 301호', 'title: 수업 이름', 'subtitle: 담당 교수', '---'].join('\n'),
     });
   }
 }
