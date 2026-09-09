@@ -494,8 +494,8 @@ const I18N_EXTRA = {
     targetFolder: '폴더',
     targetHint: '노트를 고르면 그 노트에, 폴더를 고르면 폴더노트에 시간표가 저장됩니다.',
     newNoteHere: '새 노트로 만들기',
-    newNoteCreate: '새 노트 생성하기',
-    newNoteLocation: '새 노트 생성 위치 설정',
+    newNoteCreate: '오늘의 필기 노트 열기',
+    newNoteLocation: '오늘의 필기 노트 생성 위치 설정',
   },
   en: {
     nextClassIn: 'Next class in {v}',
