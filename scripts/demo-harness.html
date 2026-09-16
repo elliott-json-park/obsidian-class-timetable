@@ -496,25 +496,14 @@ const COURSES = [
     name: 'Linear Algebra',
     fm: {
       schedule: ['월 09:00-10:30 @ Room 301', '수 09:00-10:30 @ Room 301'],
-      title: 'Linear Algebra',
       subtitle: ['Prof. Almeida', 'Room 301'].join('\n'),
     },
     raw: {
-      syllabus: ['Linear Algebra syllabus.pdf', 'Problem sets 1-4.pdf'],
-      lectures: ['0902(수)lecture.md', '0907(월)lecture.md'],
-      assignments: [],
-      attachments: [],
+      lectures: ['0902(수)lecture.md', '0907(월)lecture.md', '0909(수)lecture.md', '0914(월)lecture.md'],
+      readings: ['Proof techniques.md', 'Problem set 1.md'],
+      assignments: ['Assignment 1.md'],
     },
-    wiki: ['Linear Algebra notes.md', 'Linear Algebra study plan.md'],
-  },
-  {
-    name: 'Organic Chemistry',
-    fm: {
-      schedule: ['화 10:30-11:50 @ Lab 2', '목 10:30-11:50 @ Lab 2'],
-      subtitle: ['Prof. Okonkwo', 'Lab 2'].join('\n'),
-    },
-    raw: { syllabus: ['Organic Chemistry syllabus.pdf'], lectures: [], assignments: [], attachments: [] },
-    wiki: [],
+    wiki: ['Linear Algebra notes.md', 'Eigenvalues, intuitively.md'],
   },
   {
     name: 'World History',
@@ -522,20 +511,12 @@ const COURSES = [
       schedule: ['월 10:30-12:00 @ Room 108', '수 10:30-12:00 @ Room 108'],
       subtitle: ['Prof. Vasquez', 'Room 108'].join('\n'),
     },
-    raw: { syllabus: ['Reading list.pdf', 'Course policies.pdf'], lectures: [], assignments: [], attachments: [] },
-    wiki: [],
-  },
-  {
-    name: 'Statistics',
-    fm: {
-      schedule: ['화 13:30-14:45 @ Room 214', '목 13:30-14:45 @ Room 214'],
-      subtitle: ['Prof. Lindqvist', 'Room 214'].join('\n'),
+    raw: {
+      lectures: ['0902(수)lecture.md', '0907(월)lecture.md', '0909(수)lecture.md'],
+      readings: ['Primary sources.md', 'Reading list.md'],
+      assignments: [],
     },
-    raw: { syllabus: ['Statistics syllabus.pdf'], lectures: ['Week 1 slides.pptx'], assignments: [], attachments: [] },
-    wiki: [
-      'Statistics notes.md', 'Statistics term project.md',
-      'Statistics progress report I.md', 'Statistics final presentation.md',
-    ],
+    wiki: ['World History notes.md'],
   },
   {
     name: 'Creative Writing',
@@ -543,8 +524,12 @@ const COURSES = [
       schedule: ['월 13:30-15:00 @ Studio B', '수 13:30-15:00 @ Studio B'],
       subtitle: ['Prof. Marchetti', 'Studio B'].join('\n'),
     },
-    raw: { syllabus: [], lectures: ['0902(화)workshop.md'], assignments: [], attachments: [] },
-    wiki: ['Creative Writing notes.md'],
+    raw: {
+      lectures: ['0902(수)workshop.md', '0907(월)workshop.md', '0909(수)workshop.md', '0914(월)workshop.md'],
+      readings: ['Short fiction anthology.md', 'On revision.md'],
+      drafts: ['Story 1 — first draft.md', 'Story 1 — revised.md', 'Flash piece.md'],
+    },
+    wiki: ['Creative Writing notes.md', 'Craft lessons.md', 'Portfolio plan.md'],
   },
   {
     name: 'Intro to Psychology',
@@ -552,8 +537,38 @@ const COURSES = [
       schedule: ['월 15:00-16:30 @ Hall A', '수 15:00-16:30 @ Hall A'],
       subtitle: ['Prof. Sørensen', 'Hall A'].join('\n'),
     },
-    raw: { syllabus: [], lectures: [], assignments: [], attachments: [] },
-    wiki: [],
+    raw: {
+      lectures: ['0902(수)lecture.md', '0907(월)lecture.md', '0909(수)lecture.md'],
+      readings: ['Chapter 1.md'],
+      assignments: [],
+    },
+    wiki: ['Psychology notes.md'],
+  },
+  {
+    name: 'Organic Chemistry',
+    fm: {
+      schedule: ['화 10:30-11:50 @ Lab 2', '목 10:30-11:50 @ Lab 2'],
+      subtitle: ['Prof. Okonkwo', 'Lab 2'].join('\n'),
+    },
+    raw: {
+      lectures: ['0901(화)lecture.md', '0903(목)lecture.md', '0908(화)lecture.md', '0910(목)lecture.md'],
+      labs: ['Lab 1 — extraction.md', 'Lab 2 — distillation.md'],
+      assignments: ['Problem set 1.md'],
+    },
+    wiki: ['Organic Chemistry notes.md', 'Reaction mechanisms.md'],
+  },
+  {
+    name: 'Statistics',
+    fm: {
+      schedule: ['화 13:30-14:45 @ Room 214', '목 13:30-14:45 @ Room 214'],
+      subtitle: ['Prof. Lindqvist', 'Room 214'].join('\n'),
+    },
+    raw: {
+      lectures: ['0901(화)lecture.md', '0903(목)lecture.md', '0908(화)lecture.md', '0910(목)lecture.md', '0915(화)lecture.md'],
+      readings: ['Sampling.md'],
+      assignments: ['Term project brief.md'],
+    },
+    wiki: ['Statistics notes.md', 'Statistics term project.md'],
   },
   {
     name: 'Data Structures',
@@ -561,14 +576,17 @@ const COURSES = [
       schedule: ['금 10:00-12:30 @ Lab 4'],
       subtitle: ['Prof. Tanaka', 'Lab 4'].join('\n'),
     },
-    raw: { syllabus: [], lectures: [], assignments: [], attachments: [] },
-    wiki: [],
+    raw: {
+      lectures: ['0904(금)lecture.md', '0911(금)lecture.md'],
+      assignments: ['Linked lists.md'],
+    },
+    wiki: ['Data Structures notes.md'],
   },
   // deliberately overlaps Organic Chemistry on Thursday, to show the split column
   {
     name: 'Thesis Seminar',
     fm: { schedule: ['목 11:00-12:20 @ Room 117'] },
-    raw: { lectures: [] },
+    raw: { lectures: ['0903(목)meeting.md', '0910(목)meeting.md'] },
     wiki: [],
   },
 ];
