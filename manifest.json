@@ -1,9 +1,9 @@
 {
   "id": "class-timetable",
   "name": "Class Timetable",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "minAppVersion": "1.4.0",
-  "description": "A weekly class timetable in the sidebar. Class times live in your notes' frontmatter, so renaming or moving folders never breaks them. Click a class to browse its folders, or create today's note from a template.",
+  "description": "A weekly class timetable and course schedule for students, in the sidebar on desktop and mobile. Times live in your notes' frontmatter, so moving or renaming folders never breaks them.",
   "author": "Elliott Park",
   "authorUrl": "https://github.com/elliott-json-park",
   "isDesktopOnly": false
