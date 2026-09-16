@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Class Timetable — live demo</title>
+
+<!-- 플러그인의 실제 스타일시트를 그대로 읽는다 -->
+<link rel="stylesheet" href="class-timetable/styles.css">
+
+<style>
+/* ── 옵시디언 테마 변수 근사. 테마는 시스템 설정을 따라간다 ── */
+.theme-light {
+  --font-ui-small: 13px;
+  --font-ui-smaller: 11px;
+  --background-primary: #ffffff;
+  --background-secondary: #f4f5f6;
+  --background-modifier-border: #dcdcdc;
+  --background-modifier-hover: rgba(0,0,0,.045);
+  --text-normal: #222;
+  --text-muted: #6e6e6e;
+  --text-faint: #9a9a9a;
+  --text-accent: #705dcf;
+  --text-error: #e5534b;
+  --text-warning: #b8860b;
+  --interactive-accent: #705dcf;
+  --font-monospace: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+.theme-dark {
+  --font-ui-small: 13px;
+  --font-ui-smaller: 11px;
+  --background-primary: #1e1e1e;
+  --background-secondary: #262626;
+  --background-modifier-border: #3a3a3a;
+  --background-modifier-hover: rgba(255,255,255,.06);
+  --text-normal: #dcddde;
+  --text-muted: #999;
+  --text-faint: #666;
+  --text-accent: #a68cf0;
+  --text-error: #ff6b63;
+  --text-warning: #e0af68;
+  --interactive-accent: #7f6df2;
+  --font-monospace: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── 프리뷰 전용 바 (플러그인 아님) ── */
+.pv-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: 12px;
+}
+.pv-brand { font-weight: 700; }
+.pv-note-text { color: var(--text-faint); flex: 1; min-width: 0; }
+
+.pv-workspace { flex: 1; min-height: 0; display: flex; }
+
+.pv-main { flex: 1; min-width: 0; overflow-y: auto; }
+
+/* 사이드바 폭은 이 손잡이를 끌어서 조절한다 */
+.pv-split {
+  flex: 0 0 auto;
+  width: 5px;
+  cursor: col-resize;
+  background: var(--background-modifier-border);
+  opacity: 0.6;
+}
+.pv-split:hover, .pv-split.is-dragging { background: var(--text-accent); opacity: 1; }
+
+.pv-sidebar {
+  flex: 0 0 330px;
+  min-width: 0;
+  background: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.pv-sidebar-head {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.view-content { flex: 1; min-height: 0; overflow: hidden; }
+
+/* 노트 영역의 초기 안내와 가짜 노트 화면 */
+.pv-hint { padding: 30px 32px; color: var(--text-faint); line-height: 1.8; font-size: 13px; }
+.pv-hint b { color: var(--text-muted); }
+
+.pv-note { padding: 28px 32px; max-width: 760px; }
+.pv-back { color: var(--text-faint); font-size: 12px; cursor: pointer; margin-bottom: 10px; }
+.pv-back:hover { color: var(--text-normal); }
+.pv-note-path { font-size: 18px; font-weight: 600; margin-bottom: 14px; }
+.pv-note pre {
+  background: var(--background-secondary);
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: var(--font-monospace);
+  overflow-x: auto;
+}
+
+/* ── 옵시디언 UI 근사: 버튼·입력·모달 ── */
+button {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+}
+button:hover { background: var(--background-modifier-hover); }
+button.mod-cta {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: #fff;
+}
+input[type="text"], input[type="number"], select {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 4px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.modal-container {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.modal {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.35);
+  width: 460px;
+  max-width: 92vw;
+  max-height: 84vh;
+  overflow-y: auto;
+  padding: 18px 20px;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.setting-item-info { flex: 1; min-width: 0; }
+.setting-item-name { font-size: 13px; }
+.setting-item-description { font-size: 11px; color: var(--text-muted); margin-top: 2px; word-break: break-all; }
+.setting-item-control { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+
+.suggestion-input { width: 100%; margin-bottom: 8px; padding: 7px 9px; font-size: 13px; }
+.suggestion-list { max-height: 320px; overflow-y: auto; }
+.suggestion-item { padding: 6px 8px; border-radius: 4px; cursor: pointer; }
+.suggestion-item:hover { background: var(--background-modifier-hover); }
+
+.pv-notice-wrap { position: fixed; top: 14px; right: 14px; z-index: 90; display: flex; flex-direction: column; gap: 6px; }
+.pv-notice {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.25);
+  max-width: 340px;
+}
+
+.pv-menu {
+  position: fixed;
+  z-index: 80;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.3);
+  padding: 4px;
+  min-width: 180px;
+  font-size: 12px;
+}
+.pv-menu-item { padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+.pv-menu-item:hover { background: var(--background-modifier-hover); }
+.pv-menu-sep { height: 1px; background: var(--background-modifier-border); margin: 4px 2px; }
+.pv-menu-item.is-disabled { color: var(--text-faint); cursor: default; }
+.pv-menu-item.has-sub { display: flex; justify-content: space-between; gap: 12px; }
+.pv-menu-arrow { color: var(--text-faint); }
+</style>
+</head>
+<body>
+
+<div class="pv-bar">
+  <span class="pv-brand">Class Timetable</span>
+  <span class="pv-note-text">The real plugin, running in your browser on a made-up timetable. Nothing is sent anywhere.</span>
+  <button id="pv-settings">Settings</button>
+  <button id="pv-reset">Reset vault</button>
+</div>
+
+<div class="pv-workspace">
+  <div class="pv-main"><div id="pv-view"></div></div>
+  <div class="pv-split" id="pv-split"></div>
+  <div class="pv-sidebar" id="pv-sidebar">
+    <div class="pv-sidebar-head">Class Timetable</div>
+    <div class="view-content" id="ctt-host"></div>
+  </div>
+</div>
+
+<div class="pv-notice-wrap" id="pv-notices"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   1. 옵시디언 DOM 헬퍼 폴리필
+   ══════════════════════════════════════════════════════════════ */
+(function () {
+  const P = HTMLElement.prototype;
+
+  P.empty = function () { while (this.firstChild) this.removeChild(this.firstChild); return this; };
+  P.addClass = function (c) { this.classList.add(c); return this; };
+  P.removeClass = function (c) { this.classList.remove(c); return this; };
+  P.toggleClass = function (c, on) { this.classList.toggle(c, on); return this; };
+  P.setText = function (t) { this.textContent = t; return this; };
+  P.setAttr = function (k, v) { this.setAttribute(k, v); return this; };
+
+  P.createEl = function (tag, o) {
+    o = o || {};
+    const el = document.createElement(tag);
+    if (o.cls) el.className = o.cls;
+    if (o.text != null) el.textContent = o.text;
+    if (o.type) el.type = o.type;
+    if (o.value != null) el.value = o.value;
+    if (o.attr) for (const k in o.attr) el.setAttribute(k, o.attr[k]);
+    this.appendChild(el);
+    return el;
+  };
+  P.createDiv = function (o) { return this.createEl('div', o); };
+  P.createSpan = function (o) { return this.createEl('span', o); };
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   2. obsidian 모듈 스텁
+
+   main.js 도 최상위에서 Plugin·Modal·Setting 같은 이름을 선언한다.
+   같은 realm 의 전역 렉시컬 선언이 충돌하지 않도록 스텁은 IIFE 안에 가둔다.
+   main.js 가 require('obsidian') 으로 받아 전역에 풀어놓으므로,
+   아래 세 번째 스크립트에서는 그 이름들을 그대로 쓰면 된다.
+   ══════════════════════════════════════════════════════════════ */
+(function () {
+window.module = { exports: {} };
+
+function notice(text) {
+  const wrap = document.getElementById('pv-notices');
+  const el = wrap.createDiv({ cls: 'pv-notice', text: String(text) });
+  setTimeout(() => el.remove(), 4200);
+}
+
+class TFolder {
+  constructor(path) {
+    this.path = path;
+    this.name = path === '/' ? '/' : path.split('/').pop();
+    this.children = [];
+  }
+}
+class TFile {
+  constructor(path) {
+    this.path = path;
+    this.name = path.split('/').pop();
+    this.basename = this.name.replace(/\.md$/, '');
+    this.extension = 'md';
+    this.stat = { mtime: Date.now() - Math.floor(Math.random() * 12) * 86400000, ctime: Date.now(), size: 0 };
+  }
+}
+
+class Notice { constructor(text) { notice(text); } }
+
+class Modal {
+  constructor(app) {
+    this.app = app;
+    this.containerEl = null;
+    this.contentEl = document.createElement('div');
+  }
+  open() {
+    this.containerEl = document.body.createDiv({ cls: 'modal-container' });
+    const box = this.containerEl.createDiv({ cls: 'modal' });
+    this.contentEl.empty();
+    box.appendChild(this.contentEl);
+    this._esc = (e) => { if (e.key === 'Escape') this.close(); };
+    document.addEventListener('keydown', this._esc);
+    this.containerEl.addEventListener('mousedown', (e) => { if (e.target === this.containerEl) this.close(); });
+    if (this.onOpen) this.onOpen();
+  }
+  close() {
+    if (!this.containerEl) return;
+    document.removeEventListener('keydown', this._esc);
+    this.containerEl.remove();
+    this.containerEl = null;
+    if (this.onClose) this.onClose();
+  }
+}
+
+class SuggestModal extends Modal {
+  setPlaceholder(p) { this._placeholder = p; }
+  open() {
+    super.open();
+    const input = this.contentEl.createEl('input', { type: 'text', cls: 'suggestion-input' });
+    input.placeholder = this._placeholder || '';
+    const list = this.contentEl.createDiv({ cls: 'suggestion-list' });
+    const paint = () => {
+      list.empty();
+      for (const item of this.getSuggestions(input.value)) {
+        const row = list.createDiv({ cls: 'suggestion-item' });
+        this.renderSuggestion(item, row);
+        row.onclick = () => { this.close(); this.onChooseSuggestion(item); };
+      }
+    };
+    input.oninput = paint;
+    paint();
+    setTimeout(() => input.focus(), 0);
+  }
+}
+
+/* Setting — 옵시디언의 체이닝 API를 흉내낸다 */
+class Setting {
+  constructor(containerEl) {
+    this.settingEl = containerEl.createDiv({ cls: 'setting-item' });
+    this.infoEl = this.settingEl.createDiv({ cls: 'setting-item-info' });
+    this.nameEl = this.infoEl.createDiv({ cls: 'setting-item-name' });
+    this.descEl = this.infoEl.createDiv({ cls: 'setting-item-description' });
+    this.controlEl = this.settingEl.createDiv({ cls: 'setting-item-control' });
+  }
+  setName(v) { this.nameEl.setText(v); return this; }
+  setDesc(v) { this.descEl.setText(v); return this; }
+
+  addButton(cb) {
+    const el = this.controlEl.createEl('button');
+    cb({
+      setButtonText: function (t) { el.textContent = t; return this; },
+      setCta: function () { el.classList.add('mod-cta'); return this; },
+      setIcon: function () { return this; },
+      setTooltip: function (t) { el.title = t; return this; },
+      onClick: function (fn) { el.onclick = fn; return this; },
+    });
+    return this;
+  }
+  addText(cb) {
+    const el = this.controlEl.createEl('input', { type: 'text' });
+    cb({
+      inputEl: el,
+      setPlaceholder: function (p) { el.placeholder = p; return this; },
+      setValue: function (v) { el.value = v == null ? '' : v; return this; },
+      onChange: function (fn) { el.oninput = () => fn(el.value); return this; },
+    });
+    return this;
+  }
+  addDropdown(cb) {
+    const el = this.controlEl.createEl('select');
+    cb({
+      addOption: function (v, t) { const o = el.createEl('option', { text: t }); o.value = v; return this; },
+      setValue: function (v) { el.value = v; return this; },
+      onChange: function (fn) { el.onchange = () => fn(el.value); return this; },
+    });
+    return this;
+  }
+}
+
+class PluginSettingTab {
+  constructor(app, plugin) {
+    this.app = app;
+    this.plugin = plugin;
+    this.containerEl = document.createElement('div');
+  }
+}
+
+class Menu {
+  constructor() { this.items = []; }
+
+  addItem(cb) {
+    const item = { title: '', click: null, disabled: false, submenu: null };
+    const self = this;
+    cb({
+      setTitle: function (x) { item.title = x; return this; },
+      setIcon: function () { return this; },
+      setDisabled: function (d) { item.disabled = d !== false; return this; },
+      onClick: function (fn) { item.click = fn; return this; },
+      setSubmenu: function () { item.submenu = new Menu(); return item.submenu; },
+    });
+    this.items.push(item);
+    return this;
+  }
+
+  addSeparator() { this.items.push({ sep: true }); return this; }
+
+  build(x, y, depth) {
+    const menu = document.body.createDiv({ cls: 'pv-menu' });
+    menu.dataset.depth = String(depth || 0);
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+
+    for (const it of this.items) {
+      if (it.sep) { menu.createDiv({ cls: 'pv-menu-sep' }); continue; }
+      const row = menu.createDiv({ cls: 'pv-menu-item', text: it.title });
+      if (it.disabled) row.addClass('is-disabled');
+      if (it.submenu) {
+        row.addClass('has-sub');
+        row.createSpan({ cls: 'pv-menu-arrow', text: '›' });
+        row.onmouseenter = () => {
+          document.querySelectorAll('.pv-menu[data-depth="' + ((depth || 0) + 1) + '"]').forEach((m) => m.remove());
+          const r = row.getBoundingClientRect();
+          it.submenu.build(r.right + 2, r.top - 4, (depth || 0) + 1);
+        };
+        continue;
+      }
+      if (!it.disabled && it.click) {
+        row.onclick = () => {
+          document.querySelectorAll('.pv-menu').forEach((m) => m.remove());
+          it.click();
+        };
+      }
+    }
+    return menu;
+  }
+
+  showAtMouseEvent(e) {
+    document.querySelectorAll('.pv-menu').forEach((m) => m.remove());
+    this.build(e.clientX, e.clientY, 0);
+    setTimeout(() => {
+      const off = (ev) => {
+        if (ev.target.closest && ev.target.closest('.pv-menu')) return;
+        document.querySelectorAll('.pv-menu').forEach((m) => m.remove());
+        document.removeEventListener('mousedown', off);
+      };
+      document.addEventListener('mousedown', off);
+    }, 0);
+  }
+}
+
+class Plugin {}
+
+class ItemView {
+  constructor(leaf) { this.leaf = leaf; }
+  async setState() {}
+}
+
+function normalizePath(p) {
+  return String(p).replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\/+|\/+$/g, '');
+}
+function debounce(fn) { return fn; }
+
+const OBSIDIAN = {
+  Plugin, ItemView, Modal, SuggestModal, Setting, PluginSettingTab,
+  Notice, Menu, TFolder, TFile, normalizePath, debounce,
+};
+
+window.require = function (name) {
+  if (name === 'obsidian') return OBSIDIAN;
+  throw new Error('알 수 없는 모듈: ' + name);
+};
+})();
+</script>
+
+<!-- ══ 플러그인 본체를 그대로 실행한다 ══ -->
+<script src="class-timetable/main.js"></script>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   3. 메모리 볼트
+   ══════════════════════════════════════════════════════════════ */
+let folders, files, root;
+
+const COURSES = [
+  {
+    name: 'Linear Algebra',
+    fm: {
+      schedule: ['월 09:00-10:30 @ Room 301', '수 09:00-10:30 @ Room 301'],
+      title: 'Linear Algebra',
+      subtitle: ['Prof. Almeida', 'Room 301'].join('\n'),
+    },
+    raw: {
+      syllabus: ['Linear Algebra syllabus.pdf', 'Problem sets 1-4.pdf'],
+      lectures: ['0902(수)lecture.md', '0907(월)lecture.md'],
+      assignments: [],
+      attachments: [],
+    },
+    wiki: ['Linear Algebra notes.md', 'Linear Algebra study plan.md'],
+  },
+  {
+    name: 'Organic Chemistry',
+    fm: {
+      schedule: ['화 10:30-11:50 @ Lab 2', '목 10:30-11:50 @ Lab 2'],
+      subtitle: ['Prof. Okonkwo', 'Lab 2'].join('\n'),
+    },
+    raw: { syllabus: ['Organic Chemistry syllabus.pdf'], lectures: [], assignments: [], attachments: [] },
+    wiki: [],
+  },
+  {
+    name: 'World History',
+    fm: {
+      schedule: ['월 10:30-12:00 @ Room 108', '수 10:30-12:00 @ Room 108'],
+      subtitle: ['Prof. Vasquez', 'Room 108'].join('\n'),
+    },
+    raw: { syllabus: ['Reading list.pdf', 'Course policies.pdf'], lectures: [], assignments: [], attachments: [] },
+    wiki: [],
+  },
+  {
+    name: 'Statistics',
+    fm: {
+      schedule: ['화 13:30-14:45 @ Room 214', '목 13:30-14:45 @ Room 214'],
+      subtitle: ['Prof. Lindqvist', 'Room 214'].join('\n'),
+    },
+    raw: { syllabus: ['Statistics syllabus.pdf'], lectures: ['Week 1 slides.pptx'], assignments: [], attachments: [] },
+    wiki: [
+      'Statistics notes.md', 'Statistics term project.md',
+      'Statistics progress report I.md', 'Statistics final presentation.md',
+    ],
+  },
+  {
+    name: 'Creative Writing',
+    fm: {
+      schedule: ['월 13:30-15:00 @ Studio B', '수 13:30-15:00 @ Studio B'],
+      subtitle: ['Prof. Marchetti', 'Studio B'].join('\n'),
+    },
+    raw: { syllabus: [], lectures: ['0902(화)workshop.md'], assignments: [], attachments: [] },
+    wiki: ['Creative Writing notes.md'],
+  },
+  {
+    name: 'Intro to Psychology',
+    fm: {
+      schedule: ['월 15:00-16:30 @ Hall A', '수 15:00-16:30 @ Hall A'],
+      subtitle: ['Prof. Sørensen', 'Hall A'].join('\n'),
+    },
+    raw: { syllabus: [], lectures: [], assignments: [], attachments: [] },
+    wiki: [],
+  },
+  {
+    name: 'Data Structures',
+    fm: {
+      schedule: ['금 10:00-12:30 @ Lab 4'],
+      subtitle: ['Prof. Tanaka', 'Lab 4'].join('\n'),
+    },
+    raw: { syllabus: [], lectures: [], assignments: [], attachments: [] },
+    wiki: [],
+  },
+  // deliberately overlaps Organic Chemistry on Thursday, to show the split column
+  {
+    name: 'Thesis Seminar',
+    fm: { schedule: ['목 11:00-12:20 @ Room 117'] },
+    raw: { lectures: [] },
+    wiki: [],
+  },
+];
+
+function mkFolder(path) {
+  if (folders[path]) return folders[path];
+  const f = new TFolder(path);
+  folders[path] = f;
+  const parentPath = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '/';
+  const parent = parentPath === '/' ? root : mkFolder(parentPath);
+  parent.children.push(f);
+  return f;
+}
+
+function mkFile(folderPath, name, fm) {
+  const folder = mkFolder(folderPath);
+  const p = folderPath + '/' + name;
+  const file = new TFile(p);
+  files[p] = { file, fm: Object.assign({}, fm || {}) };
+  folder.children.push(file);
+  return file;
+}
+
+// 이름 바꾸기: 경로 앞부분이 같은 것들을 통째로 옮긴다 (부모는 그대로라 children 은 안 건드려도 된다)
+function rename(item, nextPath) {
+  const oldPath = item.path;
+  for (const key of Object.keys(folders)) {
+    if (key !== oldPath && !key.startsWith(oldPath + '/')) continue;
+    const np = nextPath + key.slice(oldPath.length);
+    const f = folders[key];
+    delete folders[key];
+    f.path = np;
+    f.name = np.split('/').pop();
+    folders[np] = f;
+  }
+  for (const key of Object.keys(files)) {
+    if (key !== oldPath && !key.startsWith(oldPath + '/')) continue;
+    const np = nextPath + key.slice(oldPath.length);
+    const rec = files[key];
+    delete files[key];
+    rec.file.path = np;
+    rec.file.name = np.split('/').pop();
+    rec.file.basename = rec.file.name.replace(/\.md$/, '');
+    files[np] = rec;
+  }
+}
+
+function trash(item) {
+  const dir = item.path.includes('/') ? item.path.slice(0, item.path.lastIndexOf('/')) : '';
+  const parent = dir ? folders[dir] : root;
+  if (parent) parent.children = parent.children.filter((c) => c !== item);
+  for (const key of Object.keys(folders)) {
+    if (key === item.path || key.startsWith(item.path + '/')) delete folders[key];
+  }
+  for (const key of Object.keys(files)) {
+    if (key === item.path || key.startsWith(item.path + '/')) delete files[key];
+  }
+}
+
+function buildVault() {
+  folders = {};
+  files = {};
+  root = new TFolder('/');
+  folders['/'] = root;
+
+  for (const c of COURSES) {
+    // raw: 필기·원자료
+    const rawPath = 'Semester/raw/' + c.name;
+    mkFolder(rawPath);
+    for (const [sub, names] of Object.entries(c.raw || {})) {
+      mkFolder(rawPath + '/' + sub);
+      for (const nm of names) mkFile(rawPath + '/' + sub, nm, {});
+    }
+    // wiki: 정리된 문서 — 폴더노트(= 허브)가 schedule 을 갖는다
+    const wikiPath = 'Semester/wiki/' + c.name;
+    mkFolder(wikiPath);
+    mkFile(wikiPath, c.name + '.md', Object.assign({ notes: rawPath + '/lectures' }, c.fm));
+    for (const nm of (c.wiki || [])) mkFile(wikiPath, nm, {});
+  }
+
+  // 폴더노트가 아니라 '그냥 노트'에 schedule 만 적은 경우 (LLM WIKI 구조가 아닌 사용자)
+  mkFile('Notes', 'Language exchange.md', { schedule: ['금 19:00-21:00'], subtitle: 'Study room B' });
+  mkFile('Notes', 'First week of term.md', {});
+  mkFile('Notes', 'Books to read.md', {});
+
+  mkFile('Journal', 'Journal.md', { tags: ['diary'] });
+}
+buildVault();
+
+/* ══════════════════════════════════════════════════════════════
+   4. 노트 영역 — 책장과 가짜 노트가 여기 뜬다
+   ══════════════════════════════════════════════════════════════ */
+const viewHost = document.getElementById('pv-view');
+let folderView = null;
+
+function showHint() {
+  viewHost.className = '';
+  viewHost.empty();
+  const h = viewHost.createDiv({ cls: 'pv-hint' });
+  h.createDiv({ text: 'This is the note pane.' });
+  h.createDiv({ text: 'Click a class block on the right and that course’s shelves open here.' });
+  h.createDiv({ text: 'Click a shelf header to enter the folder; square cards are folders, wide cards are files.' });
+  h.createDiv({ text: 'Right-click a block for New note, shortcuts and settings.' });
+  h.createDiv({ text: 'Pencil unlocks editing — drag to move or resize a class, in 15-minute steps.' });
+  h.createDiv({ text: 'Plus adds a plan: a block with no file behind it. “Study group” is one-time and removes itself once it has passed.' });
+  h.createDiv({ text: 'Friday’s “Language exchange” is a plain note with nothing but schedule: in its frontmatter — no folder note needed.' });
+  h.createDiv({ text: 'Thursday 11:00 Thesis Seminar is there to show what an overlap looks like.' });
+  h.createDiv({ text: 'Everything here is invented. Drop the plugin in your own vault to see yours.' });
+}
+
+function fmToYaml(fm) {
+  const lines = ['---'];
+  for (const [k, v] of Object.entries(fm)) {
+    if (Array.isArray(v)) {
+      lines.push(k + ':');
+      for (const item of v) lines.push('  - ' + item);
+    } else {
+      lines.push(k + ': ' + v);
+    }
+  }
+  lines.push('---');
+  return lines.join('\n');
+}
+
+function showNote(file) {
+  viewHost.className = 'pv-note';
+  viewHost.empty();
+
+  const back = viewHost.createDiv({ cls: 'pv-back', text: '← 폴더로 돌아가기' });
+  back.onclick = () => {
+    if (folderView && folderView.folderPath) mainLeaf.setViewState({ type: FOLDER_VIEW_TYPE, state: folderView.getState() });
+    else showHint();
+  };
+
+  viewHost.createDiv({ cls: 'pv-note-path', text: file.path });
+  const rec = files[file.path];
+  const shown = rec && rec.content ? rec.content : (rec && Object.keys(rec.fm).length ? fmToYaml(rec.fm) : '(빈 노트)');
+  viewHost.createEl('pre', { text: shown });
+}
+
+const mainLeaf = {
+  view: null,
+  async setViewState(st) {
+    if (!st || st.type !== FOLDER_VIEW_TYPE) return;
+    if (!folderView) {
+      folderView = new FolderView(mainLeaf, plugin);
+      folderView.app = app;
+      folderView.contentEl = viewHost;
+      mainLeaf.view = folderView;
+    }
+    viewHost.className = '';
+    await folderView.setState(st.state, {});
+  },
+  async openFile(file) { showNote(file); },
+};
+
+/* ══════════════════════════════════════════════════════════════
+   5. 가짜 app
+   ══════════════════════════════════════════════════════════════ */
+const app = {
+  vault: {
+    getRoot: () => root,
+    getAbstractFileByPath: (p) => folders[p] || (files[p] && files[p].file) || null,
+    createFolder: async (p) => mkFolder(p),
+    create: async (p, content) => {
+      const dir = p.slice(0, p.lastIndexOf('/'));
+      const f = mkFile(dir, p.slice(p.lastIndexOf('/') + 1), {});
+      files[p].content = content || '';
+      return f;
+    },
+    on: () => ({}),
+  },
+  metadataCache: {
+    getFileCache: (file) => (files[file.path] ? { frontmatter: files[file.path].fm } : null),
+    on: () => ({}),
+  },
+  fileManager: {
+    renameFile: async (item, next) => { rename(item, next); },
+    trashFile: async (item) => { trash(item); },
+    processFrontMatter: async (file, cb) => {
+      const rec = files[file.path];
+      if (!rec) return;
+      cb(rec.fm);
+      new Notice('Saved: ' + file.path);
+    },
+  },
+  workspace: {
+    getLeavesOfType: (t) => (t === FOLDER_VIEW_TYPE && folderView ? [mainLeaf] : []),
+    getLeaf: () => mainLeaf,
+    getMostRecentLeaf: () => mainLeaf,
+    revealLeaf: () => {},
+    setActiveLeaf: () => {},
+    onLayoutReady: (fn) => fn(),
+  },
+};
+
+/* ══════════════════════════════════════════════════════════════
+   6. 플러그인 인스턴스 (생성자를 건너뛰고 프로토타입만 쓴다)
+   ══════════════════════════════════════════════════════════════ */
+const plugin = Object.create(ClassTimetablePlugin.prototype);
+plugin.app = app;
+plugin.settings = Object.assign({}, DEFAULT_SETTINGS, {
+  roots: [
+    { path: 'Semester/raw', label: 'Raw' },
+    { path: 'Semester/wiki', label: 'Notes' },
+    { path: 'Notes', label: 'Loose' },
+  ],
+  currentSemester: '',
+  lang: 'en',
+  plans: [
+    { id: 'p1', title: 'Part-time shift', day: 1, start: 18 * 60, end: 21 * 60, color: '#868e96', note: ['Corner store', 'Ask about exam week'].join('\n') },
+    { id: 'p2', title: 'Study group', day: 3, start: 17 * 60, end: 18 * 60 + 30, color: '#f06595', note: 'Library 3F', once: true, date: nextDateOf(3, 18 * 60 + 30) },
+  ],
+  semesterStart: '2026-09-01',
+  viewMode: 'week',
+  templates: [{
+    id: 'note',
+    name: 'Lecture note',
+    filename: '{{date:MMDD}}({{dow}})lecture',
+    body: ['# Notes', '---', '', '', '', '# Questions', '---', '', ''].join('\n'),
+  }],
+  defaultTemplate: 'note',
+});
+plugin.pending = new Map();
+plugin.pendingTimers = new Map();
+plugin.saveData = async () => {};
+plugin.refreshAll = () => paint();
+plugin.refreshTimetables = () => paint();
+plugin.saveSettings = async () => { LANG = I18N[plugin.settings.lang] ? plugin.settings.lang : 'en'; paint(); };
+LANG = plugin.settings.lang;
+
+const host = document.getElementById('ctt-host');
+function paint() { renderTimetable(plugin, host); }
+
+/* ══════════════════════════════════════════════════════════════
+   7. 프리뷰 껍데기 — 테마는 시스템, 폭은 드래그
+   ══════════════════════════════════════════════════════════════ */
+const mq = window.matchMedia('(prefers-color-scheme: dark)');
+function applyTheme() {
+  document.body.classList.toggle('theme-dark', mq.matches);
+  document.body.classList.toggle('theme-light', !mq.matches);
+}
+mq.addEventListener('change', applyTheme);
+applyTheme();
+
+const sidebar = document.getElementById('pv-sidebar');
+const split = document.getElementById('pv-split');
+split.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  split.classList.add('is-dragging');
+  const move = (ev) => {
+    const w = Math.max(200, Math.min(700, window.innerWidth - ev.clientX));
+    sidebar.style.flexBasis = w + 'px';
+  };
+  const up = () => {
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup', up);
+    split.classList.remove('is-dragging');
+    paint();
+  };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+});
+
+window.addEventListener('resize', () => paint());
+
+document.getElementById('pv-reset').onclick = () => {
+  buildVault();
+  folderView = null;
+  showHint();
+  paint();
+  new Notice('Vault reset to the sample timetable.');
+};
+
+document.getElementById('pv-settings').onclick = () => {
+  const m = new Modal(app);
+  m.onOpen = () => {
+    const tab = new TimetableSettingTab(app, plugin);
+    m.contentEl.createEl('h3', { text: 'Class Timetable settings' });
+    m.contentEl.appendChild(tab.containerEl);
+    tab.display();
+    const row = m.contentEl.createDiv({ cls: 'ctt-modal-buttons' });
+    row.createEl('button', { cls: 'mod-cta', text: 'Close' }).onclick = () => m.close();
+  };
+  m.open();
+};
+
+showHint();
+paint();
+</script>
+</body>
+</html>

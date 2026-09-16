@@ -3,3 +3,6 @@ data.json
 
 .DS_Store
 Thumbs.db
+
+# 브라우저 데모의 빌드 결과. scripts/build-demo.mjs 가 만든다.
+demo/
