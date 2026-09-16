@@ -5,7 +5,7 @@ mobile.** And a way into the notes behind each class.
 
 Class times are stored in your notes' own frontmatter, not in plugin settings. Rename a folder, move a note, or edit the YAML by hand: the timetable follows. Nothing lives in a place Obsidian can't see.
 
-![The timetable in the right sidebar, next to a lecture note](docs/overview.png)
+![A week of classes in the sidebar, mid-lecture with 27 minutes left. Clicking the class in progress opens its shelves — drafts, lectures, readings — and clicking lectures lists that course's notes](docs/shelves.gif)
 
 ### [▶ Try it in your browser — no install](https://elliott-json-park.github.io/obsidian-class-timetable/)
 
