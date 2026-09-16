@@ -44,6 +44,16 @@ for (const tag of ['<script src="class-timetable/main.js"></script>',
   if (!html.includes(tag)) fail(`껍데기가 더 이상 ${tag} 로 플러그인을 읽지 않는다. 배치를 맞춰라.`);
 }
 
+/* 인라인 스크립트와 main.js 가 문법적으로 읽히는지 확인한다. 파일이 전부
+   제자리에 있어도 스크립트 하나가 깨지면 데모는 빈 화면으로 뜨고, 그 경우를
+   잡는 다른 검사는 없다. new Function 은 실행하지 않고 파싱만 한다. */
+const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+if (!inline.length) fail('껍데기에서 인라인 스크립트를 찾지 못했다');
+for (const [what, src] of [...inline.map((s, i) => [`껍데기의 인라인 스크립트 #${i + 1}`, s]), ['main.js', main]]) {
+  try { new Function(src); }
+  catch (e) { fail(`${what} 이(가) 파싱되지 않는다: ${e.message}`); }
+}
+
 /* 플러그인은 네트워크를 쓰지 않는다. 데모는 열린 웹에 있는 페이지라,
    원격 스크립트가 있다면 바로 거기서부터 그 주장이 거짓이 된다. */
 for (const [what, text] of [['껍데기', html], ['main.js', main]]) {
