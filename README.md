@@ -7,6 +7,14 @@ Class times are stored in your notes' own frontmatter, not in plugin settings. R
 
 ![The timetable in the right sidebar, next to a lecture note](docs/overview.png)
 
+### [▶ Try it in your browser — no install](https://elliott-json-park.github.io/obsidian-class-timetable/)
+
+The real plugin, on a made-up timetable. Drag a class to move it, click one to
+open its shelves, switch the language — it runs the same `main.js` the release
+ships, not a mock-up of it. Nothing is uploaded and no network request is made.
+
+Or install **Class Timetable** from Settings → Community plugins.
+
 ## What it does
 
 **A timetable in the sidebar.** Real clock times on the vertical axis, not period numbers. Overlapping classes split the column instead of hiding each other. The current time is marked, and the top bar counts down to the end of the class you're in — or to whatever comes next. When the day is done it says so instead of counting.
