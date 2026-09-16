@@ -39,7 +39,9 @@
 
 .ctt-status.is-faint { color: var(--text-faint); }
 
+/* 안내문은 한 줄짜리 글이라 flex 가 아니어야 말줄임이 걸린다 */
 .ctt-status.is-edit {
+  display: block;
   color: var(--text-accent);
   font-weight: 600;
   text-overflow: ellipsis;
@@ -97,36 +99,56 @@
 .ctt-iconbtn,
 .ctt-add {
   flex: 0 0 auto;
-  height: 23px;
+  height: 26px;                    /* 손가락으로도 잡히는 크기 */
   line-height: 1;
   border: none;
   box-shadow: none;
   border-radius: 999px;
-  color: var(--text-faint);
+  color: var(--text-muted);
   background: transparent;
   cursor: pointer;
   transition: background 110ms ease, color 110ms ease;
 }
 
-.ctt-mode { padding: 0 9px; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; }
+.ctt-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 9px 0 7px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ctt-mode-icon { display: inline-flex; opacity: 0.8; }
+.ctt-mode-icon:empty { display: none; }
+.ctt-mode-icon .svg-icon { width: 12px; height: 12px; }
 
 .ctt-iconbtn,
 .ctt-add {
-  width: 23px;
+  width: 26px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.ctt-add { font-size: 17px; }
-.ctt-iconbtn .svg-icon { width: 14px; height: 14px; }
+.ctt-add { font-size: 18px; }
+.ctt-iconbtn .svg-icon { width: 15px; height: 15px; }
 
 .ctt-mode:hover,
 .ctt-iconbtn:hover,
 .ctt-add:hover {
   color: var(--text-normal);
   background: var(--background-modifier-hover);
+}
+
+/* 키보드로 다닐 때 어디에 있는지 보인다 */
+.ctt-mode:focus-visible,
+.ctt-iconbtn:focus-visible,
+.ctt-add:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background-modifier-border-focus, var(--interactive-accent));
 }
 
 .ctt-iconbtn.is-active,
@@ -204,10 +226,10 @@
   position: absolute;
   right: 6px;
   transform: translateY(-50%);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-faint);
-  opacity: 0.55;
+  opacity: 0.75;
   font-variant-numeric: tabular-nums;
 }
 
@@ -247,13 +269,21 @@
 
 .theme-dark .ctt-block:hover { background: color-mix(in srgb, var(--ctt-color) 46%, transparent); }
 
+/* 이름은 블록 높이가 허락하는 만큼 여러 줄로 편다 (줄 수는 렌더 때 정한다).
+   "Linear …" 보다 "Linear / Algebra" 가 낫다. */
 .ctt-block-name {
   font-size: var(--font-ui-smaller);
   font-weight: 700;
   letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--ctt-name-lines, 1);
+  line-clamp: var(--ctt-name-lines, 1);
 }
 
 .ctt-block-sub {
@@ -586,6 +616,15 @@
 
 .ctt-help { margin-top: 24px; }
 
+.ctt-help-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+
 .ctt-help pre {
   background: var(--background-secondary);
   padding: 12px 14px;
@@ -773,8 +812,9 @@
   line-height: 1.45;
 }
 
-/* 약속 메모 */
-.ctt-plan-note {
+/* 약속 메모 · 수업 보조 정보 — 줄바꿈이 살아 있는 칸 */
+.ctt-plan-note,
+.ctt-sub-input {
   width: 100%;
   font-family: inherit;
   font-size: var(--font-ui-smaller);
@@ -854,8 +894,10 @@
   flex-direction: column;
 }
 
-/* 네모난 칸에서는 이름이 위, 개수가 바닥 */
-.ctf-card.is-shelf .ctf-card-sub { margin-top: auto; }
+/* 네모난 칸에서는 이름이 위, 미리보기가 가운데, 개수가 바닥 */
+.ctf-card.is-shelf .ctf-card-sub { margin-top: auto; padding-top: 6px; }
+.ctf-card.is-shelf .ctf-tree { flex: 0 1 auto; min-height: 0; overflow: hidden; }
+.ctf-card.is-shelf .ctf-tree-row { padding: 2px 0; }
 
 /* 세로가 남으니 긴 이름은 두 줄까지 편다 */
 .ctf-card.is-shelf .ctf-card-name {
@@ -913,8 +955,8 @@
   background: conic-gradient(#ff6b6b, #ff922b, #fcc419, #51cf66, #20c997, #4dabf7, #9775fa, #f06595, #ff6b6b);
 }
 
-/* 일회성 일정 — 사라지는 날 */
-.ctt-block-name.has-once { display: flex; align-items: baseline; gap: 4px; }
+/* 일회성 일정 — 사라지는 날. 날짜가 옆에 붙으니 한 줄로 둔다 */
+.ctt-block-name.has-once { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; }
 
 .ctt-block-name.has-once .ctt-block-title {
   min-width: 0;

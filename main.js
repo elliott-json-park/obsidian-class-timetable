@@ -155,6 +155,7 @@ const I18N = {
     edit: '편집',
     all: '(전체)',
     wholeVault: '볼트',
+    helpTitle: '프론트매터 예시',
   },
 
   en: {
@@ -261,6 +262,7 @@ const I18N = {
     edit: 'Edit',
     all: '(all)',
     wholeVault: 'Vault',
+    helpTitle: 'Frontmatter example',
   },
 
   zh: {
@@ -367,6 +369,7 @@ const I18N = {
     edit: '编辑',
     all: '（全部）',
     wholeVault: '仓库',
+    helpTitle: 'Frontmatter 示例',
   },
 
   ja: {
@@ -473,6 +476,7 @@ const I18N = {
     edit: '編集',
     all: '（すべて）',
     wholeVault: 'ヴォールト',
+    helpTitle: 'フロントマターの例',
   },
 };
 
@@ -840,6 +844,9 @@ const COMPACT_COL_W = 64;
 const DRAG_SNAP = 15;
 const RESIZE_ZONE = 8;
 const TOUCH_ZONE = 13;
+
+// 책장 칸 안에 미리 보여 주는 줄 수
+const SHELF_PREVIEW = 3;
 
 const DEFAULT_SETTINGS = {
   lang: 'ko',
@@ -1774,7 +1781,12 @@ class ClassTimetablePlugin extends Plugin {
 
     for (let i = 0; i < slots.length; i++) {
       for (let j = i + 1; j < slots.length; j++) {
-        if (slotsOverlap(slots[i], slots[j])) { this.refreshAll(); return; }
+        if (slotsOverlap(slots[i], slots[j])) {
+          // 같은 수업의 다른 시간과 겹치면 말없이 되돌리지 않고, 편집 모달과 같은 말로 알린다
+          failNotice('errSelfOverlap', { v: formatSlot(slots[idx]) });
+          this.refreshAll();
+          return;
+        }
       }
     }
 
@@ -1917,8 +1929,12 @@ function renderTimetable(plugin, containerEl) {
   }
 
   const todayOnly = plugin.settings.viewMode === 'today';
-  const mode = bar.createEl('button', { cls: 'ctt-mode', text: todayOnly ? t('modeToday') : t('modeWeek') });
+  // 주간/오늘 — 아이콘이 붙어야 글자 하나짜리 라벨이 아니라 누르는 것으로 보인다
+  const mode = bar.createEl('button', { cls: 'ctt-mode' });
+  icon(mode.createSpan({ cls: 'ctt-mode-icon' }), todayOnly ? 'calendar-check' : 'calendar-days', '');
+  mode.createSpan({ text: todayOnly ? t('modeToday') : t('modeWeek') });
   mode.setAttr('title', todayOnly ? t('toWeek') : t('toToday'));
+  mode.setAttr('aria-label', todayOnly ? t('toWeek') : t('toToday'));
   mode.onclick = async () => {
     plugin.settings.viewMode = todayOnly ? 'week' : 'today';
     await plugin.saveSettings();
@@ -1928,6 +1944,8 @@ function renderTimetable(plugin, containerEl) {
   const editBtn = bar.createEl('button', { cls: 'ctt-iconbtn' });
   if (plugin.mode === 'edit') editBtn.addClass('is-active');
   editBtn.setAttr('title', plugin.mode === 'edit' ? t('editOff') : t('editOn'));
+  editBtn.setAttr('aria-label', plugin.mode === 'edit' ? t('editOff') : t('editOn'));
+  editBtn.setAttr('aria-pressed', plugin.mode === 'edit' ? 'true' : 'false');
   icon(editBtn, 'pencil', '✎');
   editBtn.onclick = () => plugin.setMode('edit');
 
@@ -1935,12 +1953,15 @@ function renderTimetable(plugin, containerEl) {
   const planBtn = bar.createEl('button', { cls: 'ctt-add' });
   if (plugin.mode === 'plan') planBtn.addClass('is-active');
   planBtn.setAttr('title', plugin.mode === 'plan' ? t('planOff') : t('planOn'));
+  planBtn.setAttr('aria-label', plugin.mode === 'plan' ? t('planOff') : t('planOn'));
+  planBtn.setAttr('aria-pressed', plugin.mode === 'plan' ? 'true' : 'false');
   planBtn.setText('+');
   planBtn.onclick = () => plugin.setMode('plan');
 
   // 톱니 — 화면을 정하는 것들. 맨 오른쪽에 둔다.
   const gear = bar.createEl('button', { cls: 'ctt-iconbtn' });
   gear.setAttr('title', t('prefs'));
+  gear.setAttr('aria-label', t('prefs'));
   icon(gear, 'settings', '⚙');
   gear.onclick = () => new PrefsModal(plugin).open();
 
@@ -2066,6 +2087,15 @@ function icon(el, name, fallback) {
   el.setText(fallback);
 }
 
+// 한 줄 입력칸에서 Enter 는 저장이다. 여러 줄 칸(textarea)에는 걸지 않는다.
+function saveOnEnter(input, fn) {
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.isComposing) return;
+    e.preventDefault();
+    fn();
+  });
+}
+
 function paintStatus(el, byDay, courseCount) {
   const ti = todayIndex();
   const now = nowMinutes();
@@ -2156,10 +2186,42 @@ function paintNext(bar, byDay, now, ti) {
 /* ── 수업 블록 ── */
 
 // 보조 정보와 메모는 줄바꿈한 그대로 보여 준다. 넘치는 줄은 블록 높이가 잘라낸다.
-function addSubLines(el, text) {
-  for (const line of String(text).split(/\r?\n/)) {
-    el.createDiv({ cls: 'ctt-block-sub', text: line });
+function addSubLines(el, text, max) {
+  const lines = String(text).split(/\r?\n/);
+  const n = max == null ? lines.length : Math.min(lines.length, max);
+  for (let i = 0; i < n; i++) el.createDiv({ cls: 'ctt-block-sub', text: lines[i] });
+}
+
+// 글자 폭을 어림한다. 한중일 글자는 한 칸, 로마자는 반 칸 남짓.
+// 줄 수를 정하는 데만 쓰고, 실제 넘침은 CSS 가 말줄임으로 막는다.
+function estimateWidth(text, fontPx) {
+  let w = 0;
+  for (const ch of String(text)) {
+    const c = ch.codePointAt(0);
+    if (c >= 0x2e80) w += 1;             // 한글·한자·가나·전각
+    else if (c === 0x20) w += 0.3;
+    else if (c >= 0x30 && c <= 0x39) w += 0.6;
+    else if (c >= 0x41 && c <= 0x5a) w += 0.7;
+    else w += 0.56;
   }
+  return w * fontPx * 1.06;              // 굵은 글씨 보정
+}
+
+// 블록 높이·폭에 맞춰 이름은 여러 줄로 펴고, 남는 줄에 보조 정보를 넣는다.
+// 좁은 칸에서 "Linear …" 로 잘리는 것보다 "Linear / Algebra" 두 줄이 읽힌다.
+function fitBlockText(el, height, name, subCount, geo) {
+  const compact = geo.density === 'compact';
+  const nameFont = compact ? 10 : 11;
+  const nameH = nameFont * 1.22 + 0.4;
+  const subH = 9.5 * 1.22;
+  const inner = height - (compact ? 4 : 6);
+  if (height < 17) return { nameLines: 0, subLines: 0 };
+
+  const width = Math.max(20, el.clientWidth - (compact ? 8 : 12));
+  const need = Math.max(1, Math.ceil(estimateWidth(name, nameFont) / width));
+  const nameLines = Math.min(3, need, Math.max(1, Math.floor(inner / nameH)));
+  const subLines = Math.max(0, Math.min(subCount, Math.floor((inner - nameLines * nameH) / subH)));
+  return { nameLines, subLines };
 }
 
 function renderBlock(plugin, col, item, geo) {
@@ -2176,8 +2238,13 @@ function renderBlock(plugin, col, item, geo) {
   if (item.conflicts.length) el.addClass('is-conflict');
 
   const sub = (course.subtitle != null && course.subtitle !== '') ? course.subtitle : slot.location;
-  if (height >= 17) el.createDiv({ cls: 'ctt-block-name', text: course.name });
-  if (sub && height >= 28) addSubLines(el, sub);
+  const subCount = sub ? String(sub).split(/\r?\n/).length : 0;
+  const fit = fitBlockText(el, height, course.name, subCount, geo);
+  if (fit.nameLines) {
+    el.style.setProperty('--ctt-name-lines', String(fit.nameLines));
+    el.createDiv({ cls: 'ctt-block-name', text: course.name });
+  }
+  if (fit.subLines) addSubLines(el, sub, fit.subLines);
 
   const tip = [course.name, dayLabel(slot.day) + ' ' + hhmm(slot.start) + '~' + hhmm(slot.end)];
   if (sub) tip.push(sub);
@@ -2295,7 +2362,9 @@ function renderPlanBlock(plugin, col, item, geo) {
   el.style.width = 'calc(' + w + '% - 3px)';
   el.style.setProperty('--ctt-color', plan.color || PLAN_COLOR);
 
-  if (height >= 17) {
+  const noteCount = plan.note ? String(plan.note).split(/\r?\n/).length : 0;
+  const fit = fitBlockText(el, height, plan.title, noteCount, geo);
+  if (fit.nameLines) {
     const name = el.createDiv({ cls: 'ctt-block-name' });
     // 일회성이면 언제 사라지는지 이름 옆에 흐리게.
     // 좁아지면 이름이 먼저 줄어든다 — 날짜가 여기서는 새로운 정보다.
@@ -2304,10 +2373,11 @@ function renderPlanBlock(plugin, col, item, geo) {
       name.createSpan({ cls: 'ctt-block-title', text: plan.title });
       name.createSpan({ cls: 'ctt-block-once', text: shortDate(plan.date) });
     } else {
+      el.style.setProperty('--ctt-name-lines', String(fit.nameLines));
       name.setText(plan.title);
     }
   }
-  if (plan.note && height >= 28) addSubLines(el, plan.note);
+  if (fit.subLines) addSubLines(el, plan.note, fit.subLines);
 
   const tip = [plan.title, dayLabel(plan.day) + ' ' + hhmm(plan.start) + '~' + hhmm(plan.end)];
   if (plan.once && plan.date) tip.push(t('onceOn', { date: plan.date }));
@@ -2387,7 +2457,8 @@ function attachBlockDrag(plugin, el, item, geo) {
     place();
 
     const snap = (m) => Math.round(m / DRAG_SNAP) * DRAG_SNAP;
-    let moved = false;
+    // 끌었다가 제자리에 놓으면 아무것도 쓰지 않는다. 놓는 순간의 값으로만 판단한다.
+    const moved = () => cur.day !== orig.day || cur.start !== orig.start || cur.end !== orig.end;
 
     const onMove = (ev) => {
       const dm = snap((ev.clientY - e.clientY) / geo.pxPerMin);
@@ -2405,7 +2476,6 @@ function attachBlockDrag(plugin, el, item, geo) {
         cur.end = Math.max(Math.min(1440, orig.end + dm), orig.start + DRAG_SNAP);
         cur.start = orig.start;
       }
-      if (cur.day !== orig.day || cur.start !== orig.start || cur.end !== orig.end) moved = true;
       place();
     };
 
@@ -2415,7 +2485,7 @@ function attachBlockDrag(plugin, el, item, geo) {
       document.removeEventListener('pointercancel', onUp);
       ghost.remove();
       el.removeClass('is-dragging');
-      if (!moved) return;
+      if (!moved()) return;
       el.dataset.dragged = '1';
       if (item.kind === 'plan') {
         plugin.savePlan(Object.assign({}, item.plan, { day: cur.day, start: cur.start, end: cur.end }));
@@ -2686,6 +2756,40 @@ class FolderView extends ItemView {
         const top = card.createDiv({ cls: 'ctf-card-top' });
         icon(top.createSpan({ cls: 'ctf-card-icon' }), 'folder', '▣');
         top.createDiv({ cls: 'ctf-card-name', text: entry.name });
+
+        // 네모난 칸의 빈 자리에 안에 든 것을 몇 줄 미리 보여 준다.
+        // 폴더가 먼저, 노트는 최근에 고친 순. 줄을 누르면 바로 열린다.
+        const kids = [];
+        for (const f of entry.list) {
+          for (const c of f.children) {
+            if (c instanceof TFolder) kids.push({ folder: c });
+            else if (/\.md$/i.test(c.name)) kids.push({ file: c });
+          }
+        }
+        kids.sort((a, b) => {
+          if (!!a.folder !== !!b.folder) return a.folder ? -1 : 1;
+          if (a.folder) return byName(a.folder, b.folder);
+          const ma = (a.file.stat && a.file.stat.mtime) || 0, mb = (b.file.stat && b.file.stat.mtime) || 0;
+          return mb - ma || byName(a.file, b.file);
+        });
+        if (kids.length) {
+          const tree = card.createDiv({ cls: 'ctf-tree' });
+          const shown = kids.slice(0, kids.length > SHELF_PREVIEW + 1 ? SHELF_PREVIEW : kids.length);
+          for (const k of shown) {
+            const row = tree.createDiv({ cls: 'ctf-tree-row' });
+            row.createSpan({ cls: 'ctf-tree-mark', text: k.folder ? '▸' : '·' });
+            row.createSpan({ cls: 'ctf-tree-name', text: k.folder ? k.folder.name : k.file.basename || k.file.name.replace(/\.md$/i, '') });
+            row.setAttr('title', k.folder ? k.folder.path : k.file.path);
+            row.onclick = (e) => {
+              e.stopPropagation();
+              if (k.folder) this.go((this.rel ? this.rel + '/' : '') + entry.name + '/' + k.folder.name);
+              else this.plugin.openNote(k.file, e.ctrlKey || e.metaKey);
+            };
+          }
+          if (kids.length > shown.length) {
+            tree.createDiv({ cls: 'ctf-tree-more', text: t('plusMore', { n: kids.length - shown.length }) });
+          }
+        }
 
         let notes = 0, subs = 0;
         for (const f of entry.list) { notes += countNotes(f); subs += subfolders(f).length; }
@@ -3048,6 +3152,7 @@ class PlanEditModal extends Modal {
     name.value = this.state.title;
     name.placeholder = t('planTitlePh');
     name.oninput = () => { this.state.title = name.value; };
+    saveOnEnter(name, () => this.trySave());
 
     const timeField = el.createDiv({ cls: 'ctt-field' });
     timeField.createDiv({ cls: 'ctt-field-label', text: t('time') });
@@ -3064,10 +3169,12 @@ class PlanEditModal extends Modal {
     const start = row.createEl('input', { type: 'text', cls: 'ctt-time-input' });
     start.value = this.state.start;
     start.oninput = () => { this.state.start = start.value; };
+    saveOnEnter(start, () => this.trySave());
     row.createSpan({ cls: 'ctt-dash', text: '–' });
     const end = row.createEl('input', { type: 'text', cls: 'ctt-time-input' });
     end.value = this.state.end;
     end.oninput = () => { this.state.end = end.value; };
+    saveOnEnter(end, () => this.trySave());
 
     const noteField = el.createDiv({ cls: 'ctt-field' });
     noteField.createDiv({ cls: 'ctt-field-label', text: t('planNote') });
@@ -3279,11 +3386,15 @@ class CourseEditModal extends Modal {
     name.value = this.title;
     name.placeholder = t('displayNamePh');
     name.oninput = () => { this.title = name.value; };
+    saveOnEnter(name, () => this.trySave());
 
+    // 보조 정보는 블록에서 줄바꿈 그대로 보이므로, 입력칸도 여러 줄이어야 한다.
+    // 한 줄 input 은 줄바꿈을 조용히 지워 버린다.
     const subField = el.createDiv({ cls: 'ctt-field' });
     subField.createDiv({ cls: 'ctt-field-label', text: t('subLabel') });
-    const sub = subField.createEl('input', { type: 'text' });
+    const sub = subField.createEl('textarea', { cls: 'ctt-sub-input' });
     sub.value = this.subtitle;
+    sub.rows = 2;
     sub.placeholder = t('subLabelPh');
     sub.oninput = () => { this.subtitle = sub.value; };
 
@@ -3325,10 +3436,12 @@ class CourseEditModal extends Modal {
       const start = r.createEl('input', { type: 'text', cls: 'ctt-time-input' });
       start.value = row.start;
       start.oninput = () => { row.start = start.value; };
+      saveOnEnter(start, () => this.trySave());
       r.createSpan({ cls: 'ctt-dash', text: '–' });
       const end = r.createEl('input', { type: 'text', cls: 'ctt-time-input' });
       end.value = row.end;
       end.oninput = () => { row.end = end.value; };
+      saveOnEnter(end, () => this.trySave());
 
       const spacer = r.createDiv({ cls: 'ctt-rowspacer' });
       spacer.setText('');
@@ -3349,6 +3462,20 @@ class CourseEditModal extends Modal {
     };
 
     const buttons = el.createDiv({ cls: 'ctt-modal-buttons' });
+    // 일정 모달과 같은 자리에 같은 모양으로. 우클릭 메뉴에만 있으면 찾기 어렵다.
+    if (this.opts.course) {
+      const course = this.opts.course;
+      const remove = buttons.createEl('button', { cls: 'ctt-danger', text: t('removeFromTable') });
+      remove.onclick = () => {
+        this.close();
+        new ConfirmModal(this.app, {
+          title: t('removeFromTable'),
+          body: t('removeBody', { name: course.name }),
+          cta: t('removeCta'),
+          onConfirm: () => this.plugin.removeFromTimetable(course),
+        }).open();
+      };
+    }
     buttons.createEl('button', { cls: 'mod-cta', text: t('save') }).onclick = () => this.trySave();
     buttons.createEl('button', { text: t('cancel') }).onclick = () => this.close();
   }
@@ -3733,6 +3860,7 @@ class TimetableSettingTab extends PluginSettingTab {
       .addButton((b) => b.setButtonText(t('edit')).setCta().onClick(() => new TemplateModal(this.plugin).open()));
 
     const help = containerEl.createDiv({ cls: 'ctt-help' });
+    help.createDiv({ cls: 'ctt-help-title', text: t('helpTitle') });
     help.createEl('pre', {
       text: ['---', 'schedule:', '  - 월 10:30-11:50 @ 301호', 'title: 수업 이름', 'subtitle: 담당 교수', '---'].join('\n'),
     });

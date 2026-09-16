@@ -1,7 +1,7 @@
 {
   "id": "class-timetable",
   "name": "Class Timetable",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "minAppVersion": "1.4.0",
   "description": "A weekly class timetable and course schedule for students, in the sidebar on desktop and mobile. Times live in your notes' frontmatter, so moving or renaming folders never breaks them.",
   "author": "Elliott Park",
