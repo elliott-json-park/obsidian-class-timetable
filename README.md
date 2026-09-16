@@ -1,6 +1,7 @@
 # Class Timetable
 
-A weekly class timetable that lives in the Obsidian sidebar — and a way into the notes behind each class.
+**A weekly class timetable and course schedule in the sidebar, on desktop and
+mobile.** And a way into the notes behind each class.
 
 Class times are stored in your notes' own frontmatter, not in plugin settings. Rename a folder, move a note, or edit the YAML by hand: the timetable follows. Nothing lives in a place Obsidian can't see.
 
@@ -77,11 +78,16 @@ Mouse, touch and pen are all handled, so editing works the same on a tablet.
 
 ## Install
 
-Until this is in the community plugin list, install it by hand:
+**From the community plugin browser:** Settings → Community plugins → Browse →
+"Class Timetable" → Install.
 
-1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/elliott-json-park/obsidian-class-timetable/releases/latest).
-2. Put them in `<your vault>/.obsidian/plugins/class-timetable/`.
-3. Reload Obsidian, then enable **Class Timetable** in *Settings → Community plugins*.
+**Manually:** download `main.js`, `manifest.json` and `styles.css` from the
+[latest release](https://github.com/elliott-json-park/obsidian-class-timetable/releases/latest),
+put them in `<your vault>/.obsidian/plugins/class-timetable/`, then reload
+Obsidian and enable **Class Timetable** in *Settings → Community plugins*.
+
+Desktop and mobile both. The timetable is the same on a phone; editing is
+handled for touch and pen as well as the mouse.
 
 ## Notes on data
 
