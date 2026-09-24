@@ -5,7 +5,7 @@ mobile.** And a way into the notes behind each class.
 
 Class times are stored in your notes' own frontmatter, not in plugin settings. Rename a folder, move a note, or edit the YAML by hand: the timetable follows. Nothing lives in a place Obsidian can't see.
 
-![A week of classes in the sidebar, mid-lecture with 27 minutes left. Clicking the class in progress opens its shelves — drafts, lectures, readings — and clicking lectures lists that course's notes](docs/shelves.gif)
+![A week of classes in the sidebar, mid-lecture with 25 minutes left. Clicking the class in progress opens its shelves — assignments, lectures, readings — and clicking lectures lists that course's notes](docs/shelves.gif)
 
 ### [▶ Try it in your browser — no install](https://elliott-json-park.github.io/obsidian-class-timetable/)
 
@@ -19,11 +19,11 @@ Or install **Class Timetable** from Settings → Community plugins.
 
 **A timetable in the sidebar.** Real clock times on the vertical axis, not period numbers. Overlapping classes split the column instead of hiding each other. The current time is marked, and the top bar counts down to the end of the class you're in — or to whatever comes next. When the day is done it says so instead of counting.
 
-<img src="docs/sidebar.png" width="420" alt="A class block showing its schedule, professor and where new notes go">
+<img src="docs/sidebar.png" width="420" alt="The timetable mid-lecture: the class in progress outlined, earlier classes today dimmed, and a countdown to the end of class">
 
 **Click a class, get its shelves.** Obsidian can't "open a folder", so the plugin opens a view of one: the folders belonging to that class, laid out like a bookshelf. Square cards are folders, wide cards are files. Create, rename and delete them right there — names are typed in place, on the card itself.
 
-![The shelf view for one course](docs/shelf.png)
+![The shelf view for one course, in class now — Today's note, its shelves and notes](docs/shelf.png)
 
 **Start today's note in one step.** Right-click a class → *Create a note*, press *Today's note* on its shelves, or bind a hotkey to *Create today's note for the current class*. The file name and body come from a template you define (`{{course}}`, `{{date:MMDD}}`, `{{dow}}`, `{{week}}` …). If today's note already exists, it opens instead of being overwritten.
 
