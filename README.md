@@ -25,15 +25,19 @@ Or install **Class Timetable** from Settings → Community plugins.
 
 ![The shelf view for one course](docs/shelf.png)
 
-**Start today's note in one step.** Right-click a class → *New note*. The file name and body come from a template you define (`{{course}}`, `{{date:MMDD}}`, `{{dow}}`, `{{week}}` …). If today's note already exists, it opens instead of being overwritten.
+**Start today's note in one step.** Right-click a class → *Create a note*, press *Today's note* on its shelves, or bind a hotkey to *Create today's note for the current class*. The file name and body come from a template you define (`{{course}}`, `{{date:MMDD}}`, `{{dow}}`, `{{week}}` …). If today's note already exists, it opens instead of being overwritten.
+
+**See where you are in the day.** The class in progress is outlined and fills up as it goes; classes already over today step back. The shelves say whether you're in class now or when the next session is.
 
 **Plans, without files.** Some things don't deserve a note — a shift, a study group, a dentist appointment. Add them straight onto the grid. A one-time plan carries the date it disappears on, and removes itself once that time has passed.
+
+**Share your week as an image.** *Save as PNG* or *Copy image* from the gear, the view's ⋯ menu, or the command palette. The whole week is drawn at full size in your current theme — no cropping by a narrow sidebar, no scrolling — ready to send to a group chat. Saved images go to your attachments folder.
 
 **One day at a time, when you want it.** Switch between the whole week and today alone.
 
 ![Today mode](docs/today.png)
 
-**Four languages.** English, 한국어, 中文, 日本語 — switchable at runtime, no restart. What gets written to your files never changes with the language: weekdays are always stored as `월 화 수 목 금 토 일`, only the display is translated.
+**Four languages.** English, 한국어, 中文, 日本語 — picked from Obsidian's own language on first run, switchable at runtime, no restart. What gets written to your files never changes with the language: weekdays are always stored as `월 화 수 목 금 토 일`, only the display is translated.
 
 ## How a class is defined
 
@@ -62,19 +66,35 @@ Times are read generously: `월`, `월요일`, `mon`, `m`, `月`, `一` all work
 
 ## Getting started
 
-1. Open the timetable from the ribbon (calendar icon) or the command palette.
-2. Click the **pencil** to unlock editing, then drag on an empty cell to add a class. Editing is locked by default so a stray click can't move your week.
-3. Pick the note or folder the class belongs to. The times are written into that note's frontmatter.
-4. Click a class block to open its shelves; right-click for notes, shortcuts and settings.
+The timetable opens in the right sidebar the first time the plugin is enabled. After that, it's on the ribbon (calendar icon) and in the command palette.
 
-In Settings you can point the plugin at one or more **course folders** so it only scans those, set the current semester, and edit templates. The **gear** in the timetable's top bar holds the display options: language, theme, and the hours the grid shows.
+**Just looking?** Press *Try a sample timetable* on the empty timetable (or run *Create a sample timetable*). Five made-up classes appear in a `Timetable sample` folder, with shelves to click through. *Remove the sample timetable* sends that one folder to the trash when you're done.
+
+**Your own week:**
+
+1. Press *Add a class*, or click the **pencil** to unlock editing and drag on an empty cell. Editing is locked by default so a stray click can't move your week.
+2. Pick the note or folder the class belongs to. The times are written into that note's frontmatter.
+3. Click a class block to open its shelves; right-click for today's note, shortcuts and settings.
+
+In Settings you can point the plugin at one or more **course folders** so it only scans those, set the current semester, and edit templates. The **gear** in the timetable's top bar holds the display options: language and the hours the grid shows. The timetable follows Obsidian's light or dark theme.
+
+## Commands
+
+| Command | |
+|---|---|
+| Timetable | Open the timetable in the sidebar |
+| Create today's note for the current class | The class in progress — or the nearest one today — gets today's note from your template |
+| Open shelves of the current class | Same class, its shelves |
+| Add class · Add plan | Open the editor directly |
+| Save timetable as PNG · Copy timetable image | The whole week as an image, in your current theme |
+| Create a sample timetable · Remove the sample timetable | Look around first, clean up in one step |
 
 ## Editing
 
 | | |
 |---|---|
 | Left click | Open the class's shelves (`Ctrl`/`Cmd` for a new tab) |
-| Right click | Menu — new note, shortcuts, edit class, shelves |
+| Right click | Menu — today's note, shelves, shortcuts, then editing the class |
 | Pencil → drag | Move a class, or drag its edge to resize. 15-minute steps |
 | Plus → drag | Add a plan on the grid, with no file behind it |
 
@@ -118,7 +138,13 @@ schedule:
 ---
 ```
 
-화면 언어는 환경설정(톱니)에서 한국어·English·中文·日本語 중에 고르실 수 있고, 파일에 저장되는 요일 표기는 언어와 무관하게 항상 `월 화 수 목 금 토 일`입니다.
+처음 켜면 시간표가 오른쪽 사이드바에 열립니다. 먼저 둘러보고 싶다면 빈 시간표의 **예시 시간표 불러오기**를 누르세요. 다섯 과목짜리 예시가 `시간표 예시` 폴더에 만들어지고, 다 보면 **예시 시간표 지우기** 명령으로 한 번에 치울 수 있습니다.
+
+수업 중에는 **지금 수업의 오늘 노트 만들기** 명령(단축키 지정 가능)이나 책장의 **＋ 오늘 노트** 버튼으로 템플릿에 맞춘 필기 노트를 바로 엽니다.
+
+톱니 → **PNG로 저장 / 이미지 복사**로 한 주 전체를 지금 테마 색 그대로 그림으로 뽑을 수 있습니다. 사이드바가 좁아도 잘리지 않고, 저장한 그림은 첨부 파일 폴더에 들어갑니다.
+
+화면 언어는 처음에 옵시디언 언어를 따라 정해지고, 환경설정(톱니)에서 한국어·English·中文·日本語 중에 바꾸실 수 있습니다. 파일에 저장되는 요일 표기는 언어와 무관하게 항상 `월 화 수 목 금 토 일`입니다.
 
 ## License
 

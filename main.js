@@ -791,22 +791,284 @@ const I18N_V17 = {
 
 for (const code of Object.keys(I18N_V17)) Object.assign(I18N[code], I18N_V17[code]);
 
+/* v1.1 — 처음 여는 사람을 위한 말: 빈 시간표, 예시 시간표, 지금 수업 바로가기 */
+const I18N_V18 = {
+  ko: {
+    setupHint: '아직 수업이 없습니다',
+    emptyTitle: '이번 주가 비어 있어요',
+    emptyBody: 'frontmatter 에 schedule: 이 있는 노트는 모두 수업이 됩니다. 직접 추가하거나, 예시 시간표로 먼저 둘러보세요.',
+    emptyAdd: '수업 추가',
+    emptySample: '예시 시간표 불러오기',
+    emptyCode: 'schedule:\n  - 월 10:30-12:00 @ 301호',
+    sampleCmd: '예시 시간표 만들기',
+    sampleRemoveCmd: '예시 시간표 지우기',
+    sampleFolder: '시간표 예시',
+    sampleDone: '예시 시간표를 만들었습니다 — {path}',
+    sampleExists: '예시 시간표가 이미 있습니다 — {path}',
+    sampleRemoveBody: '{path} 폴더를 휴지통으로 보냅니다. 예시로 만든 수업과 노트만 들어 있습니다.',
+    sampleLectures: '강의 노트',
+    sampleReadings: '읽을거리',
+    sampleSyllabus: '강의계획서',
+    sampleNoteBody: '이 노트는 예시입니다. 위 frontmatter 의 schedule: 을 고치면 시간표가 바로 따라 움직입니다.',
+    sampleCourses: [
+      ['선형대수', '김 교수'],
+      ['세계사', '박 교수'],
+      ['글쓰기 워크숍', '이 교수'],
+      ['심리학개론', '최 교수'],
+      ['자료구조', '정 교수'],
+    ],
+    gettingStarted: '시작하기',
+    gettingStartedDesc: '예시 시간표를 만들어 둘러본 뒤, 필요 없으면 한 번에 지울 수 있습니다.',
+    openTimetable: '시간표 열기',
+    currentNoteCmd: '지금 수업의 오늘 노트 만들기',
+    currentShelfCmd: '지금 수업의 책장 열기',
+    noClassToday: '오늘은 수업이 없습니다',
+    todayNote: '＋ 오늘 노트',
+    todayNoteHint: '{name} 오늘 노트 — 이미 있으면 그 노트를 엽니다',
+    nextSession: '다음 수업 {when}',
+    liveSession: '수업 중 · {time} 종료',
+    todaySession: '오늘 {time}',
+    noteCountOne: '노트 {n}',
+    folderCountOne: '폴더 {n}',
+    templateSettingDesc: '수업 블록을 우클릭해 “오늘의 필기 노트 열기”를 누르면 이 템플릿으로 노트가 만들어집니다.',
+    defaultTplBody: '# 필기\n\n\n# 질문\n\n',
+    helpExample: ['---', 'schedule:', '  - 월 10:30-11:50 @ 301호', '  - 수 10:30-11:50 @ 301호', 'title: 선형대수', 'subtitle: 김 교수', '---'],
+    helpNote: '요일은 월 · mon · 月 무엇으로 적어도 읽습니다. 플러그인이 저장할 때는 언어와 상관없이 월 화 수 목 금 토 일 로 적습니다.',
+    colorCustom: '지정한 색',
+  },
+  en: {
+    setupHint: 'No classes yet',
+    emptyTitle: 'Your week is empty',
+    emptyBody: 'Any note with a schedule: field in its frontmatter becomes a class. Add one yourself, or look around with a sample timetable first.',
+    emptyAdd: 'Add a class',
+    emptySample: 'Try a sample timetable',
+    emptyCode: 'schedule:\n  - Mon 10:30-12:00 @ Room 301',
+    sampleCmd: 'Create a sample timetable',
+    sampleRemoveCmd: 'Remove the sample timetable',
+    sampleFolder: 'Timetable sample',
+    sampleDone: 'Sample timetable created — {path}',
+    sampleExists: 'The sample timetable is already there — {path}',
+    sampleRemoveBody: 'Moves the {path} folder to the trash. It only holds the sample classes and notes.',
+    sampleLectures: 'Lectures',
+    sampleReadings: 'Readings',
+    sampleSyllabus: 'Syllabus',
+    sampleNoteBody: 'This is a sample. Edit schedule: in the frontmatter above and the timetable follows right away.',
+    sampleCourses: [
+      ['Linear Algebra', 'Prof. Almeida'],
+      ['World History', 'Prof. Vasquez'],
+      ['Creative Writing', 'Prof. Marchetti'],
+      ['Intro to Psychology', 'Prof. Sørensen'],
+      ['Data Structures', 'Prof. Tanaka'],
+    ],
+    gettingStarted: 'Getting started',
+    gettingStartedDesc: 'Create a sample timetable to look around. When you are done, remove it in one step.',
+    openTimetable: 'Open timetable',
+    currentNoteCmd: 'Create today\'s note for the current class',
+    currentShelfCmd: 'Open shelves of the current class',
+    noClassToday: 'No classes today',
+    todayNote: '＋ Today\'s note',
+    todayNoteHint: 'Today\'s note for {name} — opens it if it already exists',
+    nextSession: 'Next {when}',
+    liveSession: 'In class · ends {time}',
+    todaySession: 'Today {time}',
+    noteCountOne: '{n} note',
+    folderCountOne: '{n} folder',
+    templateSettingDesc: 'Right-click a class and choose “Create a note” — the note is made from this template.',
+    defaultTplBody: '# Notes\n\n\n# Questions\n\n',
+    helpExample: ['---', 'schedule:', '  - Mon 10:30-11:50 @ Room 301', '  - Wed 10:30-11:50 @ Room 301', 'title: Linear Algebra', 'subtitle: Prof. Almeida', '---'],
+    helpNote: 'Days can be written as mon, monday, 월 or 月. When the plugin writes a schedule it always uses 월 화 수 목 금 토 일, whatever the language.',
+    colorCustom: 'Custom color',
+  },
+  zh: {
+    setupHint: '还没有课程',
+    emptyTitle: '这一周还是空的',
+    emptyBody: 'frontmatter 里有 schedule: 的笔记都会成为课程。可以自己添加，也可以先用示例课程表看看。',
+    emptyAdd: '添加课程',
+    emptySample: '载入示例课程表',
+    emptyCode: 'schedule:\n  - 一 10:30-12:00 @ 301教室',
+    sampleCmd: '创建示例课程表',
+    sampleRemoveCmd: '删除示例课程表',
+    sampleFolder: '课程表示例',
+    sampleDone: '已创建示例课程表 — {path}',
+    sampleExists: '示例课程表已经存在 — {path}',
+    sampleRemoveBody: '把 {path} 文件夹移到回收站。里面只有示例课程和笔记。',
+    sampleLectures: '课堂笔记',
+    sampleReadings: '阅读材料',
+    sampleSyllabus: '教学大纲',
+    sampleNoteBody: '这是示例笔记。修改上方 frontmatter 的 schedule:，课程表会立刻跟着变。',
+    sampleCourses: [
+      ['线性代数', '王老师'],
+      ['世界史', '李老师'],
+      ['创意写作', '张老师'],
+      ['心理学导论', '刘老师'],
+      ['数据结构', '陈老师'],
+    ],
+    gettingStarted: '入门',
+    gettingStartedDesc: '先创建示例课程表看看，用完可以一键删除。',
+    openTimetable: '打开课程表',
+    currentNoteCmd: '为当前课程新建今天的笔记',
+    currentShelfCmd: '打开当前课程的书架',
+    noClassToday: '今天没有课',
+    todayNote: '＋ 今天的笔记',
+    todayNoteHint: '{name} 今天的笔记 — 已存在则直接打开',
+    nextSession: '下节课 {when}',
+    liveSession: '上课中 · {time} 下课',
+    todaySession: '今天 {time}',
+    templateSettingDesc: '右键点击课程并选择“新建笔记”，就会用这个模板创建笔记。',
+    defaultTplBody: '# 笔记\n\n\n# 问题\n\n',
+    helpExample: ['---', 'schedule:', '  - 一 10:30-11:50 @ 301教室', '  - 三 10:30-11:50 @ 301教室', 'title: 线性代数', 'subtitle: 王老师', '---'],
+    helpNote: '星期可以写成 一、mon、月 或 월。插件写入时无论界面语言都使用 월 화 수 목 금 토 일。',
+    colorCustom: '自定义颜色',
+  },
+  ja: {
+    setupHint: 'まだ授業がありません',
+    emptyTitle: '今週はまだ空っぽです',
+    emptyBody: 'frontmatter に schedule: があるノートはすべて授業になります。自分で追加するか、まずはサンプルの時間割で試してみてください。',
+    emptyAdd: '授業を追加',
+    emptySample: 'サンプルの時間割を読み込む',
+    emptyCode: 'schedule:\n  - 月 10:30-12:00 @ 301教室',
+    sampleCmd: 'サンプルの時間割を作る',
+    sampleRemoveCmd: 'サンプルの時間割を消す',
+    sampleFolder: '時間割サンプル',
+    sampleDone: 'サンプルの時間割を作りました — {path}',
+    sampleExists: 'サンプルの時間割はすでにあります — {path}',
+    sampleRemoveBody: '{path} フォルダをゴミ箱に移します。サンプルの授業とノートだけが入っています。',
+    sampleLectures: '講義ノート',
+    sampleReadings: '資料',
+    sampleSyllabus: 'シラバス',
+    sampleNoteBody: 'これはサンプルです。上の frontmatter の schedule: を直すと、時間割がすぐに追いかけます。',
+    sampleCourses: [
+      ['線形代数', '佐藤先生'],
+      ['世界史', '鈴木先生'],
+      ['創作ワークショップ', '高橋先生'],
+      ['心理学入門', '田中先生'],
+      ['データ構造', '伊藤先生'],
+    ],
+    gettingStarted: 'はじめに',
+    gettingStartedDesc: 'サンプルの時間割を作って試せます。不要になったら一度で消せます。',
+    openTimetable: '時間割を開く',
+    currentNoteCmd: '今の授業の今日のノートを作る',
+    currentShelfCmd: '今の授業の本棚を開く',
+    noClassToday: '今日は授業がありません',
+    todayNote: '＋ 今日のノート',
+    todayNoteHint: '{name} の今日のノート — すでにあれば開きます',
+    nextSession: '次の授業 {when}',
+    liveSession: '授業中 · {time} 終了',
+    todaySession: '今日 {time}',
+    templateSettingDesc: '授業を右クリックして「ノートを作る」を選ぶと、このテンプレートでノートが作られます。',
+    defaultTplBody: '# ノート\n\n\n# 質問\n\n',
+    helpExample: ['---', 'schedule:', '  - 月 10:30-11:50 @ 301教室', '  - 水 10:30-11:50 @ 301教室', 'title: 線形代数', 'subtitle: 佐藤先生', '---'],
+    helpNote: '曜日は 月・mon・월 のどれで書いても読めます。プラグインが書き込むときは言語に関係なく 월 화 수 목 금 토 일 を使います。',
+    colorCustom: '指定した色',
+  },
+};
+
+for (const code of Object.keys(I18N_V18)) Object.assign(I18N[code], I18N_V18[code]);
+
+/* v1.1 — 이미지로 내보내기 */
+const I18N_V19 = {
+  ko: {
+    share: '공유',
+    exportSave: 'PNG로 저장',
+    exportCopy: '이미지 복사',
+    exportSaveCmd: '시간표를 PNG로 저장',
+    exportCopyCmd: '시간표 이미지 복사',
+    exportHint: '한 주 전체를 지금 테마 색으로 그립니다. 저장하면 첨부 파일 폴더에 들어갑니다.',
+    exportSaved: '시간표 이미지를 저장했습니다 — {path}',
+    exportCopied: '시간표 이미지를 클립보드에 복사했습니다',
+    exportCopyFallback: '여기서는 이미지를 복사할 수 없어 파일로 저장합니다',
+    exportEmpty: '내보낼 수업이 없습니다',
+    exportFail: '시간표 이미지를 만들지 못했습니다',
+    imgClassCount: '수업 {n}개',
+    imgFooter: 'Class Timetable · Obsidian',
+  },
+  en: {
+    share: 'Share',
+    exportSave: 'Save as PNG',
+    exportCopy: 'Copy image',
+    exportSaveCmd: 'Save timetable as PNG',
+    exportCopyCmd: 'Copy timetable image',
+    exportHint: 'Draws the whole week in your current theme. Saved images go to your attachments folder.',
+    exportSaved: 'Timetable image saved — {path}',
+    exportCopied: 'Timetable image copied to the clipboard',
+    exportCopyFallback: 'Copying images is not available here — saving a file instead',
+    exportEmpty: 'No classes to export',
+    exportFail: 'Could not create the timetable image',
+    imgClassCount: '{n} classes',
+    imgClassCountOne: '{n} class',
+    imgFooter: 'Class Timetable · Obsidian',
+  },
+  zh: {
+    share: '分享',
+    exportSave: '保存为 PNG',
+    exportCopy: '复制图片',
+    exportSaveCmd: '将课程表保存为 PNG',
+    exportCopyCmd: '复制课程表图片',
+    exportHint: '以当前主题颜色绘制整周。保存的图片放在附件文件夹。',
+    exportSaved: '已保存课程表图片 — {path}',
+    exportCopied: '已将课程表图片复制到剪贴板',
+    exportCopyFallback: '此处无法复制图片，改为保存文件',
+    exportEmpty: '没有可导出的课程',
+    exportFail: '无法生成课程表图片',
+    imgClassCount: '{n} 门课',
+    imgFooter: 'Class Timetable · Obsidian',
+  },
+  ja: {
+    share: '共有',
+    exportSave: 'PNG で保存',
+    exportCopy: '画像をコピー',
+    exportSaveCmd: '時間割を PNG で保存',
+    exportCopyCmd: '時間割の画像をコピー',
+    exportHint: '今のテーマの色で一週間を描きます。保存した画像は添付ファイルのフォルダに入ります。',
+    exportSaved: '時間割の画像を保存しました — {path}',
+    exportCopied: '時間割の画像をクリップボードにコピーしました',
+    exportCopyFallback: 'ここでは画像をコピーできないため、ファイルとして保存します',
+    exportEmpty: '書き出す授業がありません',
+    exportFail: '時間割の画像を作れませんでした',
+    imgClassCount: '授業 {n}',
+    imgFooter: 'Class Timetable · Obsidian',
+  },
+};
+
+for (const code of Object.keys(I18N_V19)) Object.assign(I18N[code], I18N_V19[code]);
 
 
 
 
 
 
-let LANG = 'ko';
+
+let LANG = 'en';
+
+// 처음 설치한 사람에게는 옵시디언이 쓰는 말로 보여 준다. 모르는 말이면 영어.
+// 한 번 정해지면 설정에 남고, 그 뒤로는 사용자가 고른 말이 이긴다.
+function detectLang() {
+  let code = '';
+  try { if (typeof obsidian.getLanguage === 'function') code = obsidian.getLanguage(); } catch (e) { /* 1.8 이전 */ }
+  if (!code) { try { code = window.localStorage.getItem('language') || ''; } catch (e) { /* 막힌 저장소 */ } }
+  if (!code) { try { code = (window.moment && window.moment.locale()) || ''; } catch (e) { /* 없음 */ } }
+  code = String(code || 'en').toLowerCase();
+  for (const lang of ['ko', 'zh', 'ja']) if (code === lang || code.indexOf(lang + '-') === 0) return lang;
+  return 'en';
+}
 
 function t(key, vars) {
-  const table = I18N[LANG] || I18N.ko;
-  let out = table[key] != null ? table[key] : (I18N.ko[key] != null ? I18N.ko[key] : key);
-  if (vars) for (const k of Object.keys(vars)) out = out.split('{' + k + '}').join(String(vars[k]));
+  const table = I18N[LANG] || I18N.en;
+  let out = table[key] != null ? table[key] : (I18N.en[key] != null ? I18N.en[key] : key);
+  if (vars && typeof out === 'string') for (const k of Object.keys(vars)) out = out.split('{' + k + '}').join(String(vars[k]));
   return out;
 }
 
-function dayLabel(i) { return (DAY_LABELS[LANG] || DAY_LABELS.ko)[i]; }
+// 개수가 붙는 말. 하나일 때 다른 꼴이 있는 언어(영어)만 따로 적어 둔다.
+function tn(key, n) {
+  const table = I18N[LANG] || I18N.en;
+  return t(n === 1 && table[key + 'One'] != null ? key + 'One' : key, { n });
+}
+
+// 화면에 늘어놓는 순서는 보는 사람의 말을 따른다. 'file 2' 가 'file 10' 앞에 온다.
+function collate(a, b) { return String(a).localeCompare(String(b), LANG, { numeric: true }); }
+
+function dayLabel(i) { return (DAY_LABELS[LANG] || DAY_LABELS.en)[i]; }
 
 // 실패는 먼저 사용자의 말로 알린다. 원인(옵시디언이 던진 영어)은 뒤에 덧붙이고,
 // 자세한 것은 콘솔에 남긴다 — 물어볼 때 그대로 옮겨 적을 수 있게.
@@ -849,7 +1111,8 @@ const TOUCH_ZONE = 13;
 const SHELF_PREVIEW = 3;
 
 const DEFAULT_SETTINGS = {
-  lang: 'ko',
+  lang: '',                           // 비어 있으면 처음 켤 때 옵시디언 언어를 따라 정한다
+  welcomed: false,                    // 처음 한 번은 시간표를 사이드바에 열어 준다
   roots: [],
   folderNotePattern: '{{folder}}.md',
   currentSemester: '',
@@ -858,7 +1121,6 @@ const DEFAULT_SETTINGS = {
   templates: [],
   defaultTemplate: '',
   plans: [],                          // 파일이 아닌, 시간표 위에만 있는 일정
-  theme: 'system',                    // 옵시디언 API 가 없을 때만 쓰는 예비값
   dayStart: null,                     // 보이는 시간 범위. null 이면 수업에 맞춰 자동
   dayEnd: null,
 };
@@ -868,7 +1130,7 @@ function defaultTemplates() {
     id: 'note',
     name: t('defaultTplName'),
     filename: '{{date:MMDD}}({{dow}}) {{course}}',
-    body: '# ✏️필기\n---\n\n\n\n# ❓질문\n---\n\n',
+    body: t('defaultTplBody'),
   }];
 }
 
@@ -956,6 +1218,26 @@ function scheduleSummary(course) {
     const time = g.days.join('·') + ' ' + hhmm(g.slot.start) + '~' + hhmm(g.slot.end);
     return g.slot.location ? time + ' · ' + g.slot.location : time;
   }).join('   ');
+}
+
+// 이 수업이 지금 진행 중인지, 아니면 다음은 언제인지. 책장 머리에 한 줄로 쓴다.
+function nextSession(course) {
+  const ti = todayIndex();
+  const now = nowMinutes();
+  let best = null;
+  for (const slot of course.slots) {
+    if (slot.day === ti && now >= slot.start && now < slot.end) {
+      return { slot, live: true, label: t('liveSession', { time: hhmm(slot.end) }) };
+    }
+    let gap = ((slot.day - ti + 7) % 7) * 1440 + slot.start - now;
+    if (gap <= 0) gap += 7 * 1440;
+    if (!best || gap < best.gap) best = { slot, gap };
+  }
+  if (!best) return null;
+  const label = best.slot.day === ti && best.gap < 1440
+    ? t('todaySession', { time: hhmm(best.slot.start) })
+    : t('nextSession', { when: dayLabel(best.slot.day) + ' ' + hhmm(best.slot.start) });
+  return { slot: best.slot, live: false, label };
 }
 
 /* ────────────────────────────── 색 ────────────────────────────── */
@@ -1122,7 +1404,7 @@ function countNotes(folder) {
   return n;
 }
 
-function byName(a, b) { return a.name.localeCompare(b.name, 'ko'); }
+function byName(a, b) { return collate(a.name, b.name); }
 
 /* ────────────────────── 겹침 레이아웃 (1/n 분할) ────────────────────── */
 
@@ -1204,7 +1486,7 @@ class ClassTimetablePlugin extends Plugin {
       await this.saveData(this.settings);
     }
     if (!this.settings.roots.length) this.settings.roots = [{ path: '', label: '' }];
-    if (!I18N[this.settings.lang]) this.settings.lang = 'ko';
+    if (!I18N[this.settings.lang]) this.settings.lang = detectLang();
     LANG = this.settings.lang;
     if (!Array.isArray(this.settings.templates) || !this.settings.templates.length) {
       this.settings.templates = defaultTemplates();
@@ -1237,7 +1519,15 @@ class ClassTimetablePlugin extends Plugin {
 
     this.registerInterval(window.setInterval(() => this.refreshTimetables(), 60 * 1000));
 
-    this.app.workspace.onLayoutReady(() => this.refreshAll());
+    this.app.workspace.onLayoutReady(() => {
+      this.refreshAll();
+      // 켜기만 하고 어디 있는지 몰라 지우는 일이 없도록, 처음 한 번은 사이드바에 열어 둔다
+      if (!this.settings.welcomed) {
+        this.settings.welcomed = true;
+        this.saveData(this.settings);
+        this.activateView();
+      }
+    });
   }
 
   // 이벤트·인터벌은 register* 가 알아서 걷지만, 손으로 건 타이머는 아니다.
@@ -1253,6 +1543,40 @@ class ClassTimetablePlugin extends Plugin {
     this.addCommand({ id: 'open-timetable', name: t('timetable'), callback: () => this.activateView() });
     this.addCommand({ id: 'add-course', name: t('addCourse'), callback: () => new CourseEditModal(this, {}).open() });
     this.addCommand({ id: 'add-plan', name: t('addPlan'), callback: () => new PlanEditModal(this, {}).open() });
+
+    // 수업 시간에 손이 가장 먼저 가는 두 가지. 단축키를 걸어 둘 수 있게 명령으로도 둔다.
+    this.addCommand({
+      id: 'create-current-note',
+      name: t('currentNoteCmd'),
+      callback: () => {
+        const hit = this.classNow();
+        if (!hit) { new Notice(t('noClassToday')); return; }
+        this.createFromTemplate(hit.course, hit.slot);
+      },
+    });
+    this.addCommand({
+      id: 'open-current-shelf',
+      name: t('currentShelfCmd'),
+      callback: () => {
+        const hit = this.classNow();
+        if (!hit) { new Notice(t('noClassToday')); return; }
+        this.openCourseView(hit.course, false);
+      },
+    });
+
+    this.addCommand({ id: 'export-png', name: t('exportSaveCmd'), callback: () => this.exportImage('save') });
+    this.addCommand({ id: 'copy-png', name: t('exportCopyCmd'), callback: () => this.exportImage('copy') });
+
+    this.addCommand({ id: 'create-sample', name: t('sampleCmd'), callback: () => this.createSample() });
+    this.addCommand({
+      id: 'remove-sample',
+      name: t('sampleRemoveCmd'),
+      checkCallback: (checking) => {
+        if (!this.sampleFolder()) return false;
+        if (!checking) this.confirmRemoveSample();
+        return true;
+      },
+    });
   }
 
   // 리본·명령어·탭 제목은 그린 뒤로는 스스로 바뀌지 않는다. 손으로 다시 붙인다.
@@ -1280,7 +1604,7 @@ class ClassTimetablePlugin extends Plugin {
   }
 
   async saveSettings() {
-    LANG = I18N[this.settings.lang] ? this.settings.lang : 'ko';
+    LANG = I18N[this.settings.lang] ? this.settings.lang : 'en';
     this.applyLanguage();
     this.refreshAll();                  // 화면부터 바꾼다. 디스크 쓰기를 기다리지 않는다.
     await this.saveData(this.settings);
@@ -1338,34 +1662,149 @@ class ClassTimetablePlugin extends Plugin {
     }
   }
 
-  /* ── 테마: 옵시디언 설정을 그대로 건드린다 ── */
-
-  currentTheme() {
-    try {
-      const v = this.app.vault.getConfig('theme');
-      if (v === 'obsidian') return 'dark';
-      if (v === 'moonstone') return 'light';
-      if (v === 'system') return 'system';
-    } catch (e) { /* 버전에 따라 없다 */ }
-    return this.settings.theme || 'system';
+  /* ── 지금 수업 ──
+   *
+   * 오늘 수업 중에서 지금과 가장 가까운 것. 진행 중이면 그것, 아니면 시작·끝이 가장 가까운 것.
+   * 수업 직전에도, 막 끝난 뒤에도 "그 수업"을 가리키게 된다.
+   */
+  classNow() {
+    const ti = todayIndex();
+    const now = nowMinutes();
+    let best = null;
+    for (const course of this.getCourses().courses) {
+      for (const slot of course.slots) {
+        if (slot.day !== ti) continue;
+        const gap = now < slot.start ? slot.start - now : (now >= slot.end ? now - slot.end : -1);
+        if (!best || gap < best.gap) best = { course, slot, gap };
+      }
+    }
+    return best;
   }
 
-  applyTheme(mode) {
-    this.settings.theme = mode;
-    const val = mode === 'dark' ? 'obsidian' : (mode === 'light' ? 'moonstone' : 'system');
+  /* ── 예시 시간표: 둘러보고, 한 번에 치운다 ── */
+
+  sampleBase() {
+    const root = this.roots().find((r) => r.folder);
+    return root && root.folder.path !== '/' ? root.folder.path : '';
+  }
+
+  samplePath() {
+    const base = this.sampleBase();
+    return normalizePath((base ? base + '/' : '') + t('sampleFolder'));
+  }
+
+  sampleFolder() {
+    const f = this.app.vault.getAbstractFileByPath(this.samplePath());
+    return f instanceof TFolder ? f : null;
+  }
+
+  async createSample() {
+    const dir = this.samplePath();
+    if (this.sampleFolder()) {
+      new Notice(t('sampleExists', { path: dir }));
+      this.activateView();
+      return;
+    }
+
+    // 다섯 과목이 평일에 고르게 걸리도록. 시간은 15분 단위라 끌어 옮겨 보기에도 알맞다.
+    const times = [
+      [[0, 540, 630, 'Room 301'], [2, 540, 630, 'Room 301']],
+      [[1, 630, 720, 'Room 108'], [3, 630, 720, 'Room 108']],
+      [[0, 780, 930, 'Studio B']],
+      [[1, 840, 915, 'Hall A'], [3, 840, 915, 'Hall A']],
+      [[4, 600, 750, 'Lab 4']],
+    ];
+    const courses = t('sampleCourses');
+    const sem = (this.settings.currentSemester || '').trim();
+
     try {
-      if (typeof this.app.vault.setConfig === 'function') {
-        this.app.vault.setConfig('theme', val);
-        if (val !== 'system' && typeof this.app.changeTheme === 'function') this.app.changeTheme(val);
-        this.app.workspace.trigger('css-change');
-        return;
+      for (let i = 0; i < courses.length; i++) {
+        const [name, prof] = courses[i];
+        const folder = await this.ensureFolder(dir + '/' + name);
+        const lectures = await this.ensureFolder(folder.path + '/' + t('sampleLectures'));
+        await this.ensureFolder(folder.path + '/' + t('sampleReadings'));
+
+        const notePath = this.folderNotePath(folder);
+        let note = this.app.vault.getAbstractFileByPath(notePath);
+        if (!note) note = await this.app.vault.create(notePath, '# ' + name + '\n\n' + t('sampleNoteBody') + '\n');
+        if (!this.app.vault.getAbstractFileByPath(folder.path + '/' + t('sampleSyllabus') + '.md')) {
+          await this.app.vault.create(folder.path + '/' + t('sampleSyllabus') + '.md', '# ' + t('sampleSyllabus') + '\n');
+        }
+
+        const slots = times[i].map(([day, start, end, location]) => ({ day, start, end, location }));
+        const patch = { schedule: slots.map(formatSlot), subtitle: prof, notes: lectures.path };
+        this.markPending(note.path, patch);
+        await this.app.fileManager.processFrontMatter(note, (fm) => {
+          Object.assign(fm, patch);
+          if (sem) fm.semester = sem;
+        });
       }
-    } catch (e) { /* 아래로 */ }
-    // 옵시디언 밖(프리뷰)에서는 화면 클래스만 바꾼다
-    const dark = val === 'obsidian'
-      || (val === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.body.classList.toggle('theme-dark', dark);
-    document.body.classList.toggle('theme-light', !dark);
+    } catch (e) {
+      failNotice('errSaveCourse', {}, e);
+      return;
+    }
+
+    new Notice(t('sampleDone', { path: dir }));
+    this.refreshAll();
+    this.activateView();
+  }
+
+  /* ── 이미지로 내보내기 ──
+   *
+   * 저장: 볼트 안에 PNG 로 남긴다. 옵시디언의 첨부 파일 위치 설정을 따르고, 만든 뒤 바로 연다.
+   *       데스크톱과 모바일 모두 같은 길로 가므로 "어디에 저장됐지?"가 없다.
+   * 복사: 클립보드에 그림으로 올린다. 메신저에 바로 붙여 넣는 용도. 안 되는 곳이면 저장으로 물러난다.
+   */
+  async exportImage(mode) {
+    const canvas = drawTimetableImage(this);
+    if (!canvas) { new Notice(t('exportEmpty')); return; }
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) { failNotice('exportFail', {}); return; }
+
+    if (mode === 'copy') {
+      try {
+        if (!navigator.clipboard || typeof ClipboardItem === 'undefined') throw new Error('clipboard');
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        new Notice(t('exportCopied'));
+        return;
+      } catch (e) {
+        new Notice(t('exportCopyFallback'));   // 아래 저장으로 이어진다
+      }
+    }
+
+    try {
+      const name = t('timetable') + ' ' + formatDate(new Date(), 'YYYY-MM-DD') + '.png';
+      const path = await this.freeAttachmentPath(name);
+      const file = await this.app.vault.createBinary(path, await blob.arrayBuffer());
+      new Notice(t('exportSaved', { path }));
+      if (file instanceof TFile) await this.openNote(file, true);
+    } catch (e) {
+      failNotice('exportFail', {}, e);
+    }
+  }
+
+  // 같은 이름이 있으면 " 1", " 2" 를 붙인다. 옵시디언이 첨부 위치를 알려 주면 그것을 쓴다.
+  async freeAttachmentPath(name) {
+    const fm = this.app.fileManager;
+    if (fm && typeof fm.getAvailablePathForAttachment === 'function') {
+      try { return await fm.getAvailablePathForAttachment(name); } catch (e) { /* 아래로 */ }
+    }
+    const dot = name.lastIndexOf('.');
+    const base = name.slice(0, dot), ext = name.slice(dot);
+    let path = normalizePath(name);
+    for (let i = 1; this.app.vault.getAbstractFileByPath(path); i++) path = normalizePath(base + ' ' + i + ext);
+    return path;
+  }
+
+  confirmRemoveSample(after) {
+    const folder = this.sampleFolder();
+    if (!folder) return;
+    new ConfirmModal(this.app, {
+      title: t('sampleRemoveCmd'),
+      body: t('sampleRemoveBody', { path: folder.path }),
+      cta: t('del'),
+      onConfirm: async () => { await this.trashAll([folder]); if (after) after(); },
+    }).open();
   }
 
   setMode(mode) {
@@ -1500,9 +1939,10 @@ class ClassTimetablePlugin extends Plugin {
       }
     }
 
+    // 자동 색은 이 순서로 나눠 준다. 언어를 바꿔도 색이 바뀌지 않도록 정렬 기준을 고정해 둔다.
     courses.sort((a, b) => a.key.localeCompare(b.key, 'ko'));
     assignColors(courses);
-    courses.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+    courses.sort((a, b) => collate(a.name, b.name));
 
     return { courses, roots, missing, error: null };
   }
@@ -1907,6 +2347,7 @@ class ClassTimetablePlugin extends Plugin {
 function renderTimetable(plugin, containerEl) {
   containerEl.empty();
   containerEl.addClass('ctt-root');
+  containerEl.setAttr('lang', LANG); // 좁은 칸에서 긴 이름을 끊을 때 그 말의 하이픈 규칙을 쓴다
 
   const res = plugin.getCourses();
   const courses = res.courses;
@@ -1917,6 +2358,7 @@ function renderTimetable(plugin, containerEl) {
 
   /* ── 상단 바 ── */
   const bar = containerEl.createDiv({ cls: 'ctt-bar' });
+  if (plugin.mode === 'edit' || plugin.mode === 'plan') bar.addClass('is-editing'); // 무엇이든 바뀔 수 있는 상태라는 걸 바 전체로 알린다
 
   if (plugin.mode === 'edit') {
     bar.createDiv({ cls: 'ctt-status is-edit', text: t('editHint') });
@@ -1955,7 +2397,7 @@ function renderTimetable(plugin, containerEl) {
   planBtn.setAttr('title', plugin.mode === 'plan' ? t('planOff') : t('planOn'));
   planBtn.setAttr('aria-label', plugin.mode === 'plan' ? t('planOff') : t('planOn'));
   planBtn.setAttr('aria-pressed', plugin.mode === 'plan' ? 'true' : 'false');
-  planBtn.setText('+');
+  icon(planBtn, 'plus', '+');
   planBtn.onclick = () => plugin.setMode('plan');
 
   // 톱니 — 화면을 정하는 것들. 맨 오른쪽에 둔다.
@@ -1976,37 +2418,16 @@ function renderTimetable(plugin, containerEl) {
     w.onclick = () => plugin.openNote(bad[0].file, false);
   }
 
-  /* ── 요일 ── */
-  let days;
-  if (todayOnly) {
-    days = [ti];
-  } else {
-    let lastDay = 4;
-    if (byDay[6].length) lastDay = 6;
-    else if (byDay[5].length) lastDay = 5;
-    days = [];
-    for (let d = 0; d <= lastDay; d++) days.push(d);
+  // 아무것도 없으면 빈 격자 대신 무엇을 하면 되는지를 보여 준다.
+  // 편집·일정 모드에서는 격자가 있어야 끌어서 만들 수 있으므로 그대로 그린다.
+  if (!courses.length && !plans.length && plugin.mode !== 'edit' && plugin.mode !== 'plan' && !res.error) {
+    renderEmpty(plugin, containerEl);
+    return;
   }
 
-  /* ── 시간 범위 ── */
-  let min = Infinity, max = -Infinity;
-  for (const d of days) {
-    for (const it of byDay[d]) {
-      min = Math.min(min, it.slot.start);
-      max = Math.max(max, it.slot.end);
-    }
-  }
-  // 정해 둔 틀이 있으면 지킨다. 다만 그 밖의 수업을 잘라내지는 않는다.
-  const fixedStart = hourSetting(plugin.settings.dayStart, 0, 23);
-  const fixedEnd = hourSetting(plugin.settings.dayEnd, 1, 24);
-
-  let startHour = fixedStart != null ? fixedStart : FALLBACK_START_HOUR;
-  let endHour = fixedEnd != null ? fixedEnd : FALLBACK_END_HOUR;
-  if (min !== Infinity) {
-    startHour = Math.min(fixedStart != null ? fixedStart : 24, Math.floor(min / 60));
-    endHour = Math.max(fixedEnd != null ? fixedEnd : 0, Math.ceil(max / 60));
-  }
-  if (endHour <= startHour) endHour = startHour + 1;
+  /* ── 요일 · 시간 범위 ── */
+  const days = todayOnly ? [ti] : weekDays(byDay);
+  const { startHour, endHour } = hourRange(plugin, byDay, days);
 
   const colW = ((containerEl.clientWidth || 320) - 24) / days.length;
   const density = colW < COMPACT_COL_W ? 'compact' : 'full';
@@ -2050,15 +2471,27 @@ function renderTimetable(plugin, containerEl) {
   }
 
   const colEls = [];
-  const geo = { originMin, pxPerMin, colEls, density, hourH };
+  const geo = { originMin, pxPerMin, colEls, density, hourH, ti, now };
+
+  // 오늘 칸 밖으로도 지금 시각을 흐리게 이어 준다. 다른 요일의 같은 시각과 견주어 보기 쉽다.
+  const nowInRange = days.includes(ti) && now >= originMin && now <= endHour * 60;
+  if (nowInRange && days.length > 1) {
+    body.createDiv({ cls: 'ctt-now-row' }).style.top = (now - originMin) * pxPerMin + 'px';
+  }
 
   for (const d of days) {
     const col = body.createDiv({ cls: 'ctt-col' });
     colEls.push({ day: d, el: col });
-    if (d === ti) col.addClass('is-today');
+    if (d === ti && !todayOnly) col.addClass('is-today');
 
     for (let h = startHour + 1; h < endHour; h++) {
       col.createDiv({ cls: 'ctt-hline' }).style.top = (h - startHour) * hourH + 'px';
+    }
+    // 한 시간이 넉넉히 높을 때만 30분 선을 긋는다. 촘촘할 때는 선이 글자를 가린다.
+    if (hourH >= 44) {
+      for (let h = startHour; h < endHour; h++) {
+        col.createDiv({ cls: 'ctt-hline is-half' }).style.top = (h - startHour + 0.5) * hourH + 'px';
+      }
     }
 
     for (const it of byDay[d]) {
@@ -2066,12 +2499,88 @@ function renderTimetable(plugin, containerEl) {
       else renderBlock(plugin, col, it, geo);
     }
 
-    if (d === ti && now >= originMin && now <= endHour * 60) {
+    if (d === ti && nowInRange) {
       col.createDiv({ cls: 'ctt-now' }).style.top = (now - originMin) * pxPerMin + 'px';
     }
 
     if (plugin.mode !== 'view') attachDragCreate(plugin, col, d, geo);
   }
+}
+
+// 처음 켠 사람이 보는 화면. 할 수 있는 일 두 가지와, 규칙 한 줄.
+function renderEmpty(plugin, containerEl) {
+  const wrap = containerEl.createDiv({ cls: 'ctt-empty' });
+  const card = wrap.createDiv({ cls: 'ctt-empty-card' });
+
+  // 비어 있는 주간 격자를 작게 그려서, 여기에 무엇이 채워질지 먼저 보여 준다
+  const art = card.createDiv({ cls: 'ctt-empty-art' });
+  const blocks = [[0, 0, 2, 0], [2, 0, 2, 0], [1, 2, 2, 1], [3, 2, 2, 1], [0, 5, 3, 2], [4, 3, 3, 3]];
+  for (let d = 0; d < 5; d++) art.createDiv({ cls: 'ctt-empty-col' });
+  for (const [day, top, h, c] of blocks) {
+    const b = art.createDiv({ cls: 'ctt-empty-block' });
+    b.style.left = 'calc(' + day * 20 + '% + 2px)';
+    b.style.top = top * 10 + '%';
+    b.style.height = h * 10 + '%';
+    b.style.setProperty('--ctt-color', PALETTE[[5, 4, 6, 1][c]]);
+  }
+
+  card.createDiv({ cls: 'ctt-empty-title', text: t('emptyTitle') });
+  card.createDiv({ cls: 'ctt-empty-body', text: t('emptyBody') });
+
+  const actions = card.createDiv({ cls: 'ctt-empty-actions' });
+  const add = actions.createEl('button', { cls: 'mod-cta ctt-empty-btn' });
+  icon(add.createSpan({ cls: 'ctt-empty-btn-icon' }), 'plus', '');
+  add.createSpan({ text: t('emptyAdd') });
+  add.onclick = () => new CourseEditModal(plugin, {}).open();
+
+  const sample = actions.createEl('button', { cls: 'ctt-empty-btn' });
+  icon(sample.createSpan({ cls: 'ctt-empty-btn-icon' }), 'sparkles', '');
+  sample.createSpan({ text: t('emptySample') });
+  sample.onclick = () => plugin.createSample();
+
+  card.createEl('pre', { cls: 'ctt-empty-code', text: t('emptyCode') });
+}
+
+// 오늘 이미 끝난 것은 흐리게, 지금 진행 중인 것은 또렷하게. 지나간 만큼은 색으로 채운다.
+function markTiming(el, slot, geo) {
+  if (slot.day !== geo.ti) return;
+  if (geo.now >= slot.end) { el.addClass('is-past'); return; }
+  if (geo.now >= slot.start) {
+    el.addClass('is-live');
+    el.style.setProperty('--ctt-progress', Math.round((geo.now - slot.start) / (slot.end - slot.start) * 100) + '%');
+  }
+}
+
+// 평일은 늘 보이고, 주말은 그날 무엇이 있을 때만 붙는다
+function weekDays(byDay) {
+  let lastDay = 4;
+  if (byDay[6].length) lastDay = 6;
+  else if (byDay[5].length) lastDay = 5;
+  const days = [];
+  for (let d = 0; d <= lastDay; d++) days.push(d);
+  return days;
+}
+
+// 정해 둔 틀이 있으면 지킨다. 다만 그 밖의 수업을 잘라내지는 않는다.
+function hourRange(plugin, byDay, days) {
+  let min = Infinity, max = -Infinity;
+  for (const d of days) {
+    for (const it of byDay[d]) {
+      min = Math.min(min, it.slot.start);
+      max = Math.max(max, it.slot.end);
+    }
+  }
+  const fixedStart = hourSetting(plugin.settings.dayStart, 0, 23);
+  const fixedEnd = hourSetting(plugin.settings.dayEnd, 1, 24);
+
+  let startHour = fixedStart != null ? fixedStart : FALLBACK_START_HOUR;
+  let endHour = fixedEnd != null ? fixedEnd : FALLBACK_END_HOUR;
+  if (min !== Infinity) {
+    startHour = Math.min(fixedStart != null ? fixedStart : 24, Math.floor(min / 60));
+    endHour = Math.max(fixedEnd != null ? fixedEnd : 0, Math.ceil(max / 60));
+  }
+  if (endHour <= startHour) endHour = startHour + 1;
+  return { startHour, endHour };
 }
 
 function hourSetting(v, lo, hi) {
@@ -2236,6 +2745,7 @@ function renderBlock(plugin, col, item, geo) {
   el.style.width = 'calc(' + w + '% - 3px)';
   el.style.setProperty('--ctt-color', course.color);
   if (item.conflicts.length) el.addClass('is-conflict');
+  markTiming(el, slot, geo);
 
   const sub = (course.subtitle != null && course.subtitle !== '') ? course.subtitle : slot.location;
   const subCount = sub ? String(sub).split(/\r?\n/).length : 0;
@@ -2300,16 +2810,7 @@ function courseMenu(plugin, course, slot) {
       .onClick(() => plugin.addShortcut(course)));
   };
 
-  // 마우스를 올리면 옆으로 펼쳐지는 창. 안 되는 버전에서는 평평하게 편다.
-  let nested = false;
-  menu.addItem((i) => {
-    i.setTitle(t('shortcuts')).setIcon('link');
-    if (typeof i.setSubmenu === 'function') {
-      try { fillShortcuts(i.setSubmenu()); nested = true; } catch (e) { nested = false; }
-    }
-    if (!nested) i.onClick(() => new ShortcutModal(plugin, course).open());
-  });
-  menu.addSeparator();
+  // 순서는 손이 가는 빈도대로: 노트 쓰기 → 자료 보기 → 바로가기 → 노트 규칙 → 수업 자체 고치기.
 
   // 기본 템플릿이 '새 노트 생성하기'. 템플릿이 더 있으면 그 아래로 이름을 달아 편다.
   const templates = plugin.settings.templates || [];
@@ -2323,16 +2824,26 @@ function courseMenu(plugin, course, slot) {
     menu.addItem((i) => i.setTitle(t('newNote', { name: tpl.name })).setIcon('file-plus')
       .onClick(() => plugin.createFromTemplate(course, slot, tpl.id)));
   }
-  menu.addItem((i) => i.setTitle(t('newNoteLocation')).setIcon('folder-input')
-    .onClick(() => plugin.assignNotesFolder(course)));
-
-  menu.addSeparator();
   menu.addItem((i) => i.setTitle(t('openShelf')).setIcon('library')
     .onClick(() => plugin.openCourseView(course, false)));
 
+  // 마우스를 올리면 옆으로 펼쳐지는 창. 안 되는 버전에서는 평평하게 편다.
+  let nested = false;
+  menu.addItem((i) => {
+    i.setTitle(t('shortcuts')).setIcon('link');
+    if (typeof i.setSubmenu === 'function') {
+      try { fillShortcuts(i.setSubmenu()); nested = true; } catch (e) { nested = false; }
+    }
+    if (!nested) i.onClick(() => new ShortcutModal(plugin, course).open());
+  });
+
   menu.addSeparator();
+  menu.addItem((i) => i.setTitle(t('newNoteLocation')).setIcon('folder-input')
+    .onClick(() => plugin.assignNotesFolder(course)));
   menu.addItem((i) => i.setTitle(t('editTemplates')).setIcon('files')
     .onClick(() => new TemplateModal(plugin).open()));
+
+  menu.addSeparator();
   menu.addItem((i) => i.setTitle(t('editTime')).setIcon('pencil')
     .onClick(() => new CourseEditModal(plugin, { course }).open()));
   menu.addItem((i) => i.setTitle(t('revealExplorer')).setIcon('folder')
@@ -2361,6 +2872,7 @@ function renderPlanBlock(plugin, col, item, geo) {
   el.style.left = item.lane * w + '%';
   el.style.width = 'calc(' + w + '% - 3px)';
   el.style.setProperty('--ctt-color', plan.color || PLAN_COLOR);
+  markTiming(el, item.slot, geo);
 
   const noteCount = plan.note ? String(plan.note).split(/\r?\n/).length : 0;
   const fit = fitBlockText(el, height, plan.title, noteCount, geo);
@@ -2547,6 +3059,248 @@ function attachDragCreate(plugin, col, day, geo) {
   });
 }
 
+/* ────────────────────────────── 이미지로 내보내기 ──────────────────────────────
+ *
+ * 사이드바 화면을 찍는 것이 아니라 캔버스에 새로 그린다. 사이드바가 좁아도,
+ * 스크롤에 가려 있어도 한 주 전체가 같은 크기로 나온다. 공유하는 그림이므로
+ * "지금"(현재 시각 선, 오늘 표시, 흐린 지난 수업)은 넣지 않는다.
+ * 색은 지금 옵시디언 테마에서 읽어 온다 — 어두운 테마면 어두운 그림이 나온다.
+ */
+
+const IMG = {
+  width: 1200,          // 논리 픽셀. 실제 PNG 는 SCALE 배
+  scale: 2,
+  pad: 36,
+  titleH: 64,
+  headH: 40,
+  gutter: 52,
+  hourH: 62,
+  footH: 36,
+  gap: 4,
+};
+
+// 테마 색을 캔버스가 아는 모양(#rrggbb / rgba())으로 바꾼다. 읽지 못하면 예비값.
+function cssColor(ctx, name, fallback) {
+  let v = '';
+  try { v = getComputedStyle(document.body).getPropertyValue(name).trim(); } catch (e) { /* 없음 */ }
+  ctx.fillStyle = fallback;
+  if (v) ctx.fillStyle = v;
+  return ctx.fillStyle;
+}
+
+function rgbOf(color) {
+  const s = String(color).trim();
+  let m = /^#([0-9a-f]{3})$/i.exec(s);
+  if (m) return m[1].split('').map((c) => parseInt(c + c, 16));
+  m = /^#([0-9a-f]{6})/i.exec(s);
+  if (m) return [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
+  m = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/i.exec(s);
+  if (m) return [+m[1], +m[2], +m[3]];
+  return [128, 128, 128];
+}
+
+// 두 색을 p(0~1) 만큼 섞는다. CSS 의 color-mix 와 같은 일을 캔버스 쪽에서 한다.
+function mixColor(a, b, p) {
+  const x = rgbOf(a), y = rgbOf(b);
+  return 'rgb(' + [0, 1, 2].map((i) => Math.round(x[i] * p + y[i] * (1 - p))).join(',') + ')';
+}
+
+function roundedRect(ctx, x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+// 폭에 맞춰 줄을 나눈다. 띄어쓰기에서 먼저 끊고, 한 단어가 너무 길면 글자 단위로 끊는다.
+// 줄 수를 넘으면 마지막 줄 끝을 말줄임으로 닫는다.
+function wrapLines(ctx, text, width, maxLines) {
+  if (maxLines <= 0) return [];
+  const fits = (s) => ctx.measureText(s).width <= width;
+  const lines = [];
+  for (const para of String(text).split(/\r?\n/)) {
+    let line = '';
+    for (const word of para.split(/(\s+)/)) {
+      if (!word) continue;
+      if (fits(line + word)) { line += word; continue; }
+      if (!word.trim()) { lines.push(line); line = ''; continue; }   // 줄 끝에 걸린 공백
+      if (line.trim()) { lines.push(line.trimEnd()); line = ''; }
+      if (fits(word)) { line = word; continue; }
+      // 한 단어가 한 줄보다 길다 — 글자 단위로 나눈다 (한중일 글자는 원래 이렇게 끊긴다)
+      for (const ch of word) {
+        if (line && !fits(line + ch)) { lines.push(line); line = ''; }
+        line += ch;
+      }
+    }
+    lines.push(line.trimEnd());
+  }
+  if (lines.length <= maxLines) return lines;
+  const out = lines.slice(0, maxLines);
+  let last = out[maxLines - 1];
+  while (last && ctx.measureText(last + '…').width > width) last = last.slice(0, -1);
+  out[maxLines - 1] = last + '…';
+  return out;
+}
+
+function drawTimetableImage(plugin) {
+  const courses = plugin.getCourses().courses;
+  const plans = plugin.plans();
+  if (!courses.length && !plans.length) return null;
+
+  const byDay = buildItems(courses, plans);
+  const days = weekDays(byDay);
+  const { startHour, endHour } = hourRange(plugin, byDay, days);
+  const hours = endHour - startHour;
+
+  const W = IMG.width;
+  const gridTop = IMG.pad + IMG.titleH + IMG.headH;
+  const H = gridTop + hours * IMG.hourH + IMG.footH + IMG.pad / 2;
+  const gridLeft = IMG.pad + IMG.gutter;
+  const colW = (W - gridLeft - IMG.pad) / days.length;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W * IMG.scale;
+  canvas.height = H * IMG.scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(IMG.scale, IMG.scale);
+
+  const bg = cssColor(ctx, '--background-primary', '#ffffff');
+  const text = cssColor(ctx, '--text-normal', '#222222');
+  const muted = cssColor(ctx, '--text-muted', '#6e6e6e');
+  const faint = cssColor(ctx, '--text-faint', '#9a9a9a');
+  const border = cssColor(ctx, '--background-modifier-border', '#dcdcdc');
+  const dark = document.body.classList.contains('theme-dark');
+
+  let font = '';
+  try { font = getComputedStyle(document.body).getPropertyValue('--font-interface').trim(); } catch (e) { /* 없음 */ }
+  if (!font) { try { font = getComputedStyle(document.body).fontFamily; } catch (e) { /* 없음 */ } }
+  font = font || 'sans-serif';
+  const setFont = (weight, size) => { ctx.font = weight + ' ' + size + 'px ' + font; };
+
+  /* 바탕 */
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  /* 제목 — 학기가 정해져 있으면 학기를, 아니면 "시간표" */
+  const semester = (plugin.settings.currentSemester || '').trim();
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = text;
+  setFont(800, 26);
+  ctx.fillText(semester || t('timetable'), IMG.pad, IMG.pad + 30);
+  setFont(500, 13);
+  ctx.fillStyle = muted;
+  ctx.fillText(semester ? t('timetable') + ' · ' + tn('imgClassCount', courses.length) : tn('imgClassCount', courses.length), IMG.pad, IMG.pad + 52);
+
+  /* 요일 머리 */
+  setFont(700, 13);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = muted;
+  days.forEach((d, i) => ctx.fillText(dayLabel(d), gridLeft + colW * (i + 0.5), gridTop - 14));
+
+  /* 시간 선과 눈금 */
+  ctx.textAlign = 'right';
+  setFont(600, 11);
+  for (let h = startHour; h <= endHour; h++) {
+    const y = gridTop + (h - startHour) * IMG.hourH;
+    ctx.fillStyle = faint;
+    ctx.fillText(pad2(h) + ':00', gridLeft - 10, y + 4);
+    ctx.strokeStyle = border;
+    ctx.globalAlpha = h === startHour || h === endHour ? 0.9 : 0.55;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(gridLeft, y + 0.5);
+    ctx.lineTo(W - IMG.pad, y + 0.5);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // 요일 사이 세로선은 아주 옅게 — 칸이 갈리는 것만 알 만큼
+  ctx.strokeStyle = border;
+  ctx.globalAlpha = 0.4;
+  for (let i = 1; i < days.length; i++) {
+    const x = gridLeft + colW * i + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(x, gridTop);
+    ctx.lineTo(x, gridTop + hours * IMG.hourH);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  /* 블록 */
+  const pxPerMin = IMG.hourH / 60;
+  ctx.textAlign = 'left';
+  days.forEach((d, i) => {
+    for (const it of byDay[d]) {
+      const isPlan = it.kind === 'plan';
+      const color = isPlan ? (it.plan.color || PLAN_COLOR) : it.course.color;
+      const laneW = colW / it.lanes;
+      const x = gridLeft + colW * i + laneW * it.lane + IMG.gap / 2;
+      const y = gridTop + (it.slot.start - startHour * 60) * pxPerMin + 1.5;
+      const w = laneW - IMG.gap;
+      const h = Math.max(14, (it.slot.end - it.slot.start) * pxPerMin - 3);
+
+      ctx.save();
+      roundedRect(ctx, x, y, w, h, 9);
+      ctx.fillStyle = mixColor(color, bg, isPlan ? (dark ? 0.16 : 0.1) : (dark ? 0.26 : 0.18));
+      ctx.fill();
+      if (isPlan) {
+        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = mixColor(color, bg, 0.7);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        ctx.clip();
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, 4, h);                     // 왼쪽 색 띠
+      }
+      ctx.restore();
+
+      /* 글자 — 이름은 두 줄까지, 남는 높이에 시간과 보조 정보 */
+      const tx = x + (isPlan ? 9 : 12);
+      const tw = w - (isPlan ? 16 : 19);
+      if (tw < 16 || h < 20) continue;
+      ctx.save();
+      roundedRect(ctx, x, y, w, h, 9);
+      ctx.clip();
+
+      const name = isPlan ? it.plan.title : it.course.name;
+      const sub = isPlan
+        ? (it.plan.note || '')
+        : ((it.course.subtitle != null && it.course.subtitle !== '') ? it.course.subtitle : it.slot.location);
+      const time = hhmm(it.slot.start) + '–' + hhmm(it.slot.end);
+
+      let cy = y + 8;
+      setFont(700, 13);
+      ctx.fillStyle = mixColor(color, text, dark ? 0.3 : 0.38);
+      const nameLines = wrapLines(ctx, name, tw, Math.max(1, Math.min(2, Math.floor((h - 10) / 17))));
+      for (const line of nameLines) { ctx.fillText(line, tx, cy + 12); cy += 17; }
+
+      setFont(500, 11);
+      ctx.fillStyle = mixColor(color, muted, 0.3);
+      const room = Math.floor((y + h - 6 - cy) / 15);
+      const extra = [time].concat(sub ? String(sub).split(/\r?\n/) : []);
+      const subLines = [];
+      for (const part of extra) subLines.push(...wrapLines(ctx, part, tw, 1));
+      for (const line of subLines.slice(0, Math.max(0, room))) { ctx.fillText(line, tx, cy + 11); cy += 15; }
+      ctx.restore();
+    }
+  });
+
+  /* 꼬리 — 어디서 만든 그림인지 작게 */
+  setFont(500, 11);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = faint;
+  ctx.fillText(t('imgFooter'), W - IMG.pad, H - IMG.pad / 2 - 4);
+
+  return canvas;
+}
+
 /* ────────────────────────────── 사이드바 뷰 ────────────────────────────── */
 
 class TimetableView extends ItemView {
@@ -2558,6 +3312,13 @@ class TimetableView extends ItemView {
   async onClose() {}
   onResize() { this.render(); }
   render() { renderTimetable(this.plugin, this.contentEl); }
+
+  // 탭의 "더 보기" 메뉴에도 내보내기를 둔다. 옵시디언 사용자가 먼저 찾아보는 자리다.
+  onPaneMenu(menu, source) {
+    if (super.onPaneMenu) super.onPaneMenu(menu, source);
+    menu.addItem((i) => i.setTitle(t('exportSave')).setIcon('image-down').onClick(() => this.plugin.exportImage('save')));
+    menu.addItem((i) => i.setTitle(t('exportCopy')).setIcon('copy').onClick(() => this.plugin.exportImage('copy')));
+  }
 }
 
 /* ────────────────────── 책장 (노트 영역) ──────────────────────
@@ -2651,7 +3412,7 @@ class FolderView extends ItemView {
       }
     }
     return {
-      folders: [...folders.entries()].map(([name, list]) => ({ name, list })).sort((a, b) => a.name.localeCompare(b.name, 'ko')),
+      folders: [...folders.entries()].map(([name, list]) => ({ name, list })).sort((a, b) => collate(a.name, b.name)),
       files: [...files.values()].sort(byName),
     };
   }
@@ -2668,20 +3429,33 @@ class FolderView extends ItemView {
 
   renderCourseList(el) {
     const res = this.plugin.getCourses();
+    el.style.removeProperty('--ctf-color');
     el.createDiv({ cls: 'ctf-title', text: t('course') });
-    if (!res.courses.length) { el.createDiv({ cls: 'ctf-empty', text: t('noCourses') }); return; }
+    if (!res.courses.length) {
+      el.createDiv({ cls: 'ctf-empty', text: t('noCourses') });
+      const bar = el.createDiv({ cls: 'ctf-toolbar' });
+      bar.createEl('button', { cls: 'ctf-toolbtn is-primary', text: t('emptyAdd') })
+        .onclick = () => new CourseEditModal(this.plugin, {}).open();
+      bar.createEl('button', { cls: 'ctf-toolbtn', text: t('emptySample') })
+        .onclick = () => this.plugin.createSample();
+      return;
+    }
 
     const grid = el.createDiv({ cls: 'ctf-grid' });
     for (const c of res.courses) {
       const card = grid.createDiv({ cls: 'ctf-card is-course' });
       card.style.setProperty('--ctf-color', c.color);
       card.createDiv({ cls: 'ctf-card-name', text: c.name });
+      const session = nextSession(c);
+      if (session) card.createDiv({ cls: 'ctf-session' + (session.live ? ' is-live' : ''), text: session.label });
       card.createDiv({ cls: 'ctf-card-sub', text: scheduleSummary(c) });
       card.onclick = () => { this.courseKey = c.key; this.go(''); };
     }
   }
 
   renderSpace(el, course) {
+    el.style.setProperty('--ctf-color', course.color); // 책장 칸들이 수업 색 띠를 두른다
+
     /* ── 머리 ── */
     const head = el.createDiv({ cls: 'ctf-head' });
 
@@ -2691,12 +3465,21 @@ class FolderView extends ItemView {
     icon(back, 'arrow-left', '←');
     back.onclick = () => this.up();
 
-    const title = head.createDiv({ cls: 'ctf-title' });
+    head.style.setProperty('--ctf-color', course.color);
+    const text = head.createDiv({ cls: 'ctf-headtext' });
+    const title = text.createDiv({ cls: 'ctf-title' });
     title.createSpan({ cls: 'ctf-title-dot' }).style.background = course.color;
-    title.createSpan({ text: course.name });
+    title.createSpan({ cls: 'ctf-title-name', text: course.name });
 
+    // 언제 하는 수업인지, 그리고 지금 기준으로 다음은 언제인지
+    const metaRow = text.createDiv({ cls: 'ctf-metarow' });
+    const session = nextSession(course);
+    if (session) {
+      const pill = metaRow.createSpan({ cls: 'ctf-session' + (session.live ? ' is-live' : '') });
+      pill.setText(session.label);
+    }
     const summary = scheduleSummary(course);
-    if (summary) head.createDiv({ cls: 'ctf-meta', text: summary });
+    if (summary) metaRow.createSpan({ cls: 'ctf-meta', text: summary });
 
     const scs = this.plugin.shortcutsOf(course);
     if (scs.length) {
@@ -2735,7 +3518,18 @@ class FolderView extends ItemView {
 
     /* ── 만들기 줄 ── */
     const bar = el.createDiv({ cls: 'ctf-toolbar' });
-    const mkFolder = bar.createEl('button', { cls: 'ctf-toolbtn is-primary' });
+
+    // 책장 맨 위에서는 "오늘 노트"가 첫 버튼이다. 시간표 우클릭과 같은 템플릿·같은 폴더로 만든다.
+    if (!this.rel) {
+      const today = bar.createEl('button', { cls: 'ctf-toolbtn is-primary', text: t('todayNote') });
+      today.setAttr('title', t('todayNoteHint', { name: course.name }));
+      today.onclick = () => {
+        const hit = session && session.slot.day === todayIndex() ? session.slot : null;
+        this.plugin.createFromTemplate(course, hit);
+      };
+    }
+
+    const mkFolder = bar.createEl('button', { cls: 'ctf-toolbtn' });
     mkFolder.setText(this.rel ? t('makeFolder') : t('makeShelf'));
 
     const mkNote = bar.createEl('button', { cls: 'ctf-toolbtn' });
@@ -2794,8 +3588,8 @@ class FolderView extends ItemView {
         let notes = 0, subs = 0;
         for (const f of entry.list) { notes += countNotes(f); subs += subfolders(f).length; }
         const parts = [];
-        if (notes) parts.push(t('noteCount', { n: notes }));
-        if (subs) parts.push(t('folderCount', { n: subs }));
+        if (notes) parts.push(tn('noteCount', notes));
+        if (subs) parts.push(tn('folderCount', subs));
         card.createDiv({ cls: 'ctf-card-sub', text: parts.length ? parts.join(' · ') : t('empty') });
 
         card.onclick = () => this.go(this.rel ? this.rel + '/' + entry.name : entry.name);
@@ -3011,7 +3805,7 @@ class FolderPickModal extends SuggestModal {
     folders.sort((a, b) => {
       const ar = rootPaths.some((p) => a.path.startsWith(p)) ? 0 : 1;
       const br = rootPaths.some((p) => b.path.startsWith(p)) ? 0 : 1;
-      return ar - br || a.path.localeCompare(b.path, 'ko');
+      return ar - br || collate(a.path, b.path);
     });
 
     const items = folders.slice(0, 50).map((f) => ({ kind: 'folder', folder: f }));
@@ -3067,7 +3861,7 @@ class FilePickModal extends SuggestModal {
     files.sort((a, b) => {
       const ar = this.prefer.some((p) => a.path.startsWith(p + '/')) ? 0 : 1;
       const br = this.prefer.some((p) => b.path.startsWith(p + '/')) ? 0 : 1;
-      return ar - br || a.path.localeCompare(b.path, 'ko');
+      return ar - br || collate(a.path, b.path);
     });
     return files.slice(0, 50);
   }
@@ -3288,7 +4082,7 @@ class TargetPickModal extends SuggestModal {
     for (const f of folders.filter((x) => match(x.path))) items.push({ kind: 'folder', folder: f, sort: under(f.path) + 0.5 });
 
     items.sort((a, b) => a.sort - b.sort
-      || (a.kind === 'file' ? a.file.path : a.folder.path).localeCompare(b.kind === 'file' ? b.file.path : b.folder.path, 'ko'));
+      || collate(a.kind === 'file' ? a.file.path : a.folder.path, b.kind === 'file' ? b.file.path : b.folder.path));
 
     const out = items.slice(0, 50);
     const raw = query.trim();
@@ -3412,10 +4206,13 @@ class CourseEditModal extends Modal {
     if (!this.color) auto.addClass('is-on');
     auto.onclick = () => { this.color = ''; paintOn(auto); };
 
-    for (const c of PALETTE) {
+    // frontmatter 에 손으로 적은 색이 팔레트 밖이면, 그 색도 한 알로 보여 줘야 지금 무엇인지 안다
+    const own = this.color && !PALETTE.includes(String(this.color).toLowerCase()) ? [this.color] : [];
+    for (const c of own.concat(PALETTE)) {
       const sw = swatches.createEl('button', { cls: 'ctt-swatch' });
       sw.style.background = c;
-      if (c === this.color) sw.addClass('is-on');
+      if (own.includes(c)) { sw.setAttr('title', t('colorCustom') + ' ' + c); sw.setAttr('aria-label', t('colorCustom') + ' ' + c); }
+      if (String(c).toLowerCase() === String(this.color).toLowerCase()) sw.addClass('is-on');
       sw.onclick = () => { this.color = c; paintOn(sw); };
     }
 
@@ -3579,19 +4376,7 @@ class PrefsModal extends Modal {
       this.onOpen();                    // 바뀐 말로 다시 그린다
     };
 
-    /* 테마 */
-    const themeField = el.createDiv({ cls: 'ctt-field' });
-    themeField.createDiv({ cls: 'ctt-field-label', text: t('theme') });
-    const theme = themeField.createEl('select', { cls: 'ctt-select' });
-    for (const [v, label] of [['system', t('themeSystem')], ['light', t('themeLight')], ['dark', t('themeDark')]]) {
-      const o = theme.createEl('option', { text: label });
-      o.value = v;
-    }
-    theme.value = this.plugin.currentTheme();
-    theme.onchange = async () => {
-      this.plugin.applyTheme(theme.value);
-      await this.plugin.saveSettings();
-    };
+    // 테마는 옵시디언 전체의 설정이라 여기서 바꾸지 않는다. 시간표는 지금 테마를 따라간다.
 
     /* 보이는 시간 범위 */
     const range = el.createDiv({ cls: 'ctt-field' });
@@ -3628,6 +4413,20 @@ class PrefsModal extends Modal {
     to.onchange = apply;
 
     range.createDiv({ cls: 'ctt-field-hint', text: t('hourRangeHint') });
+
+    /* 공유 — 보이는 시간 범위가 그림에도 그대로 쓰이므로 그 바로 아래에 둔다 */
+    const share = el.createDiv({ cls: 'ctt-field' });
+    share.createDiv({ cls: 'ctt-field-label', text: t('share') });
+    const shareRow = share.createDiv({ cls: 'ctt-sharerow' });
+    const saveBtn = shareRow.createEl('button', { cls: 'ctt-sharebtn' });
+    icon(saveBtn.createSpan({ cls: 'ctt-sharebtn-icon' }), 'image-down', '');
+    saveBtn.createSpan({ text: t('exportSave') });
+    saveBtn.onclick = () => { this.close(); this.plugin.exportImage('save'); };
+    const copyBtn = shareRow.createEl('button', { cls: 'ctt-sharebtn' });
+    icon(copyBtn.createSpan({ cls: 'ctt-sharebtn-icon' }), 'copy', '');
+    copyBtn.createSpan({ text: t('exportCopy') });
+    copyBtn.onclick = () => { this.close(); this.plugin.exportImage('copy'); };
+    share.createDiv({ cls: 'ctt-field-hint', text: t('exportHint') });
 
     const buttons = el.createDiv({ cls: 'ctt-modal-buttons' });
     buttons.createEl('button', { text: t('moreSettings') }).onclick = () => {
@@ -3785,6 +4584,19 @@ class TimetableSettingTab extends PluginSettingTab {
         });
       });
 
+    // 시작하기: 시간표 열기와 예시 시간표. 예시가 있으면 같은 자리에서 지운다.
+    new Setting(containerEl)
+      .setName(t('gettingStarted'))
+      .setDesc(t('gettingStartedDesc'))
+      .addButton((b) => b.setButtonText(t('openTimetable')).onClick(() => this.plugin.activateView()))
+      .addButton((b) => {
+        if (this.plugin.sampleFolder()) {
+          b.setButtonText(t('sampleRemoveCmd')).onClick(() => this.plugin.confirmRemoveSample(() => this.display()));
+        } else {
+          b.setButtonText(t('sampleCmd')).setCta().onClick(async () => { await this.plugin.createSample(); this.display(); });
+        }
+      });
+
     const intro = containerEl.createDiv({ cls: 'ctt-setting-intro' });
     intro.createEl('div', { cls: 'ctt-setting-title', text: t('rootsTitle') });
     intro.createEl('p', { text: t('rootsDesc') });
@@ -3861,9 +4673,8 @@ class TimetableSettingTab extends PluginSettingTab {
 
     const help = containerEl.createDiv({ cls: 'ctt-help' });
     help.createDiv({ cls: 'ctt-help-title', text: t('helpTitle') });
-    help.createEl('pre', {
-      text: ['---', 'schedule:', '  - 월 10:30-11:50 @ 301호', 'title: 수업 이름', 'subtitle: 담당 교수', '---'].join('\n'),
-    });
+    help.createEl('pre', { text: t('helpExample').join('\n') });
+    help.createEl('p', { cls: 'ctt-help-note', text: t('helpNote') });
   }
 }
 
