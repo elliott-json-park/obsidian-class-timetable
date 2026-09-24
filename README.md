@@ -123,7 +123,7 @@ Classes live in your notes. Plans live in the plugin's `data.json`, since they h
 
 Nothing is ever deleted without asking. *Remove from timetable* clears only the `schedule:` field; the note and its folder stay.
 
-The plugin makes no network requests and collects nothing.
+The plugin makes no network requests and collects nothing. It only writes to the clipboard when you press *Copy image*, and never reads from it.
 
 ## 한국어
 

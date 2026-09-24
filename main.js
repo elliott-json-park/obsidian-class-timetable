@@ -1042,11 +1042,17 @@ let LANG = 'en';
 
 // 처음 설치한 사람에게는 옵시디언이 쓰는 말로 보여 준다. 모르는 말이면 영어.
 // 한 번 정해지면 설정에 남고, 그 뒤로는 사용자가 고른 말이 이긴다.
+// 1.8 이전에는 옵시디언이 화면 언어에 맞춰 둔 moment 의 locale 을 읽는다.
+// (브라우저 저장소를 직접 들여다보지 않는다 — 플러그인 데이터 API 밖이다)
 function detectLang() {
   let code = '';
   try { if (typeof obsidian.getLanguage === 'function') code = obsidian.getLanguage(); } catch (e) { /* 1.8 이전 */ }
-  if (!code) { try { code = window.localStorage.getItem('language') || ''; } catch (e) { /* 막힌 저장소 */ } }
-  if (!code) { try { code = (window.moment && window.moment.locale()) || ''; } catch (e) { /* 없음 */ } }
+  if (!code) {
+    try {
+      const m = obsidian.moment || window.moment;
+      code = (m && m.locale()) || '';
+    } catch (e) { /* 없음 */ }
+  }
   code = String(code || 'en').toLowerCase();
   for (const lang of ['ko', 'zh', 'ja']) if (code === lang || code.indexOf(lang + '-') === 0) return lang;
   return 'en';

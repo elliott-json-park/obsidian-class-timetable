@@ -1,7 +1,7 @@
 {
   "id": "class-timetable",
   "name": "Class Timetable",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "minAppVersion": "1.4.0",
   "description": "Weekly class timetable and course schedule for students, on desktop and mobile. Open each class's notes in one click, start today's lecture note, and share your week as a PNG.",
   "author": "Elliott Park",
