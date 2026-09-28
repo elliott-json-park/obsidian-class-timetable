@@ -1,12 +1,13 @@
-/* 수업 시간표 (class-timetable) v0.7
+/* 수업 시간표 (class-timetable)
  *
- * 미니멀하되 밋밋하지 않게. 선은 거의 지우고 색과 둥근 모서리로 구분한다.
- * 블록은 옅은 색면 + 진한 같은 계열 글자 — 색이 곧 이름표다.
+ * 미니멀. 색은 "어느 수업인지"를 알리는 데만 쓴다 — 블록은 옅은 색면 + 왼쪽 가는 선,
+ * 책장은 아이콘 색. 알약·그림자·띠·떠오르는 효과는 두지 않고, 구분은 여백과 헤어라인으로 한다.
+ * 지금 수업·오늘·겹침처럼 "알아야 하는 것"만 한 단계 진하게 보인다.
  */
 
 .ctt-root {
   --ctt-gutter: 24px;
-  --ctt-radius: 9px;
+  --ctt-radius: 6px;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -76,12 +77,11 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 999px;
   font-size: 10px;
   font-weight: 600;
   color: var(--text-muted);
-  background: var(--background-modifier-hover);
   white-space: nowrap;
   overflow: hidden;
   max-width: 46%;
@@ -142,7 +142,7 @@
   margin: 4px 6px 6px;
   padding: 3px 3px 3px 10px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--interactive-accent, var(--text-accent)) 12%, transparent);
+  background: color-mix(in srgb, var(--interactive-accent, var(--text-accent)) 9%, transparent);
 }
 
 .ctt-mode:hover,
@@ -222,9 +222,11 @@
   white-space: nowrap;
 }
 
+/* 오늘 — 채운 알약 대신 글자색과 밑줄 하나 */
 .ctt-dayhead.is-today .ctt-daypill {
-  color: var(--text-on-accent, #fff);
-  background: var(--interactive-accent, var(--text-accent));
+  color: var(--text-accent);
+  box-shadow: inset 0 -2px 0 var(--interactive-accent, var(--text-accent));
+  border-radius: 0;
 }
 
 .ctt-body { display: grid; position: relative; }
@@ -242,25 +244,26 @@
   font-variant-numeric: tabular-nums;
 }
 
-.ctt-col { position: relative; border-radius: 8px; }
+.ctt-col { position: relative; border-radius: 6px; }
 
 /* 오늘 칸은 아주 옅게 — 어디를 보면 되는지만 알 만큼 */
-.ctt-col.is-today { background: color-mix(in srgb, var(--interactive-accent, var(--text-accent)) 6%, transparent); }
+.ctt-col.is-today { background: color-mix(in srgb, var(--interactive-accent, var(--text-accent)) 3.5%, transparent); }
 
+/* 정시선만 남긴다. 30분 선은 숨긴다 */
 .ctt-hline {
   position: absolute;
   left: 0;
   right: 0;
   border-top: 1px solid var(--background-modifier-border);
-  opacity: 0.3;
+  opacity: 0.22;
 }
 
-.ctt-hline.is-half { border-top-style: dashed; opacity: 0.16; }
+.ctt-hline.is-half { display: none; }
 
 /* ────────────────────── 블록 ──────────────────────
  *
- * 옅은 색면 + 왼쪽의 진한 색 띠. 글자는 본문 색에 수업 색을 조금만 섞는다 —
- * 노랑·주황처럼 밝은 색에서도 글자가 흐려지지 않게.
+ * 아주 옅은 색면 + 왼쪽의 가는 색 선. 글자는 본문 색 그대로 — 색은 이름표 구실만 하고
+ * 글자 읽기는 방해하지 않는다 (노랑·주황 같은 밝은 색에서도 같은 대비).
  */
 
 .ctt-block {
@@ -270,56 +273,52 @@
   cursor: pointer;
   line-height: 1.22;
   border-radius: var(--ctt-radius);
-  background: color-mix(in srgb, var(--ctt-color) 17%, transparent);
-  box-shadow: inset 3px 0 0 var(--ctt-color);
-  color: color-mix(in srgb, var(--ctt-color) 38%, var(--text-normal));
+  background: color-mix(in srgb, var(--ctt-color) 9%, transparent);
+  box-shadow: inset 2px 0 0 var(--ctt-color);
+  color: var(--text-normal);
   transition: background 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
 }
 
-.theme-dark .ctt-block {
-  background: color-mix(in srgb, var(--ctt-color) 24%, transparent);
-  color: color-mix(in srgb, var(--ctt-color) 30%, var(--text-normal));
-}
+.theme-dark .ctt-block { background: color-mix(in srgb, var(--ctt-color) 14%, transparent); }
 
-.ctt-block:hover { background: color-mix(in srgb, var(--ctt-color) 28%, transparent); }
-.theme-dark .ctt-block:hover { background: color-mix(in srgb, var(--ctt-color) 36%, transparent); }
+.ctt-block:hover { background: color-mix(in srgb, var(--ctt-color) 16%, transparent); }
+.theme-dark .ctt-block:hover { background: color-mix(in srgb, var(--ctt-color) 22%, transparent); }
 
 .ctt-block:focus-visible {
   outline: none;
-  box-shadow: inset 3px 0 0 var(--ctt-color), 0 0 0 2px var(--background-modifier-border-focus, var(--interactive-accent));
+  box-shadow: inset 2px 0 0 var(--ctt-color), 0 0 0 2px var(--background-modifier-border-focus, var(--interactive-accent));
 }
 
 /* 오늘 이미 끝난 수업 — 물러나 있되 읽히게 */
 .ctt-block.is-past { opacity: 0.5; }
 .ctt-block.is-past:hover { opacity: 1; }
 
-/* 지금 수업 — 테두리로 또렷하게, 지나간 만큼은 조금 더 진한 색으로 채운다 */
+/* 지금 수업 — 그림자 없이 가는 테두리 하나, 지나간 만큼은 조금 더 진한 색으로 채운다 */
 .ctt-block.is-live {
   z-index: 1;
   background:
     linear-gradient(to bottom,
-      color-mix(in srgb, var(--ctt-color) 16%, transparent) var(--ctt-progress, 0%),
+      color-mix(in srgb, var(--ctt-color) 14%, transparent) var(--ctt-progress, 0%),
       transparent var(--ctt-progress, 0%)),
-    color-mix(in srgb, var(--ctt-color) 22%, var(--background-secondary));
+    color-mix(in srgb, var(--ctt-color) 10%, var(--background-secondary));
   box-shadow:
-    inset 3px 0 0 var(--ctt-color),
-    inset 0 0 0 1.5px var(--ctt-color),
-    0 4px 14px color-mix(in srgb, var(--ctt-color) 28%, transparent);
+    inset 2px 0 0 var(--ctt-color),
+    inset 0 0 0 1px color-mix(in srgb, var(--ctt-color) 70%, transparent);
 }
 
 .theme-dark .ctt-block.is-live {
   background:
     linear-gradient(to bottom,
-      color-mix(in srgb, var(--ctt-color) 18%, transparent) var(--ctt-progress, 0%),
+      color-mix(in srgb, var(--ctt-color) 20%, transparent) var(--ctt-progress, 0%),
       transparent var(--ctt-progress, 0%)),
-    color-mix(in srgb, var(--ctt-color) 30%, var(--background-secondary));
+    color-mix(in srgb, var(--ctt-color) 14%, var(--background-secondary));
 }
 
 /* 이름은 블록 높이가 허락하는 만큼 여러 줄로 편다 (줄 수는 렌더 때 정한다).
    "Linear …" 보다 "Linear / Algebra" 가 낫다. */
 .ctt-block-name {
   font-size: var(--font-ui-smaller);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -334,8 +333,8 @@
 
 .ctt-block-sub {
   font-size: 10px;
-  font-weight: 500;
-  opacity: 0.78;
+  font-weight: 400;
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -344,24 +343,24 @@
 .ctt-block-sub + .ctt-block-sub { margin-top: 1px; }
 
 /* 겹침은 테두리 한 줄로만 */
-.ctt-block.is-conflict { box-shadow: inset 3px 0 0 var(--ctt-color), inset 0 0 0 1.5px var(--text-error, #e5534b); }
+.ctt-block.is-conflict { box-shadow: inset 2px 0 0 var(--ctt-color), inset 0 0 0 1px var(--text-error, #e5534b); }
 
-/* 약속은 파일이 없다 — 점선으로 임시라는 걸 알린다 */
+/* 약속은 파일이 없다 — 가는 점선으로 임시라는 걸 알린다 */
 .ctt-block.is-plan {
-  padding-left: 6px;
-  background: color-mix(in srgb, var(--ctt-color) 10%, transparent);
-  border: 1.5px dashed color-mix(in srgb, var(--ctt-color) 70%, transparent);
+  padding-left: 7px;
+  background: transparent;
+  border: 1px dashed color-mix(in srgb, var(--ctt-color) 65%, transparent);
   box-shadow: none;
-  border-radius: 7px;
 }
 
 .ctt-block.is-plan.is-live {
-  background: color-mix(in srgb, var(--ctt-color) 20%, transparent);
+  background: color-mix(in srgb, var(--ctt-color) 12%, transparent);
   border-style: solid;
 }
 
-.ctt-block.is-plan .ctt-block-name { font-weight: 600; }
-.theme-dark .ctt-block.is-plan { background: color-mix(in srgb, var(--ctt-color) 20%, transparent); }
+.ctt-block.is-plan .ctt-block-name { font-weight: 500; }
+.theme-dark .ctt-block.is-plan { background: transparent; }
+.theme-dark .ctt-block.is-plan.is-live { background: color-mix(in srgb, var(--ctt-color) 18%, transparent); }
 
 /* 편집 */
 .ctt-block.is-editable { cursor: grab; }
@@ -374,7 +373,7 @@
   width: auto;
   z-index: 5;
   transform: none;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, .22), inset 0 0 0 1.5px var(--ctt-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .14), inset 0 0 0 1px var(--ctt-color);
 }
 
 .ctt-handle {
@@ -411,8 +410,8 @@
   left: 1px;
   right: 1px;
   border-radius: var(--ctt-radius);
-  border: 1.5px dashed var(--text-accent);
-  background: color-mix(in srgb, var(--text-accent) 12%, transparent);
+  border: 1px dashed var(--text-accent);
+  background: color-mix(in srgb, var(--text-accent) 8%, transparent);
   color: var(--text-accent);
   font-size: 9.5px;
   font-weight: 700;
@@ -427,7 +426,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  border-top: 2px solid var(--text-error, #ff6b6b);
+  border-top: 1px solid var(--text-error, #ff6b6b);
   z-index: 2;
   pointer-events: none;
 }
@@ -435,10 +434,10 @@
 .ctt-now::before {
   content: '';
   position: absolute;
-  left: -4px;
-  top: -5px;
-  width: 8px;
-  height: 8px;
+  left: -3px;
+  top: -3.5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--text-error, #ff6b6b);
   box-shadow: 0 0 0 2px var(--background-secondary);
@@ -456,8 +455,8 @@
 
 /* 좁아지면 보조 정보를 접는다 */
 .ctt-root.is-compact { --ctt-gutter: 18px; }
-.ctt-root.is-compact .ctt-block { padding: 2px 3px 2px 5px; border-radius: 7px; }
-.ctt-root.is-compact .ctt-block.is-plan { padding-left: 3px; }
+.ctt-root.is-compact .ctt-block { padding: 2px 3px 2px 5px; border-radius: 5px; }
+.ctt-root.is-compact .ctt-block.is-plan { padding-left: 4px; }
 .ctt-root.is-compact .ctt-block-name { font-size: 10px; }
 .ctt-root.is-compact .ctt-daypill { padding: 2px 6px; }
 /* 좁아지면 왼쪽 상태를 접고 카운트다운을 남긴다 — 수업 이름은 격자에 이미 있다.
@@ -706,16 +705,14 @@
 .ctf-crumb-seg:hover { color: var(--text-normal); text-decoration: underline; }
 .ctf-crumb-sep { margin: 0 5px; opacity: 0.4; }
 
-/* 수업 머리 — 수업 색으로 옅게 물든 띠. 이름, 다음 수업, 시간표 요약이 한데 모인다 */
+/* 수업 머리 — 배경 없이 제목·다음 수업·시간표 요약만. 색은 제목 옆 점 하나 */
 .ctf-head {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 12px;
   margin-bottom: 18px;
-  padding: 16px 18px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--ctf-color, var(--text-accent)) 10%, var(--background-primary));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ctf-color, var(--text-accent)) 16%, transparent);
+  padding: 2px 0 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .ctf-headtext { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -724,16 +721,16 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 24px;
-  font-weight: 800;
-  line-height: 1.2;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
   letter-spacing: -0.02em;
   color: var(--text-normal);
 }
 
 .ctf-title-name { min-width: 0; overflow-wrap: anywhere; }
 
-.ctf-title-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.ctf-title-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
 
 .ctf-metarow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
@@ -743,20 +740,19 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 다음 수업 · 수업 중 알약 */
+/* 다음 수업 · 수업 중 — 알약 없이 글자만. 수업 중일 때만 본문 색으로 또렷하게 */
 .ctf-session {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   width: fit-content;
-  padding: 2px 10px;
-  border-radius: 999px;
   font-size: var(--font-ui-smaller);
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--ctf-color, var(--text-accent)) 40%, var(--text-normal));
-  background: color-mix(in srgb, var(--ctf-color, var(--text-accent)) 18%, transparent);
+  color: var(--text-muted);
 }
+
+.ctf-session.is-live { color: var(--text-normal); font-weight: 600; }
 
 .ctf-session.is-live::before {
   content: '';
@@ -794,15 +790,15 @@
 
 .ctf-linkbtn:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
 
-.ctf-shortcuts { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 22px; }
+.ctf-shortcuts { display: flex; flex-wrap: wrap; gap: 2px; margin: -8px -10px 20px; }
 
 .ctf-shortcut {
   font-size: var(--font-ui-smaller);
-  font-weight: 600;
-  padding: 5px 12px;
+  font-weight: 500;
+  padding: 4px 10px;
   border-radius: 999px;
   color: var(--text-muted);
-  background: var(--background-secondary);
+  background: transparent;
   border: none;
   cursor: pointer;
   box-shadow: none;
@@ -839,16 +835,22 @@
   gap: 10px;
 }
 
+/* 칸은 전부 같은 규격 — 배경 없이 헤어라인 하나. 떠오르지 않고, 눌릴 곳임은 hover 배경으로만 알린다 */
 .ctf-card {
   padding: 12px 14px 10px;
-  border-radius: 12px;
-  background: var(--background-secondary);
-  transition: background 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+  transition: background 120ms ease, box-shadow 120ms ease;
 }
 
 .ctf-card:hover { background: var(--background-modifier-hover); }
-.ctf-card.is-course { cursor: pointer; border-left: 4px solid var(--ctf-color, var(--text-accent)); }
-.ctf-card.is-course:hover { transform: translateY(-2px); }
+
+/* 수업 칸(홈) — 시간표 블록과 같은 말: 왼쪽 가는 색 선 */
+.ctf-card.is-course {
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--background-modifier-border), inset 2px 0 0 var(--ctf-color, var(--text-accent));
+}
 
 .ctf-card-top { display: flex; align-items: baseline; gap: 8px; cursor: pointer; }
 
@@ -888,7 +890,7 @@
 }
 
 .ctf-tree-row.is-deep { padding-left: 12px; }
-.ctf-tree-row:hover .ctf-tree-name { color: var(--text-accent); text-decoration: underline; }
+.ctf-tree-row:hover .ctf-tree-name { color: var(--text-normal); text-decoration: underline; }
 .ctf-tree-mark { flex: 0 0 auto; color: var(--text-faint); font-size: 9px; }
 .ctf-tree-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ctf-tree-more { font-size: 10px; color: var(--text-faint); padding-top: 3px; }
@@ -896,8 +898,7 @@
 /* 파일 칸 */
 .ctf-grid.is-files { margin-top: 10px; }
 
-.ctf-card.is-file { cursor: pointer; background: transparent; box-shadow: inset 0 0 0 1px var(--background-modifier-border); }
-.ctf-card.is-file:hover { background: var(--background-modifier-hover); }
+.ctf-card.is-file { cursor: pointer; }
 .ctf-card.is-file .ctf-card-name { font-weight: 600; }
 
 .ctf-card-icon {
@@ -966,12 +967,13 @@
   flex-wrap: wrap;
 }
 
+/* 도구 버튼 — 테두리 없는 글자 버튼. 주된 동작(오늘 노트) 하나만 채운다 */
 .ctf-toolbtn {
   font-size: var(--font-ui-smaller);
-  font-weight: 700;
-  padding: 6px 14px;
+  font-weight: 600;
+  padding: 5px 10px;
   border-radius: 999px;
-  border: 1px solid var(--background-modifier-border);
+  border: none;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -981,7 +983,7 @@
 .ctf-toolbtn:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
 
 .ctf-toolbtn.is-primary {
-  border-color: transparent;
+  padding: 5px 14px;
   color: var(--text-on-accent, #fff);
   background: var(--interactive-accent, var(--text-accent));
 }
@@ -1002,14 +1004,15 @@
 /* 책장은 정사각형 — 줄지어 놓인 파일 칸과 한눈에 갈린다 */
 .ctf-grid.is-shelves { grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); }
 
-/* 책장 칸 — 위쪽 가장자리에 수업 색 띠를 두른다. 어느 수업의 책장인지 한눈에 */
+/* 책장 칸 — 띠 대신 폴더 아이콘이 수업 색을 띤다. 어느 수업의 책장인지는 아이콘 색으로 */
 .ctf-card.is-shelf {
   cursor: pointer;
   aspect-ratio: 1 / 1;
   display: flex;
   flex-direction: column;
-  box-shadow: inset 0 3px 0 color-mix(in srgb, var(--ctf-color, var(--background-modifier-border)) 75%, transparent);
 }
+
+.ctf-card.is-shelf .ctf-card-icon { color: var(--ctf-color, var(--text-faint)); }
 
 /* 네모난 칸에서는 이름이 위, 미리보기가 가운데, 개수가 바닥 */
 .ctf-card.is-shelf .ctf-card-sub { margin-top: auto; padding-top: 6px; }
@@ -1027,14 +1030,6 @@
 
 .ctf-card.is-shelf .ctf-card-icon svg { width: 16px; height: 16px; }
 
-.ctf-card.is-shelf:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    inset 0 3px 0 var(--ctf-color, var(--text-accent)),
-    0 8px 20px rgba(0, 0, 0, 0.08);
-}
-
-.ctf-card.is-file:hover { box-shadow: inset 0 0 0 1px var(--background-modifier-border), 0 6px 16px rgba(0, 0, 0, 0.06); }
 
 /* ────────────────────── 빈 시간표 ────────────────────── */
 
@@ -1159,7 +1154,7 @@
   border: none;
   box-shadow: none;
   border-radius: 999px;
-  background: var(--background-secondary);
+  background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   align-self: center;
@@ -1233,11 +1228,10 @@
   background: transparent;
 }
 
-.ctf-card.is-naming { box-shadow: inset 0 0 0 1.5px var(--text-accent); }
-.ctf-card.is-naming:hover { transform: none; }
+.ctf-card.is-naming { box-shadow: inset 0 0 0 1px var(--text-accent); }
 
-/* 물든 머리 위의 뒤로 버튼은 바탕색으로 띄운다 */
-.ctf-head .ctf-back { align-self: flex-start; margin-top: 1px; background: var(--background-primary); }
+/* 머리 위의 뒤로 버튼 — 제목 첫 줄에 맞춘다 */
+.ctf-head .ctf-back { align-self: flex-start; margin-top: -2px; }
 
 /* ── 환경설정: 공유 ── */
 .ctt-sharerow { display: flex; gap: 8px; flex-wrap: wrap; }
