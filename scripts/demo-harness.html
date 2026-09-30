@@ -485,6 +485,8 @@ const ICONS = {
   'settings': '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
   'image-down': '<path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"/><path d="m14 19 3 3v-5.5"/><path d="m17 22 3-3"/><circle cx="9" cy="9" r="2"/>',
   'copy': '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  'chevron-left': '<path d="m15 18-6-6 6-6"/>',
+  'chevron-right': '<path d="m9 18 6-6-6-6"/>',
   'sparkles':'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 17v4"/><path d="M17 19h4"/>',
 };
 function setIcon(el, name) {
@@ -696,6 +698,15 @@ function buildVault() {
   mkFile('Notes', 'Books to read.md', {});
 
   mkFile('Journal', 'Journal.md', { tags: ['diary'] });
+
+  // 시험 · 마감 · 휴강. 날짜는 늘 오늘을 기준으로 잡아, 언제 열어도 "다가오는" 것으로 보인다.
+  const inDays = (n) => ymd(addDays(new Date(), n));
+  const hub = (name) => files['Semester/wiki/' + name + '/' + name + '.md'].fm;
+  hub('Linear Algebra').exam = [inDays(8) + ' 13:00-15:00 Midterm'];
+  hub('Statistics').due = [inDays(2) + ' Problem set 2'];
+  hub('Intro to Psychology').cancelled = [ymd(dateOfWeekday(2))];
+  // 과제 노트가 스스로 마감일을 갖는 경우 — 수업 폴더 안에 있으면 그 수업의 마감으로 잡힌다
+  files['Semester/raw/Statistics/assignments/Term project brief.md'].fm.due = inDays(12);
 }
 buildVault();
 
@@ -715,6 +726,8 @@ function showHint() {
   h.createDiv({ text: 'Right-click a block for today’s note, shortcuts and settings — or press “Today’s note” on its shelves.' });
   h.createDiv({ text: 'Pencil unlocks editing — drag to move or resize a class, in 15-minute steps.' });
   h.createDiv({ text: 'Plus adds a plan: a block with no file behind it. “Study group” is one-time and removes itself once it has passed.' });
+  h.createDiv({ text: 'The arrows above the grid step through weeks. Right-click a class to mark that one day as cancelled — Wednesday’s Intro to Psychology already is.' });
+  h.createDiv({ text: 'Exams and deadlines come from exam: and due: in your notes. They sit under the day they fall on, and the next ones are listed above the grid.' });
   h.createDiv({ text: 'Friday’s “Language exchange” is a plain note with nothing but schedule: in its frontmatter — no folder note needed.' });
   h.createDiv({ text: 'Thursday 11:00 Thesis Seminar is there to show what an overlap looks like.' });
   h.createDiv({ text: 'Everything here is invented. Drop the plugin in your own vault to see yours.' });

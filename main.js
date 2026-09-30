@@ -18,8 +18,32 @@ const {
   Notice, Menu, TFolder, TFile, normalizePath, debounce, setIcon,
 } = obsidian;
 
+// 노트 안 코드블록을 그리는 데만 쓴다. 없는 환경(브라우저 데모)에서는 빈 껍데기로 대신한다.
+const MarkdownRenderChild = obsidian.MarkdownRenderChild || class {
+  constructor(containerEl) { this.containerEl = containerEl; }
+};
+
 const VIEW_TYPE = 'class-timetable-view';
 const FOLDER_VIEW_TYPE = 'class-folder-view';
+
+// 의견은 저장소의 이슈로 받는다. 플러그인은 아무것도 보내지 않고, 브라우저를 열 뿐이다.
+const REPO_URL = 'https://github.com/elliott-json-park/obsidian-class-timetable';
+const FEEDBACK_BUG_URL = REPO_URL + '/issues/new?template=bug_report.yml';
+const FEEDBACK_IDEA_URL = REPO_URL + '/issues/new?template=feature_request.yml';
+
+// 격주 수업. 파일에는 언어와 무관하게 odd · even 으로 적는다. 읽을 때는 너그럽게.
+const PARITY_ALIASES = {};
+[
+  ['odd', '홀', '홀수', '홀수주', '奇', '奇数', '奇数週', '单', '单周', '單', '單週'],
+  ['even', '짝', '짝수', '짝수주', '偶', '偶数', '偶数週', '双', '双周', '雙', '雙週'],
+].forEach((list) => list.forEach((a) => { PARITY_ALIASES[a] = list[0]; }));
+
+// 다른 주를 보다가 그대로 두면, 이만큼 지난 뒤 이번 주로 돌아온다
+const NAV_IDLE_MS = 10 * 60 * 1000;
+
+// 요일 칸 위에 얹는 시험·마감은 하루에 이만큼까지만. 나머지는 개수로 접는다.
+const DUE_CHIPS = 2;
+const UPCOMING_ROWS = 3;
 
 // 파일에 저장되는 요일 표기. 이건 절대 안 바뀐다.
 const DAY_CANON = ['월', '화', '수', '목', '금', '토', '일'];
@@ -1032,6 +1056,256 @@ const I18N_V19 = {
 
 for (const code of Object.keys(I18N_V19)) Object.assign(I18N[code], I18N_V19[code]);
 
+/* v1.2 — 주 탐색 · 휴강 · 격주 · 학기 종료일 · 시험과 마감 · 노트 안 시간표 · 의견 보내기 */
+const I18N_V20 = {
+  ko: {
+    newNoteCreate: '오늘의 필기 노트 열기',
+    newNoteFor: '{date} 필기 노트 열기',
+    weekPrev: '지난주',
+    weekNext: '다음 주',
+    weekBack: '이번 주로',
+    weekNo: '{n}주차',
+    semesterStartDesc: '{{week}} 와 주차 표시, 격주 수업의 홀수·짝수 주를 이 날부터 셉니다. (YYYY-MM-DD)',
+    semesterEnd: '학기 종료일',
+    semesterEndDesc: '이 날이 지나면 수업을 그리지 않고 {{week}} 도 더 세지 않습니다. 비우면 끝이 없습니다. (YYYY-MM-DD)',
+    semesterOver: '학기가 {date} 에 끝나 이 주에는 수업을 그리지 않습니다',
+    repeatEvery: '매주',
+    repeatOdd: '홀수 주',
+    repeatEven: '짝수 주',
+    thisWeekOdd: '홀수 주',
+    thisWeekEven: '짝수 주',
+    parityHint: '이번 주는 {n}주차, {p}입니다. 학기 시작일부터 셉니다.',
+    parityHintNoStart: '이번 주는 {p}입니다. 설정에서 학기 시작일을 정하면 그 주가 1주차(홀수 주)가 됩니다.',
+    cancelClass: '{date} 휴강으로 표시',
+    uncancelClass: '{date} 휴강 취소',
+    cancelled: '휴강',
+    dueKind: '과제 마감',
+    examKind: '시험',
+    addDeadline: '시험·마감 추가…',
+    addDeadlineShort: '＋ 시험·마감',
+    deadlineTitle: '시험·마감 추가',
+    deadlineType: '종류',
+    deadlineName: '이름',
+    deadlineNamePh: '예: 중간고사 · 과제 2',
+    deadlineDate: '날짜',
+    deadlineTime: '시각 (선택)',
+    deadlineHint: '{path} 의 frontmatter 에 한 줄로 저장됩니다.',
+    errDate: '{v} — 날짜를 읽지 못했습니다. YYYY-MM-DD 로 적어 주세요.',
+    upcoming: '다가오는 시험·마감',
+    upcomingOff: '표시 안 함',
+    upcomingN: '{n}일 앞까지',
+    upcomingHint: '노트의 exam: · due: 에 적은 날짜를 시간표 위에 미리 보여 줍니다.',
+    noUpcoming: '다가오는 시험·마감이 없습니다',
+    dToday: '오늘',
+    dTomorrow: '내일',
+    dIn: 'D-{n}',
+    deadlineOpen: '노트 열기',
+    deadlineRemove: '지우기',
+    deadlineDone: '완료로 표시',
+    deadlineRemoveBody: '{name} 을(를) 목록에서 지웁니다. 노트는 그대로 남습니다.',
+    moreItems: '＋{n}개 더',
+    showLess: '접기',
+    insertBlockCmd: '노트에 시간표 넣기',
+    insertUpcomingCmd: '노트에 다가오는 시험·마감 넣기',
+    feedback: '의견 보내기',
+    feedbackDesc: '버그나 필요한 기능을 알려 주세요. GitHub 이슈 화면이 브라우저에서 열립니다. 플러그인이 보내는 것은 없습니다.',
+    feedbackBug: '버그 신고',
+    feedbackIdea: '기능 제안',
+    emptyFeedback: '쓰다가 막히면 알려 주세요',
+    sampleExam: '중간고사',
+    sampleDue: '과제 1',
+    helpMoreTitle: '시험 · 마감 · 휴강 · 격주',
+    helpMore: ['---', 'schedule:', '  - 월 10:30-11:50 @ 301호', '  - 수 10:30-11:50 odd @ 301호', 'exam:', '  - 2026-10-22 13:00 중간고사', 'due:', '  - 2026-10-15 과제 1', 'cancelled:', '  - 2026-10-05', '---'],
+    helpMoreNote: 'odd · even 은 홀수 주 · 짝수 주에만 있는 수업입니다. 과제 노트에 due: 2026-10-15 만 적어도, 그 노트가 수업 폴더 안에 있으면 마감으로 잡힙니다. 노트 안에 시간표를 넣으려면 ```class-timetable 코드블록을 쓰세요.',
+    templateSettingDesc: '수업 블록을 우클릭해 “오늘의 필기 노트 열기”를 누르면 이 템플릿으로 노트가 만들어집니다.',
+  },
+  en: {
+    newNoteCreate: 'Open today\'s note',
+    newNoteFor: 'Open the note for {date}',
+    weekPrev: 'Previous week',
+    weekNext: 'Next week',
+    weekBack: 'This week',
+    weekNo: 'Week {n}',
+    semesterStartDesc: '{{week}}, the week number and odd/even weeks for biweekly classes are counted from this date. (YYYY-MM-DD)',
+    semesterEnd: 'Semester end',
+    semesterEndDesc: 'After this date classes are no longer drawn and {{week}} stops counting. Leave empty for no end. (YYYY-MM-DD)',
+    semesterOver: 'The semester ended on {date} — no classes are drawn this week',
+    repeatEvery: 'Every week',
+    repeatOdd: 'Odd weeks',
+    repeatEven: 'Even weeks',
+    thisWeekOdd: 'an odd week',
+    thisWeekEven: 'an even week',
+    parityHint: 'This is week {n} — {p}. Counted from the semester start.',
+    parityHintNoStart: 'This week counts as {p}. Set a semester start in Settings and that week becomes week 1 (odd).',
+    cancelClass: 'Mark {date} as cancelled',
+    uncancelClass: 'Undo the cancellation on {date}',
+    cancelled: 'Cancelled',
+    dueKind: 'Due',
+    examKind: 'Exam',
+    addDeadline: 'Add an exam or deadline…',
+    addDeadlineShort: '＋ Exam or deadline',
+    deadlineTitle: 'Add an exam or deadline',
+    deadlineType: 'Type',
+    deadlineName: 'Name',
+    deadlineNamePh: 'e.g. Midterm · Problem set 2',
+    deadlineDate: 'Date',
+    deadlineTime: 'Time (optional)',
+    deadlineHint: 'Stored as one line in the frontmatter of {path}.',
+    errDate: '{v} — could not read that date. Use YYYY-MM-DD.',
+    upcoming: 'Upcoming exams and deadlines',
+    upcomingOff: 'Hide',
+    upcomingN: 'Next {n} days',
+    upcomingHint: 'Dates written under exam: and due: in your notes are shown above the timetable ahead of time.',
+    noUpcoming: 'No exams or deadlines coming up',
+    dToday: 'Today',
+    dTomorrow: 'Tomorrow',
+    dIn: 'in {n}d',
+    deadlineOpen: 'Open note',
+    deadlineRemove: 'Remove',
+    deadlineDone: 'Mark as done',
+    deadlineRemoveBody: 'Removes {name} from the list. The note stays.',
+    moreItems: '+{n} more',
+    showLess: 'Show less',
+    insertBlockCmd: 'Insert timetable into note',
+    insertUpcomingCmd: 'Insert upcoming exams and deadlines into note',
+    feedback: 'Send feedback',
+    feedbackDesc: 'Found a bug, or missing something? This opens a GitHub issue in your browser. The plugin itself sends nothing.',
+    feedbackBug: 'Report a bug',
+    feedbackIdea: 'Suggest a feature',
+    emptyFeedback: 'Stuck? Tell me what is missing',
+    sampleExam: 'Midterm',
+    sampleDue: 'Problem set 1',
+    helpMoreTitle: 'Exams · deadlines · cancelled classes · biweekly',
+    helpMore: ['---', 'schedule:', '  - Mon 10:30-11:50 @ Room 301', '  - Wed 10:30-11:50 odd @ Room 301', 'exam:', '  - 2026-10-22 13:00 Midterm', 'due:', '  - 2026-10-15 Problem set 1', 'cancelled:', '  - 2026-10-05', '---'],
+    helpMoreNote: 'odd and even mark a class that only meets on odd or even weeks. A note inside a course folder with just due: 2026-10-15 in its frontmatter also counts as a deadline. To put the timetable inside a note, use a ```class-timetable code block.',
+    templateSettingDesc: 'Right-click a class and choose “Open today\'s note” — the note is made from this template.',
+  },
+  zh: {
+    newNoteCreate: '打开今天的笔记',
+    newNoteFor: '打开 {date} 的笔记',
+    weekPrev: '上一周',
+    weekNext: '下一周',
+    weekBack: '回到本周',
+    weekNo: '第{n}周',
+    semesterStartDesc: '{{week}}、周次显示以及单双周课程都从这一天算起。(YYYY-MM-DD)',
+    semesterEnd: '学期结束日',
+    semesterEndDesc: '过了这一天就不再显示课程，{{week}} 也不再计数。留空表示没有结束日。(YYYY-MM-DD)',
+    semesterOver: '学期已于 {date} 结束，这一周不显示课程',
+    repeatEvery: '每周',
+    repeatOdd: '单周',
+    repeatEven: '双周',
+    thisWeekOdd: '单周',
+    thisWeekEven: '双周',
+    parityHint: '本周是第{n}周，{p}。从学期开始日算起。',
+    parityHintNoStart: '本周算作{p}。在设置里填写学期开始日后，那一周就是第1周（单周）。',
+    cancelClass: '将 {date} 标为停课',
+    uncancelClass: '取消 {date} 的停课',
+    cancelled: '停课',
+    dueKind: '作业截止',
+    examKind: '考试',
+    addDeadline: '添加考试或截止日期…',
+    addDeadlineShort: '＋ 考试·截止',
+    deadlineTitle: '添加考试或截止日期',
+    deadlineType: '类型',
+    deadlineName: '名称',
+    deadlineNamePh: '例如：期中考试 · 作业 2',
+    deadlineDate: '日期',
+    deadlineTime: '时间（可选）',
+    deadlineHint: '会以一行保存到 {path} 的 frontmatter。',
+    errDate: '{v} — 无法识别日期。请写成 YYYY-MM-DD。',
+    upcoming: '即将到来的考试与截止',
+    upcomingOff: '不显示',
+    upcomingN: '未来 {n} 天',
+    upcomingHint: '把笔记里 exam: 和 due: 下的日期提前显示在课程表上方。',
+    noUpcoming: '近期没有考试或截止日期',
+    dToday: '今天',
+    dTomorrow: '明天',
+    dIn: '{n}天后',
+    deadlineOpen: '打开笔记',
+    deadlineRemove: '删除',
+    deadlineDone: '标为已完成',
+    deadlineRemoveBody: '从列表中删除 {name}。笔记会保留。',
+    moreItems: '还有 {n} 项',
+    showLess: '收起',
+    insertBlockCmd: '在笔记中插入课程表',
+    insertUpcomingCmd: '在笔记中插入即将到来的考试与截止',
+    feedback: '反馈',
+    feedbackDesc: '发现问题或缺少功能？会在浏览器中打开 GitHub issue。插件本身不发送任何内容。',
+    feedbackBug: '报告问题',
+    feedbackIdea: '功能建议',
+    emptyFeedback: '用着不顺手？告诉我缺了什么',
+    sampleExam: '期中考试',
+    sampleDue: '作业 1',
+    helpMoreTitle: '考试 · 截止 · 停课 · 单双周',
+    helpMore: ['---', 'schedule:', '  - 一 10:30-11:50 @ 301教室', '  - 三 10:30-11:50 odd @ 301教室', 'exam:', '  - 2026-10-22 13:00 期中考试', 'due:', '  - 2026-10-15 作业 1', 'cancelled:', '  - 2026-10-05', '---'],
+    helpMoreNote: 'odd · even 表示只在单周或双周上的课。课程文件夹里的笔记只要在 frontmatter 写上 due: 2026-10-15，也会被当作截止日期。要把课程表放进笔记，请使用 ```class-timetable 代码块。',
+    templateSettingDesc: '右键点击课程并选择“打开今天的笔记”，就会用这个模板创建笔记。',
+  },
+  ja: {
+    newNoteCreate: '今日のノートを開く',
+    newNoteFor: '{date} のノートを開く',
+    weekPrev: '前の週',
+    weekNext: '次の週',
+    weekBack: '今週に戻る',
+    weekNo: '第{n}週',
+    semesterStartDesc: '{{week}}、週番号、隔週の授業の奇数週・偶数週をこの日から数えます。(YYYY-MM-DD)',
+    semesterEnd: '学期の終了日',
+    semesterEndDesc: 'この日を過ぎると授業を表示せず、{{week}} も数えません。空欄なら終わりはありません。(YYYY-MM-DD)',
+    semesterOver: '学期は {date} に終わったため、この週の授業は表示しません',
+    repeatEvery: '毎週',
+    repeatOdd: '奇数週',
+    repeatEven: '偶数週',
+    thisWeekOdd: '奇数週',
+    thisWeekEven: '偶数週',
+    parityHint: '今週は第{n}週、{p}です。学期の開始日から数えます。',
+    parityHintNoStart: '今週は{p}として数えます。設定で学期の開始日を決めると、その週が第1週（奇数週）になります。',
+    cancelClass: '{date} を休講にする',
+    uncancelClass: '{date} の休講を取り消す',
+    cancelled: '休講',
+    dueKind: '課題の締切',
+    examKind: '試験',
+    addDeadline: '試験・締切を追加…',
+    addDeadlineShort: '＋ 試験・締切',
+    deadlineTitle: '試験・締切を追加',
+    deadlineType: '種類',
+    deadlineName: '名前',
+    deadlineNamePh: '例: 中間試験 · 課題 2',
+    deadlineDate: '日付',
+    deadlineTime: '時刻（任意）',
+    deadlineHint: '{path} の frontmatter に一行で保存されます。',
+    errDate: '{v} — 日付を読み取れません。YYYY-MM-DD で書いてください。',
+    upcoming: 'これからの試験・締切',
+    upcomingOff: '表示しない',
+    upcomingN: '{n}日先まで',
+    upcomingHint: 'ノートの exam: · due: に書いた日付を、時間割の上に前もって表示します。',
+    noUpcoming: '近いうちの試験・締切はありません',
+    dToday: '今日',
+    dTomorrow: '明日',
+    dIn: 'あと{n}日',
+    deadlineOpen: 'ノートを開く',
+    deadlineRemove: '削除',
+    deadlineDone: '完了にする',
+    deadlineRemoveBody: '{name} を一覧から削除します。ノートは残ります。',
+    moreItems: 'ほか {n} 件',
+    showLess: '閉じる',
+    insertBlockCmd: 'ノートに時間割を挿入',
+    insertUpcomingCmd: 'ノートにこれからの試験・締切を挿入',
+    feedback: 'フィードバック',
+    feedbackDesc: '不具合や欲しい機能を教えてください。ブラウザで GitHub の issue 画面が開きます。プラグイン自体は何も送信しません。',
+    feedbackBug: '不具合を報告',
+    feedbackIdea: '機能を提案',
+    emptyFeedback: '困ったことがあれば教えてください',
+    sampleExam: '中間試験',
+    sampleDue: '課題 1',
+    helpMoreTitle: '試験 · 締切 · 休講 · 隔週',
+    helpMore: ['---', 'schedule:', '  - 月 10:30-11:50 @ 301教室', '  - 水 10:30-11:50 odd @ 301教室', 'exam:', '  - 2026-10-22 13:00 中間試験', 'due:', '  - 2026-10-15 課題 1', 'cancelled:', '  - 2026-10-05', '---'],
+    helpMoreNote: 'odd · even は奇数週・偶数週だけの授業です。授業フォルダの中のノートに due: 2026-10-15 と書くだけでも締切として扱われます。ノートに時間割を入れるには ```class-timetable コードブロックを使ってください。',
+    templateSettingDesc: '授業を右クリックして「今日のノートを開く」を選ぶと、このテンプレートでノートが作られます。',
+  },
+};
+
+for (const code of Object.keys(I18N_V20)) Object.assign(I18N[code], I18N_V20[code]);
+
 
 
 
@@ -1124,6 +1398,8 @@ const DEFAULT_SETTINGS = {
   currentSemester: '',
   viewMode: 'week',
   semesterStart: '',
+  semesterEnd: '',                    // 비어 있으면 끝이 없다
+  upcomingDays: 14,                   // 다가오는 시험·마감을 며칠 앞까지 보여 줄지. 0 이면 안 보인다
   templates: [],
   defaultTemplate: '',
   plans: [],                          // 파일이 아닌, 시간표 위에만 있는 일정
@@ -1182,6 +1458,14 @@ function parseSlot(raw) {
     s = s.slice(0, at).trim();
   }
 
+  // 시간 뒤에 odd · even 이 붙으면 격주 수업이다
+  let parity = '';
+  const tail = /^(.*\S)\s+(\S+)$/.exec(s);
+  if (tail) {
+    const word = PARITY_ALIASES[tail[2].toLowerCase().replace(/^[([]|[)\]]$/g, '')];
+    if (word) { parity = word; s = tail[1]; }
+  }
+
   const m = /^(\S+)\s*[,·]?\s+(\d{1,2}(?::\d{1,2})?|\d{4})\s*[-~–—]\s*(\d{1,2}(?::\d{1,2})?|\d{4})$/.exec(s);
   if (!m) return null;
 
@@ -1192,17 +1476,23 @@ function parseSlot(raw) {
   const end = parseTime(m[3]);
   if (start === null || end === null || end <= start) return null;
 
-  return { day, start, end, location };
+  return { day, start, end, location, parity };
 }
 
 // 파일에 쓰는 표기. 언어와 무관하게 늘 같은 모양이어야 한다.
 function formatSlot(slot) {
-  const base = DAY_CANON[slot.day] + ' ' + hhmm(slot.start) + '-' + hhmm(slot.end);
+  const base = DAY_CANON[slot.day] + ' ' + hhmm(slot.start) + '-' + hhmm(slot.end) + (slot.parity ? ' ' + slot.parity : '');
   return slot.location ? base + ' @ ' + slot.location : base;
 }
 
+// 홀수 주 수업과 짝수 주 수업은 같은 시각이어도 만나지 않는다
 function slotsOverlap(a, b) {
+  if (a.parity && b.parity && a.parity !== b.parity) return false;
   return a.day === b.day && a.start < b.end && b.start < a.end;
+}
+
+function parityLabel(parity) {
+  return parity === 'odd' ? t('repeatOdd') : (parity === 'even' ? t('repeatEven') : '');
 }
 
 function humanGap(mins) {
@@ -1215,35 +1505,43 @@ function humanGap(mins) {
 function scheduleSummary(course) {
   const groups = [];
   for (const s of course.slots) {
-    const key = s.start + '|' + s.end + '|' + s.location;
+    const key = s.start + '|' + s.end + '|' + s.location + '|' + (s.parity || '');
     let g = groups.find((x) => x.key === key);
     if (!g) { g = { key, days: [], slot: s }; groups.push(g); }
     g.days.push(dayLabel(s.day));
   }
   return groups.map((g) => {
-    const time = g.days.join('·') + ' ' + hhmm(g.slot.start) + '~' + hhmm(g.slot.end);
+    let time = g.days.join('·') + ' ' + hhmm(g.slot.start) + '~' + hhmm(g.slot.end);
+    if (g.slot.parity) time += ' (' + parityLabel(g.slot.parity) + ')';
     return g.slot.location ? time + ' · ' + g.slot.location : time;
   }).join('   ');
 }
 
 // 이 수업이 지금 진행 중인지, 아니면 다음은 언제인지. 책장 머리에 한 줄로 쓴다.
-function nextSession(course) {
-  const ti = todayIndex();
+// 휴강인 날, 격주라 없는 주, 학기가 끝난 뒤는 건너뛴다. 두 주 앞까지만 본다.
+function nextSession(settings, course) {
+  const today = today0();
   const now = nowMinutes();
   let best = null;
-  for (const slot of course.slots) {
-    if (slot.day === ti && now >= slot.start && now < slot.end) {
-      return { slot, live: true, label: t('liveSession', { time: hhmm(slot.end) }) };
+  for (let d = 0; d < 14 && !best; d++) {
+    const date = addDays(today, d);
+    const day = (date.getDay() + 6) % 7;
+    for (const slot of course.slots) {
+      if (slot.day !== day || !slotRuns(settings, slot, date) || isCancelled(course, slot, ymd(date))) continue;
+      if (d === 0 && now >= slot.start && now < slot.end) {
+        return { slot, date, live: true, label: t('liveSession', { time: hhmm(slot.end) }) };
+      }
+      if (d === 0 && slot.start <= now) continue;
+      if (!best || slot.start < best.slot.start) best = { slot, date, d };
     }
-    let gap = ((slot.day - ti + 7) % 7) * 1440 + slot.start - now;
-    if (gap <= 0) gap += 7 * 1440;
-    if (!best || gap < best.gap) best = { slot, gap };
   }
   if (!best) return null;
-  const label = best.slot.day === ti && best.gap < 1440
+  let when = dayLabel(best.slot.day) + ' ' + hhmm(best.slot.start);
+  if (best.d >= 7) when = shortMD(best.date) + ' ' + when; // 한 주를 건너뛰면 요일만으로는 헷갈린다
+  const label = best.d === 0
     ? t('todaySession', { time: hhmm(best.slot.start) })
-    : t('nextSession', { when: dayLabel(best.slot.day) + ' ' + hhmm(best.slot.start) });
-  return { slot: best.slot, live: false, label };
+    : t('nextSession', { when });
+  return { slot: best.slot, date: best.date, live: false, label };
 }
 
 /* ────────────────────────────── 색 ────────────────────────────── */
@@ -1341,13 +1639,135 @@ function mondayOf(date) {
   return d;
 }
 
-function weekNumber(startStr, date) {
-  const s = String(startStr || '').trim();
-  if (!s) return '';
-  const start = new Date(s + 'T00:00:00');
-  if (isNaN(start.getTime())) return '';
-  const weeks = Math.round((mondayOf(date) - mondayOf(start)) / (7 * 86400000)) + 1;
-  return weeks > 0 ? String(weeks) : '';
+function ymd(d) { return formatDate(d, 'YYYY-MM-DD'); }
+
+// 'YYYY-MM-DD' 를 그날 0시로. 없는 날짜(2월 30일)는 읽지 않는다.
+function parseYmd(str) {
+  const m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(String(str == null ? '' : str).trim());
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]) ? d : null;
+}
+
+function addDays(date, n) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + n);
+}
+
+function today0() { return addDays(new Date(), 0); }
+
+// 날짜끼리의 차이(일). 서머타임으로 하루가 23·25시간이어도 어긋나지 않게 반올림한다.
+function dayDiff(a, b) {
+  return Math.round((addDays(a, 0) - addDays(b, 0)) / 86400000);
+}
+
+function shortMD(date) { return (date.getMonth() + 1) + '/' + date.getDate(); }
+
+// 메뉴에 적는 날짜: 10/5 (월)
+function dateLabel(date) {
+  return shortMD(date) + ' (' + dayLabel((date.getDay() + 6) % 7) + ')';
+}
+
+// 학기 시작 주를 1로 센 주차. 시작일이 없으면 null, 시작 전이면 0 이하.
+function weekIndex(startStr, date) {
+  const start = parseYmd(startStr);
+  if (!start) return null;
+  return Math.round((mondayOf(date) - mondayOf(start)) / (7 * 86400000)) + 1;
+}
+
+// 템플릿의 {{week}}. 학기 밖(시작 전, 종료 후)이면 비운다 — 방학에도 주차가 자라지 않게.
+function weekNumber(startStr, date, endStr) {
+  const n = weekIndex(startStr, date);
+  if (n == null || n <= 0) return '';
+  const end = parseYmd(endStr);
+  if (end && dayDiff(date, end) > 0) return '';
+  return String(n);
+}
+
+// 그 주가 홀수 주인지 짝수 주인지. 시작일이 없으면 달력에 고정된 기준으로 센다 —
+// 어느 쪽이든 한 주씩 번갈아 온다는 것만은 같다.
+function weekParity(settings, date) {
+  let n = weekIndex(settings && settings.semesterStart, date);
+  if (n == null) n = Math.round((mondayOf(date) - new Date(1970, 0, 5)) / (7 * 86400000)) + 1;
+  return ((n % 2) + 2) % 2 === 1 ? 'odd' : 'even';
+}
+
+// 그 날짜에 이 시간이 실제로 열리는가: 학기가 끝났거나 격주가 아닌 주면 아니다
+function slotRuns(settings, slot, date) {
+  const end = parseYmd(settings && settings.semesterEnd);
+  if (end && dayDiff(date, end) > 0) return false;
+  if (slot.parity && slot.parity !== weekParity(settings, date)) return false;
+  return true;
+}
+
+// cancelled: 에 그 날짜가 있으면 휴강. 하루에 두 번 있는 수업은 '날짜 시:분' 으로 하나만 가리킬 수 있다.
+function isCancelled(course, slot, dateStr) {
+  const list = course.cancelled;
+  if (!list || !list.length) return false;
+  return list.includes(dateStr) || list.includes(dateStr + ' ' + hhmm(slot.start));
+}
+
+// 읽은 값을 한 모양으로 맞춘다. 못 읽는 줄은 버린다.
+function normCancelled(v) {
+  return listOf(v).map((x) => {
+    const d = parseDeadline(x);
+    return d ? (d.time != null ? d.date + ' ' + hhmm(d.time) : d.date) : '';
+  }).filter(Boolean);
+}
+
+/* ── 시험 · 마감 ──
+ *
+ * 한 줄에 하나:  2026-10-22 13:00-15:00 중간고사
+ * 날짜만 있어도 되고, 시각과 이름은 있으면 읽는다.
+ */
+function parseDeadline(raw) {
+  if (raw == null || raw === '') return null;
+  if (Object.prototype.toString.call(raw) === '[object Date]') {
+    if (isNaN(raw.getTime())) return null;
+    // YAML 이 날짜로 읽어 준 값은 UTC 자정이다
+    const date = raw.getUTCFullYear() + '-' + pad2(raw.getUTCMonth() + 1) + '-' + pad2(raw.getUTCDate());
+    return { date, time: null, end: null, title: '' };
+  }
+  const m = /^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})(?:[T\s]+(\d{1,2}:\d{2})(?::\d{2})?(?:\s*[-~–—]\s*(\d{1,2}:\d{2}))?)?(?:\s+(.*))?$/.exec(String(raw).trim());
+  if (!m) return null;
+  const d = parseYmd(m[1]);
+  if (!d) return null;
+  const time = m[2] ? parseTime(m[2]) : null;
+  const end = m[3] ? parseTime(m[3]) : null;
+  return {
+    date: ymd(d),
+    time,
+    end: time != null && end != null && end > time ? end : null,
+    title: (m[4] || '').trim(),
+  };
+}
+
+function formatDeadline(d) {
+  let out = d.date;
+  if (d.time != null) out += ' ' + hhmm(d.time) + (d.end != null ? '-' + hhmm(d.end) : '');
+  return d.title ? out + ' ' + d.title : out;
+}
+
+function listOf(v) {
+  if (v == null || v === '') return [];
+  return Array.isArray(v) ? v : [v];
+}
+
+function isTruthy(v) {
+  return v === true || /^(true|yes|y|1|done)$/i.test(String(v == null ? '' : v).trim());
+}
+
+// 며칠 남았는지를 짧게: 오늘 · 내일 · D-3
+function dLabel(days) {
+  if (days <= 0) return t('dToday');
+  if (days === 1) return t('dTomorrow');
+  return t('dIn', { n: days });
+}
+
+function deadlineWhen(dl) {
+  const d = parseYmd(dl.date);
+  let out = d ? dateLabel(d) : dl.date;
+  if (dl.time != null) out += ' ' + hhmm(dl.time) + (dl.end != null ? '~' + hhmm(dl.end) : '');
+  return out;
 }
 
 function applyTemplate(text, ctx) {
@@ -1439,27 +1859,26 @@ function layoutDay(items) {
   return items;
 }
 
-// 수업과 일정을 한 격자에 함께 놓는다. 겹치면 서로 종류를 가리지 않고 폭을 나눈다.
-function buildItems(courses, plans) {
-  const byDay = [[], [], [], [], [], [], []];
+// 일회성 일정은 날짜가 든 그 주에만 있다. 날짜를 못 읽으면(옛 데이터) 매주 있는 것으로 둔다.
+function planInWeek(plan, dates) {
+  if (!plan.once) return true;
+  const d = parseYmd(plan.date);
+  if (!d) return true;
+  return dayDiff(d, dates[0]) >= 0 && dayDiff(d, dates[6]) <= 0;
+}
 
-  for (const c of courses) {
-    for (const s of c.slots) {
-      byDay[s.day].push({ kind: 'course', course: c, slot: s, lane: 0, lanes: 1, conflicts: [] });
-    }
-  }
-  for (const p of plans) {
-    byDay[p.day].push({
-      kind: 'plan',
-      plan: p,
-      slot: { day: p.day, start: p.start, end: p.end, location: '' },
-      lane: 0, lanes: 1, conflicts: [],
-    });
-  }
+function weekDates(monday) {
+  const dates = [];
+  for (let i = 0; i < 7; i++) dates.push(addDays(monday, i));
+  return dates;
+}
 
+function markConflicts(byDay) {
   for (const day of byDay) {
     for (let i = 0; i < day.length; i++) {
       for (let j = i + 1; j < day.length; j++) {
+        // 휴강인 시간은 비어 있는 시간이다. 거기에 다른 것이 들어와도 겹침이 아니다.
+        if (day[i].cancelled || day[j].cancelled) continue;
         if (slotsOverlap(day[i].slot, day[j].slot)) {
           day[i].conflicts.push(day[j]);
           day[j].conflicts.push(day[i]);
@@ -1471,12 +1890,76 @@ function buildItems(courses, plans) {
   return byDay;
 }
 
+// 수업과 일정을 한 격자에 함께 놓는다. 겹치면 서로 종류를 가리지 않고 폭을 나눈다.
+// 이것은 "보통의 한 주"다 — 격주 수업은 둘 다 넣고, 휴강과 학기 종료는 보지 않는다.
+// 공유용 그림과, 주를 넘겨도 격자 크기가 흔들리지 않게 하는 데 쓴다.
+function buildItems(courses, plans) {
+  const byDay = [[], [], [], [], [], [], []];
+  const dates = weekDates(mondayOf(new Date()));
+
+  for (const c of courses) {
+    for (const s of c.slots) {
+      byDay[s.day].push({ kind: 'course', course: c, slot: s, date: null, cancelled: false, lane: 0, lanes: 1, conflicts: [] });
+    }
+  }
+  for (const p of plans) {
+    if (!planInWeek(p, dates)) continue;
+    byDay[p.day].push({
+      kind: 'plan',
+      plan: p,
+      slot: { day: p.day, start: p.start, end: p.end, location: '' },
+      date: null, cancelled: false,
+      lane: 0, lanes: 1, conflicts: [],
+    });
+  }
+  return markConflicts(byDay);
+}
+
+// 달력의 어느 한 주. 그 주에 실제로 있는 것만 담는다:
+// 격주 수업은 맞는 주에만, 일회성 일정은 그 날짜가 든 주에만, 학기가 끝난 뒤의 수업은 없다.
+// 휴강은 빼지 않고 표시만 한다 — 원래 그 자리에 수업이 있다는 것은 보여야 한다.
+function buildWeek(settings, courses, plans, monday) {
+  const dates = weekDates(monday);
+  const byDay = [[], [], [], [], [], [], []];
+  const end = parseYmd(settings && settings.semesterEnd);
+  let ended = false;
+
+  for (const c of courses) {
+    for (const s of c.slots) {
+      const date = dates[s.day];
+      if (end && dayDiff(date, end) > 0) { ended = true; continue; }
+      if (s.parity && s.parity !== weekParity(settings, date)) continue;
+      byDay[s.day].push({
+        kind: 'course', course: c, slot: s, date,
+        cancelled: isCancelled(c, s, ymd(date)),
+        lane: 0, lanes: 1, conflicts: [],
+      });
+    }
+  }
+  for (const p of plans) {
+    if (!planInWeek(p, dates)) continue;
+    byDay[p.day].push({
+      kind: 'plan',
+      plan: p,
+      slot: { day: p.day, start: p.start, end: p.end, location: '' },
+      date: dates[p.day], cancelled: false,
+      lane: 0, lanes: 1, conflicts: [],
+    });
+  }
+  markConflicts(byDay);
+  return { byDay, dates, monday: dates[0], ended };
+}
+
 /* ────────────────────────────── 플러그인 ────────────────────────────── */
 
 class ClassTimetablePlugin extends Plugin {
   async onload() {
     // 편집·일정 모드는 저장하지 않는다. 다시 켜면 늘 보기 모드로 시작한다.
     this.mode = 'view';
+
+    // 어느 주를 보고 있는지도 저장하지 않는다. 다시 켜면 이번 주다.
+    this.nav = { weekOffset: 0, navAt: 0, upcomingOpen: false };
+    this.embeds = new Set();
 
     // 파일에 쓴 값이 metadataCache 에 반영되기까지의 짧은 틈을 메운다
     this.pending = new Map();
@@ -1507,6 +1990,7 @@ class ClassTimetablePlugin extends Plugin {
 
     this.ribbonEl = this.addRibbonIcon('calendar-days', t('timetable'), () => this.activateView());
     this.registerCommands();
+    this.registerEmbeds();
 
     this.settingTab = new TimetableSettingTab(this.app, this);
     this.addSettingTab(this.settingTab);
@@ -1542,6 +2026,33 @@ class ClassTimetablePlugin extends Plugin {
     for (const timer of this.pendingTimers.values()) window.clearTimeout(timer);
     this.pendingTimers.clear();
     this.pending.clear();
+    if (this.embeds) this.embeds.clear();
+  }
+
+  /* ── 노트 안 시간표 ──
+   *
+   * ```class-timetable 코드블록이 그 자리에 시간표를 그린다. 사이드바와 같은 그림이고,
+   * 보기 전용이다 (고치는 것은 사이드바에서). 다른 플러그인이 같은 이름을 먼저 잡았으면
+   * 옵시디언이 등록을 거절하므로, 짧은 이름(timetable)은 되면 쓰고 안 되면 넘어간다.
+   */
+  registerEmbeds() {
+    if (typeof this.registerMarkdownCodeBlockProcessor !== 'function') return;
+    const handler = (source, el, ctx) => {
+      const child = new TimetableEmbed(el, this, parseEmbedOptions(source));
+      if (ctx && typeof ctx.addChild === 'function') ctx.addChild(child);
+      else child.onload();
+    };
+    for (const lang of ['class-timetable', 'timetable']) {
+      try { this.registerMarkdownCodeBlockProcessor(lang, handler); } catch (e) { /* 이미 다른 곳에서 쓰는 이름 */ }
+    }
+  }
+
+  // 다른 주로 넘긴다. 0 이면 이번 주로 돌아온다.
+  shiftWeek(delta) {
+    const nav = this.nav || (this.nav = { weekOffset: 0, navAt: 0 });
+    nav.weekOffset = delta === 0 ? 0 : (nav.weekOffset || 0) + delta;
+    nav.navAt = Date.now();
+    this.refreshTimetables();
   }
 
   registerCommands() {
@@ -1557,7 +2068,7 @@ class ClassTimetablePlugin extends Plugin {
       callback: () => {
         const hit = this.classNow();
         if (!hit) { new Notice(t('noClassToday')); return; }
-        this.createFromTemplate(hit.course, hit.slot);
+        this.createFromTemplate(hit.course, hit.slot, undefined, new Date());
       },
     });
     this.addCommand({
@@ -1572,6 +2083,22 @@ class ClassTimetablePlugin extends Plugin {
 
     this.addCommand({ id: 'export-png', name: t('exportSaveCmd'), callback: () => this.exportImage('save') });
     this.addCommand({ id: 'copy-png', name: t('exportCopyCmd'), callback: () => this.exportImage('copy') });
+
+    // 주 넘기기. 시간표가 닫혀 있으면 먼저 연다.
+    const week = (delta) => async () => { await this.activateView(); this.shiftWeek(delta); };
+    this.addCommand({ id: 'week-next', name: t('weekNext'), callback: week(1) });
+    this.addCommand({ id: 'week-prev', name: t('weekPrev'), callback: week(-1) });
+    this.addCommand({ id: 'week-this', name: t('weekBack'), callback: week(0) });
+
+    this.addCommand({
+      id: 'add-deadline',
+      name: t('deadlineTitle'),
+      callback: () => new DeadlineModal(this, {}).open(),
+    });
+
+    const insert = (text) => (editor) => editor.replaceSelection(text);
+    this.addCommand({ id: 'insert-timetable', name: t('insertBlockCmd'), editorCallback: insert('```class-timetable\n```\n') });
+    this.addCommand({ id: 'insert-upcoming', name: t('insertUpcomingCmd'), editorCallback: insert('```class-timetable\nview: upcoming\n```\n') });
 
     this.addCommand({ id: 'create-sample', name: t('sampleCmd'), callback: () => this.createSample() });
     this.addCommand({
@@ -1659,6 +2186,7 @@ class ClassTimetablePlugin extends Plugin {
     for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE)) {
       if (leaf.view instanceof TimetableView) leaf.view.render();
     }
+    for (const embed of this.embeds || []) embed.render();
   }
 
   refreshAll() {
@@ -1674,15 +2202,15 @@ class ClassTimetablePlugin extends Plugin {
    * 수업 직전에도, 막 끝난 뒤에도 "그 수업"을 가리키게 된다.
    */
   classNow() {
-    const ti = todayIndex();
     const now = nowMinutes();
     let best = null;
-    for (const course of this.getCourses().courses) {
-      for (const slot of course.slots) {
-        if (slot.day !== ti) continue;
-        const gap = now < slot.start ? slot.start - now : (now >= slot.end ? now - slot.end : -1);
-        if (!best || gap < best.gap) best = { course, slot, gap };
-      }
+    // 오늘 실제로 열리는 수업만 본다 — 휴강이거나 격주라 없는 수업의 노트를 만들면 안 된다
+    const week = buildWeek(this.settings, this.getCourses().courses, [], mondayOf(new Date()));
+    for (const it of week.byDay[todayIndex()]) {
+      if (it.cancelled) continue;
+      const slot = it.slot;
+      const gap = now < slot.start ? slot.start - now : (now >= slot.end ? now - slot.end : -1);
+      if (!best || gap < best.gap) best = { course: it.course, slot, gap };
     }
     return best;
   }
@@ -1739,6 +2267,9 @@ class ClassTimetablePlugin extends Plugin {
 
         const slots = times[i].map(([day, start, end, location]) => ({ day, start, end, location }));
         const patch = { schedule: slots.map(formatSlot), subtitle: prof, notes: lectures.path };
+        // 시험과 마감이 어떻게 보이는지도 예시에 담는다. 날짜는 늘 며칠 뒤로 잡아 "다가오는" 목록에 뜬다.
+        if (i === 0) patch.exam = [formatDeadline({ date: ymd(addDays(new Date(), 9)), time: 780, end: 870, title: t('sampleExam') })];
+        if (i === 4) patch.due = [formatDeadline({ date: ymd(addDays(new Date(), 3)), time: null, end: null, title: t('sampleDue') })];
         this.markPending(note.path, patch);
         await this.app.fileManager.processFrontMatter(note, (fm) => {
           Object.assign(fm, patch);
@@ -1877,10 +2408,11 @@ class ClassTimetablePlugin extends Plugin {
     const valid = roots.filter((r) => r.folder);
     const missing = roots.filter((r) => !r.folder).map((r) => r.path || '—');
 
-    if (!valid.length) return { courses: [], roots, missing, error: missing.join(', ') };
+    if (!valid.length) return { courses: [], deadlines: [], roots, missing, error: missing.join(', ') };
 
     const semester = (this.settings.currentSemester || '').trim();
     const found = new Map();
+    const loose = new Map(); // 수업 노트는 아니지만 due: · exam: 을 가진 노트 (과제 노트 같은 것)
 
     for (const root of valid) {
       for (const file of this.markdownFiles(root.folder)) {
@@ -1888,7 +2420,10 @@ class ClassTimetablePlugin extends Plugin {
         let fm = (cache && cache.frontmatter) || {};
         const pending = this.pending ? this.pending.get(file.path) : null;
         if (pending) fm = Object.assign({}, fm, pending); // 방금 고친 값을 캐시 위에 덮어 본다
-        if (fm.schedule == null) continue;
+        if (fm.schedule == null) {
+          if ((fm.due != null || fm.exam != null || fm.exams != null) && !loose.has(file.path)) loose.set(file.path, { file, fm });
+          continue;
+        }
 
         const fmSem = fm.semester == null ? '' : String(fm.semester).trim();
         if (semester && fmSem && fmSem !== semester) continue;
@@ -1927,6 +2462,10 @@ class ClassTimetablePlugin extends Plugin {
           shortcuts: Array.isArray(fm.shortcuts)
             ? fm.shortcuts.map((x) => String(x).trim()).filter(Boolean)
             : (fm.shortcuts ? [String(fm.shortcuts).trim()] : []),
+          // 휴강한 날들. '2026-10-05' 또는 '2026-10-05 10:30'
+          cancelled: normCancelled(fm.cancelled != null ? fm.cancelled : fm.canceled),
+          dueRaw: listOf(fm.due),
+          examRaw: listOf(fm.exam != null ? fm.exam : fm.exams),
         });
       }
     }
@@ -1950,7 +2489,138 @@ class ClassTimetablePlugin extends Plugin {
     assignColors(courses);
     courses.sort((a, b) => collate(a.name, b.name));
 
-    return { courses, roots, missing, error: null };
+    return { courses, deadlines: this.collectDeadlines(courses, loose), roots, missing, error: null };
+  }
+
+  /* ── 시험 · 마감 ──
+   *
+   * 두 군데에서 읽는다.
+   *   수업 노트의 exam: · due: 목록   →  "2026-10-22 13:00 중간고사" 처럼 한 줄에 하나
+   *   수업 폴더 안 다른 노트의 due: · exam:  →  그 노트가 곧 과제다. 이름은 노트 이름.
+   *     (폴더노트가 아닌 수업은 폴더를 남과 나눠 쓸 수 있으므로, 그때는 course: 로 수업을 적는다)
+   * done: true 인 노트는 끝난 일이라 빼 둔다.
+   */
+  collectDeadlines(courses, loose) {
+    const out = [];
+    const push = (kind, raw, course, file, own) => {
+      const d = parseDeadline(raw);
+      if (!d) return;
+      const fallback = own ? t(kind === 'exam' ? 'examKind' : 'dueKind') : (file.basename || file.name.replace(/\.md$/i, ''));
+      out.push({
+        kind, course, file, own,
+        date: d.date, time: d.time, end: d.end,
+        rawTitle: d.title,
+        title: d.title || fallback,
+      });
+    };
+
+    for (const c of courses) {
+      for (const raw of c.examRaw) push('exam', raw, c, c.file, true);
+      for (const raw of c.dueRaw) push('due', raw, c, c.file, true);
+    }
+
+    for (const { file, fm } of loose.values()) {
+      if (isTruthy(fm.done) || isTruthy(fm.completed)) continue;
+
+      let course = null;
+      if (fm.course != null) {
+        // course: [[선형대수]] 는 YAML 에서 겹친 배열로 읽힌다. 풀어서 이름만 남긴다.
+        const first = Array.isArray(fm.course) ? fm.course.flat(Infinity)[0] : fm.course;
+        const want = String(first == null ? '' : first).replace(/^\[\[|\]\]$/g, '').split('|')[0].split('/').pop()
+          .replace(/\.md$/i, '').trim().toLowerCase();
+        if (want) course = courses.find((c) => c.name.toLowerCase() === want || c.baseName.toLowerCase() === want) || null;
+      }
+      if (!course) {
+        let depth = -1;
+        for (const c of courses) {
+          if (!c.isFolderNote) continue;
+          for (const space of c.spaces) {
+            if (space.path === '/' || file.path.indexOf(space.path + '/') !== 0) continue;
+            if (space.path.length > depth) { depth = space.path.length; course = c; }
+          }
+        }
+      }
+      if (!course) continue;
+
+      for (const raw of listOf(fm.exam != null ? fm.exam : fm.exams)) push('exam', raw, course, file, false);
+      for (const raw of listOf(fm.due)) push('due', raw, course, file, false);
+    }
+
+    out.sort((a, b) => a.date.localeCompare(b.date)
+      || (a.time == null ? 1440 : a.time) - (b.time == null ? 1440 : b.time)
+      || collate(a.title, b.title));
+    return out;
+  }
+
+  // 오늘부터 days 일 앞까지의 시험·마감
+  upcomingDeadlines(deadlines, days) {
+    const today = today0();
+    return (deadlines || []).filter((dl) => {
+      const d = parseYmd(dl.date);
+      if (!d) return false;
+      const gap = dayDiff(d, today);
+      return gap >= 0 && gap <= days;
+    });
+  }
+
+  async addDeadline(course, kind, entry) {
+    if (!course || !course.file) return;
+    const line = formatDeadline(entry);
+    const key = kind === 'exam' ? 'exam' : 'due';
+    const current = kind === 'exam' ? course.examRaw : course.dueRaw;
+    this.markPending(course.file.path, { [key]: current.concat(line) });
+    try {
+      await this.app.fileManager.processFrontMatter(course.file, (fm) => {
+        // 이미 exams: 로 적어 온 사람의 파일에는 그 이름을 그대로 쓴다
+        const name = key === 'exam' && fm.exam == null && fm.exams != null ? 'exams' : key;
+        fm[name] = listOf(fm[name]).concat(line);
+      });
+    } catch (e) { failNotice('errSaveCourse', {}, e); }
+    this.refreshAll();
+  }
+
+  // 수업 노트에 적은 줄은 지우고, 과제 노트라면 done: true 를 적는다. 노트 자체는 건드리지 않는다.
+  async removeDeadline(dl) {
+    if (!dl || !dl.file) return;
+    try {
+      await this.app.fileManager.processFrontMatter(dl.file, (fm) => {
+        if (!dl.own) { fm.done = true; return; }
+        const name = dl.kind === 'exam' ? (fm.exam != null ? 'exam' : 'exams') : 'due';
+        const list = listOf(fm[name]).slice();
+        const i = list.findIndex((x) => {
+          const d = parseDeadline(x);
+          return !!d && d.date === dl.date && d.time === dl.time && d.title === dl.rawTitle;
+        });
+        if (i === -1) return;
+        list.splice(i, 1);
+        if (list.length) fm[name] = list; else delete fm[name];
+      });
+    } catch (e) { failNotice('errSaveCourse', {}, e); }
+    this.refreshAll();
+  }
+
+  // 그 날짜의 수업을 휴강으로 표시하거나 되돌린다. schedule: 은 건드리지 않는다.
+  async toggleCancelled(course, slot, date) {
+    if (!course || !course.file) return;
+    const day = ymd(date);
+    const exact = day + ' ' + hhmm(slot.start);
+    // 같은 날 이 수업이 두 번 있으면 시각까지 적어 하나만 가리킨다
+    const twice = course.slots.filter((s) => s.day === slot.day).length > 1;
+    const was = isCancelled(course, slot, day);
+    const next = (list) => {
+      const norm = normCancelled(list);
+      if (was) return norm.filter((x) => x !== day && x !== exact);
+      return norm.concat(twice ? exact : day).sort();
+    };
+    this.markPending(course.file.path, { cancelled: next(course.cancelled) });
+    try {
+      await this.app.fileManager.processFrontMatter(course.file, (fm) => {
+        const name = fm.cancelled == null && fm.canceled != null ? 'canceled' : 'cancelled';
+        const list = next(fm[name]);
+        if (list.length) fm[name] = list; else delete fm[name];
+      });
+    } catch (e) { failNotice('errSaveCourse', {}, e); }
+    this.refreshAll();
   }
 
   courseByKey(key) {
@@ -2150,19 +2820,21 @@ class ClassTimetablePlugin extends Plugin {
     return list.find((x) => x.id === id) || list.find((x) => x.id === this.settings.defaultTemplate) || list[0];
   }
 
-  templateContext(course, slot, folder) {
-    const date = slot ? dateOfWeekday(slot.day) : new Date();
+  // 날짜는 부르는 쪽이 정한다: "오늘 노트"면 오늘, 시간표에서 고른 칸이면 그 칸의 날짜.
+  // 안 주면 옛 규칙대로 그 요일의 이번 주 날짜를 쓴다 (템플릿 미리보기).
+  templateContext(course, slot, folder, when) {
+    const date = when || (slot ? dateOfWeekday(slot.day) : new Date());
     return {
       course: course.baseName || course.name, // 표시 이름을 바꿔도 파일명 계열이 갈리지 않게 고정값을 쓴다
       title: course.name,
       sub: (course.subtitle != null && course.subtitle !== '') ? course.subtitle : (slot ? slot.location : ''),
       date,
-      dow: dayLabel(slot ? slot.day : todayIndex()), // 파일 이름은 보는 사람의 말로
+      dow: dayLabel((date.getDay() + 6) % 7), // 파일 이름은 보는 사람의 말로
       time: slot ? hhmm(slot.start) + '~' + hhmm(slot.end) : '',
       start: slot ? hhmm(slot.start) : '',
       end: slot ? hhmm(slot.end) : '',
       room: slot ? slot.location : '',
-      week: weekNumber(this.settings.semesterStart, date),
+      week: weekNumber(this.settings.semesterStart, date, this.settings.semesterEnd),
       folder: folder ? folder.path : '',
     };
   }
@@ -2191,14 +2863,14 @@ class ClassTimetablePlugin extends Plugin {
     }).open();
   }
 
-  async createFromTemplate(course, slot, templateId) {
+  async createFromTemplate(course, slot, templateId, date) {
     const folder = this.notesFolder(course);
     if (!folder) { new Notice(t('notesUnset')); return null; }
 
     const tpl = this.template(templateId);
     if (!tpl) return null;
 
-    const ctx = this.templateContext(course, slot, folder);
+    const ctx = this.templateContext(course, slot, folder, date);
     const raw = applyTemplate(tpl.filename || '{{date:MMDD}} {{course}}', ctx);
     const safe = raw.replace(/[\\/:*?"<>|#^[\]]/g, '').trim() || course.name;
     const path = folder.path + '/' + (/\.md$/i.test(safe) ? safe : safe + '.md');
@@ -2222,8 +2894,8 @@ class ClassTimetablePlugin extends Plugin {
     if (idx === -1) return;
 
     const slots = course.slots.map((s, i) => (i === idx
-      ? { day: next.day, start: next.start, end: next.end, location: s.location }
-      : { day: s.day, start: s.start, end: s.end, location: s.location }));
+      ? { day: next.day, start: next.start, end: next.end, location: s.location, parity: s.parity }
+      : { day: s.day, start: s.start, end: s.end, location: s.location, parity: s.parity }));
 
     for (let i = 0; i < slots.length; i++) {
       for (let j = i + 1; j < slots.length; j++) {
@@ -2350,68 +3022,100 @@ class ClassTimetablePlugin extends Plugin {
 
 /* ────────────────────────────── 시간표 ────────────────────────────── */
 
-function renderTimetable(plugin, containerEl) {
+function renderTimetable(plugin, containerEl, opts) {
+  opts = opts || {};
+  const embed = !!opts.embed;                     // 노트 안 코드블록. 보기 전용이다.
+  const mode = embed ? 'view' : (plugin.mode || 'view');
+  const nav = opts.state || plugin.nav || (plugin.nav = { weekOffset: 0, navAt: 0 });
+  const rerender = opts.rerender || (() => plugin.refreshTimetables());
+
+  // 다른 주를 보다가 자리를 뜨면, 돌아왔을 때는 이번 주여야 한다. 고치는 중에는 그대로 둔다.
+  if (nav.weekOffset && mode === 'view' && Date.now() - (nav.navAt || 0) > NAV_IDLE_MS) nav.weekOffset = 0;
+
   containerEl.empty();
   containerEl.addClass('ctt-root');
+  if (embed) containerEl.addClass('is-embed');
   containerEl.setAttr('lang', LANG); // 좁은 칸에서 긴 이름을 끊을 때 그 말의 하이픈 규칙을 쓴다
 
+  const settings = plugin.settings;
   const res = plugin.getCourses();
   const courses = res.courses;
+  const deadlines = res.deadlines || [];
   const plans = plugin.plans();
-  const byDay = buildItems(courses, plans);
   const ti = todayIndex();
   const now = nowMinutes();
 
+  // 상단 바의 "지금"은 늘 진짜 이번 주를 본다. 격자는 보고 있는 주를 그린다.
+  const todayOnly = (opts.viewMode || settings.viewMode) === 'today';
+  const offset = todayOnly ? 0 : (nav.weekOffset || 0);
+  const thisMonday = mondayOf(new Date());
+  const thisWeek = buildWeek(settings, courses, plans, thisMonday);
+  const week = offset ? buildWeek(settings, courses, plans, addDays(thisMonday, offset * 7)) : thisWeek;
+  const byDay = week.byDay;
+
+  // 오늘부터 d 일 뒤에 실제로 있는 것들. 휴강은 없는 것으로 친다. 주를 넘어가면 다음 주를 짓는다.
+  let nextWeek = null;
+  const dayItems = (d) => {
+    let list;
+    if (ti + d <= 6) list = thisWeek.byDay[ti + d];
+    else {
+      if (!nextWeek) nextWeek = buildWeek(settings, courses, plans, addDays(thisMonday, 7));
+      list = nextWeek.byDay[ti + d - 7];
+    }
+    return list.filter((it) => !it.cancelled).sort((a, b) => a.slot.start - b.slot.start);
+  };
+
   /* ── 상단 바 ── */
   const bar = containerEl.createDiv({ cls: 'ctt-bar' });
-  if (plugin.mode === 'edit' || plugin.mode === 'plan') bar.addClass('is-editing'); // 무엇이든 바뀔 수 있는 상태라는 걸 바 전체로 알린다
+  if (mode === 'edit' || mode === 'plan') bar.addClass('is-editing'); // 무엇이든 바뀔 수 있는 상태라는 걸 바 전체로 알린다
 
-  if (plugin.mode === 'edit') {
+  if (mode === 'edit') {
     bar.createDiv({ cls: 'ctt-status is-edit', text: t('editHint') });
-  } else if (plugin.mode === 'plan') {
+  } else if (mode === 'plan') {
     const hint = bar.createDiv({ cls: 'ctt-status is-edit', text: t('planHint') });
     hint.setAttr('title', t('planHint'));
   } else {
-    paintStatus(bar.createDiv({ cls: 'ctt-status' }), byDay, courses.length);
-    paintNext(bar, byDay, now, ti);
+    paintStatus(bar.createDiv({ cls: 'ctt-status' }), dayItems(0), courses.length);
+    paintNext(bar, dayItems, now, ti);
   }
 
-  const todayOnly = plugin.settings.viewMode === 'today';
-  // 주간/오늘 — 아이콘이 붙어야 글자 하나짜리 라벨이 아니라 누르는 것으로 보인다
-  const mode = bar.createEl('button', { cls: 'ctt-mode' });
-  icon(mode.createSpan({ cls: 'ctt-mode-icon' }), todayOnly ? 'calendar-check' : 'calendar-days', '');
-  mode.createSpan({ text: todayOnly ? t('modeToday') : t('modeWeek') });
-  mode.setAttr('title', todayOnly ? t('toWeek') : t('toToday'));
-  mode.setAttr('aria-label', todayOnly ? t('toWeek') : t('toToday'));
-  mode.onclick = async () => {
-    plugin.settings.viewMode = todayOnly ? 'week' : 'today';
-    await plugin.saveSettings();
-  };
+  if (!embed) {
+    // 주간/오늘 — 아이콘이 붙어야 글자 하나짜리 라벨이 아니라 누르는 것으로 보인다
+    const modeBtn = bar.createEl('button', { cls: 'ctt-mode' });
+    icon(modeBtn.createSpan({ cls: 'ctt-mode-icon' }), todayOnly ? 'calendar-check' : 'calendar-days', '');
+    modeBtn.createSpan({ text: todayOnly ? t('modeToday') : t('modeWeek') });
+    modeBtn.setAttr('title', todayOnly ? t('toWeek') : t('toToday'));
+    modeBtn.setAttr('aria-label', todayOnly ? t('toWeek') : t('toToday'));
+    modeBtn.onclick = async () => {
+      settings.viewMode = todayOnly ? 'week' : 'today';
+      await plugin.saveSettings();
+    };
 
-  // 연필 — 시간표는 이 버튼을 켜야만 고칠 수 있다
-  const editBtn = bar.createEl('button', { cls: 'ctt-iconbtn' });
-  if (plugin.mode === 'edit') editBtn.addClass('is-active');
-  editBtn.setAttr('title', plugin.mode === 'edit' ? t('editOff') : t('editOn'));
-  editBtn.setAttr('aria-label', plugin.mode === 'edit' ? t('editOff') : t('editOn'));
-  editBtn.setAttr('aria-pressed', plugin.mode === 'edit' ? 'true' : 'false');
-  icon(editBtn, 'pencil', '✎');
-  editBtn.onclick = () => plugin.setMode('edit');
+    // 연필 — 시간표는 이 버튼을 켜야만 고칠 수 있다
+    const editBtn = bar.createEl('button', { cls: 'ctt-iconbtn' });
+    if (mode === 'edit') editBtn.addClass('is-active');
+    editBtn.setAttr('title', mode === 'edit' ? t('editOff') : t('editOn'));
+    editBtn.setAttr('aria-label', mode === 'edit' ? t('editOff') : t('editOn'));
+    editBtn.setAttr('aria-pressed', mode === 'edit' ? 'true' : 'false');
+    icon(editBtn, 'pencil', '✎');
+    editBtn.onclick = () => plugin.setMode('edit');
 
-  // 플러스 — 파일 없는 일정
-  const planBtn = bar.createEl('button', { cls: 'ctt-add' });
-  if (plugin.mode === 'plan') planBtn.addClass('is-active');
-  planBtn.setAttr('title', plugin.mode === 'plan' ? t('planOff') : t('planOn'));
-  planBtn.setAttr('aria-label', plugin.mode === 'plan' ? t('planOff') : t('planOn'));
-  planBtn.setAttr('aria-pressed', plugin.mode === 'plan' ? 'true' : 'false');
-  icon(planBtn, 'plus', '+');
-  planBtn.onclick = () => plugin.setMode('plan');
+    // 플러스 — 파일 없는 일정
+    const planBtn = bar.createEl('button', { cls: 'ctt-add' });
+    if (mode === 'plan') planBtn.addClass('is-active');
+    planBtn.setAttr('title', mode === 'plan' ? t('planOff') : t('planOn'));
+    planBtn.setAttr('aria-label', mode === 'plan' ? t('planOff') : t('planOn'));
+    planBtn.setAttr('aria-pressed', mode === 'plan' ? 'true' : 'false');
+    icon(planBtn, 'plus', '+');
+    planBtn.onclick = () => plugin.setMode('plan');
 
-  // 톱니 — 화면을 정하는 것들. 맨 오른쪽에 둔다.
-  const gear = bar.createEl('button', { cls: 'ctt-iconbtn' });
-  gear.setAttr('title', t('prefs'));
-  gear.setAttr('aria-label', t('prefs'));
-  icon(gear, 'settings', '⚙');
-  gear.onclick = () => new PrefsModal(plugin).open();
+    // 톱니 — 화면을 정하는 것들. 맨 오른쪽에 둔다.
+    const gear = bar.createEl('button', { cls: 'ctt-iconbtn' });
+    gear.setAttr('title', t('prefs'));
+    gear.setAttr('aria-label', t('prefs'));
+    icon(gear, 'settings', '⚙');
+    gear.onclick = () => new PrefsModal(plugin).open();
+  }
 
   /* ── 알림 한 줄 ── */
   if (res.error) {
@@ -2426,14 +3130,76 @@ function renderTimetable(plugin, containerEl) {
 
   // 아무것도 없으면 빈 격자 대신 무엇을 하면 되는지를 보여 준다.
   // 편집·일정 모드에서는 격자가 있어야 끌어서 만들 수 있으므로 그대로 그린다.
-  if (!courses.length && !plans.length && plugin.mode !== 'edit' && plugin.mode !== 'plan' && !res.error) {
-    renderEmpty(plugin, containerEl);
+  if (!courses.length && !plans.length && mode === 'view' && !res.error) {
+    if (embed) containerEl.createDiv({ cls: 'ctt-notice', text: t('noCourses') });
+    else renderEmpty(plugin, containerEl);
     return;
   }
 
-  /* ── 요일 · 시간 범위 ── */
-  const days = todayOnly ? [ti] : weekDays(byDay);
-  const { startHour, endHour } = hourRange(plugin, byDay, days);
+  /* ── 다가오는 시험·마감 ── */
+  if (mode === 'view' && opts.upcoming !== false) {
+    const horizon = upcomingHorizon(settings);
+    if (horizon > 0) {
+      renderUpcoming(plugin, containerEl, plugin.upcomingDeadlines(deadlines, horizon), {
+        limit: UPCOMING_ROWS,
+        open: !!nav.upcomingOpen,
+        onToggle: () => { nav.upcomingOpen = !nav.upcomingOpen; rerender(); },
+      });
+    }
+  }
+
+  /* ── 주 넘기기 ── */
+  if (!todayOnly) {
+    const go = (delta) => {
+      nav.weekOffset = delta === 0 ? 0 : offset + delta;
+      nav.navAt = Date.now();
+      rerender();
+    };
+    const wb = containerEl.createDiv({ cls: 'ctt-weekbar' });
+    if (offset) wb.addClass('is-away');
+
+    const prev = wb.createEl('button', { cls: 'ctt-weekbtn' });
+    prev.setAttr('title', t('weekPrev'));
+    prev.setAttr('aria-label', t('weekPrev'));
+    icon(prev, 'chevron-left', '‹');
+    prev.onclick = () => go(-1);
+
+    // 가운데 글자: 그 주의 날짜, 그리고 학기 시작일이 있으면 몇 주차인지
+    const parts = [shortMD(week.dates[0]) + ' – ' + shortMD(week.dates[6])];
+    const weekNo = weekNumber(settings.semesterStart, week.dates[0], settings.semesterEnd);
+    if (weekNo) parts.push(t('weekNo', { n: weekNo }));
+    if (courses.some((c) => c.slots.some((sl) => sl.parity))) parts.push(parityLabel(weekParity(settings, week.dates[0])));
+    const label = wb.createEl('button', { cls: 'ctt-weeklabel', text: parts.join(' · ') });
+    if (offset) {
+      label.setAttr('title', t('weekBack'));
+      label.onclick = () => go(0);
+    } else {
+      label.disabled = true;
+    }
+
+    const next = wb.createEl('button', { cls: 'ctt-weekbtn' });
+    next.setAttr('title', t('weekNext'));
+    next.setAttr('aria-label', t('weekNext'));
+    icon(next, 'chevron-right', '›');
+    next.onclick = () => go(1);
+
+    if (offset) {
+      const back = wb.createEl('button', { cls: 'ctt-weekback', text: t('weekBack') });
+      back.onclick = () => go(0);
+    }
+  }
+
+  if (week.ended) {
+    const end = parseYmd(settings.semesterEnd);
+    containerEl.createDiv({ cls: 'ctt-notice', text: t('semesterOver', { date: end ? ymd(end) : '' }) });
+  }
+
+  /* ── 요일 · 시간 범위 ──
+   * 보고 있는 주에 "보통의 한 주"를 겹쳐서 잰다. 격주 수업이나 일회성 일정 때문에
+   * 주를 넘길 때마다 격자 크기가 달라지면 눈이 자리를 잃는다. */
+  const span = todayOnly ? byDay : buildItems(courses, plans).map((list, d) => list.concat(byDay[d]));
+  const days = todayOnly ? [ti] : weekDays(span);
+  const { startHour, endHour } = hourRange(plugin, span, days);
 
   const colW = ((containerEl.clientWidth || 320) - 24) / days.length;
   const density = colW < COMPACT_COL_W ? 'compact' : 'full';
@@ -2450,10 +3216,34 @@ function renderTimetable(plugin, containerEl) {
   head.style.gridTemplateColumns = cols;
   head.createDiv({ cls: 'ctt-corner' });
   for (const d of days) {
-    const label = todayOnly ? todayHeadLabel(dateOfWeekday(d), d) : dayLabel(d);
     const h = head.createDiv({ cls: 'ctt-dayhead' });
-    h.createSpan({ cls: 'ctt-daypill', text: label });
-    if (d === ti) h.addClass('is-today');
+    const pill = h.createSpan({ cls: 'ctt-daypill' });
+    if (todayOnly) {
+      pill.setText(todayHeadLabel(week.dates[d], d));
+    } else {
+      // 주를 넘겨 다닐 수 있으니 요일 옆에 날짜를 작게 붙인다
+      pill.createSpan({ text: dayLabel(d) });
+      pill.createSpan({ cls: 'ctt-daynum', text: String(week.dates[d].getDate()) });
+    }
+    if (!offset && d === ti) h.addClass('is-today');
+  }
+
+  // 그 날의 시험·마감은 요일 머리 바로 아래에 얹는다. 시간 칸을 차지하지 않는다.
+  const dues = days.map((d) => {
+    const key = ymd(week.dates[d]);
+    return deadlines.filter((dl) => dl.date === key);
+  });
+  if (dues.some((list) => list.length)) {
+    head.createDiv({ cls: 'ctt-corner' });
+    for (const list of dues) {
+      const cell = head.createDiv({ cls: 'ctt-duecell' });
+      const shown = list.length > DUE_CHIPS + 1 ? DUE_CHIPS : list.length;
+      for (const dl of list.slice(0, shown)) renderDueChip(plugin, cell, dl);
+      if (list.length > shown) {
+        const more = cell.createDiv({ cls: 'ctt-due is-more', text: '+' + (list.length - shown) });
+        more.setAttr('title', list.slice(shown).map((dl) => dl.title + ' · ' + dl.course.name).join('\n'));
+      }
+    }
   }
 
   const avail = scroll.clientHeight - head.offsetHeight;
@@ -2477,10 +3267,11 @@ function renderTimetable(plugin, containerEl) {
   }
 
   const colEls = [];
-  const geo = { originMin, pxPerMin, colEls, density, hourH, ti, now };
+  // 다른 주를 볼 때는 "오늘"도 "지금"도 없다 (ti 가 어느 요일과도 안 맞게 둔다)
+  const geo = { originMin, pxPerMin, colEls, density, hourH, ti: offset ? -1 : ti, now, mode, week, embed };
 
   // 오늘 칸 밖으로도 지금 시각을 흐리게 이어 준다. 다른 요일의 같은 시각과 견주어 보기 쉽다.
-  const nowInRange = days.includes(ti) && now >= originMin && now <= endHour * 60;
+  const nowInRange = !offset && days.includes(ti) && now >= originMin && now <= endHour * 60;
   if (nowInRange && days.length > 1) {
     body.createDiv({ cls: 'ctt-now-row' }).style.top = (now - originMin) * pxPerMin + 'px';
   }
@@ -2488,7 +3279,7 @@ function renderTimetable(plugin, containerEl) {
   for (const d of days) {
     const col = body.createDiv({ cls: 'ctt-col' });
     colEls.push({ day: d, el: col });
-    if (d === ti && !todayOnly) col.addClass('is-today');
+    if (!offset && d === ti && !todayOnly) col.addClass('is-today');
 
     for (let h = startHour + 1; h < endHour; h++) {
       col.createDiv({ cls: 'ctt-hline' }).style.top = (h - startHour) * hourH + 'px';
@@ -2509,8 +3300,91 @@ function renderTimetable(plugin, containerEl) {
       col.createDiv({ cls: 'ctt-now' }).style.top = (now - originMin) * pxPerMin + 'px';
     }
 
-    if (plugin.mode !== 'view') attachDragCreate(plugin, col, d, geo);
+    if (mode !== 'view') attachDragCreate(plugin, col, d, geo);
   }
+}
+
+function upcomingHorizon(settings) {
+  const n = Number(settings.upcomingDays);
+  return Number.isFinite(n) && settings.upcomingDays !== '' && settings.upcomingDays != null ? Math.max(0, n) : 14;
+}
+
+/* ── 시험 · 마감 ── */
+
+function deadlineTip(dl) {
+  return [t(dl.kind === 'exam' ? 'examKind' : 'dueKind') + ' · ' + dl.course.name, dl.title, deadlineWhen(dl)].join('\n');
+}
+
+function deadlineMenu(plugin, dl) {
+  const menu = new Menu();
+  menu.addItem((i) => i.setTitle(t('deadlineOpen')).setIcon('file-text')
+    .onClick(() => plugin.openNote(dl.file, false)));
+  if (dl.own) {
+    menu.addItem((i) => i.setTitle(t('deadlineRemove')).setIcon('trash')
+      .onClick(() => new ConfirmModal(plugin.app, {
+        title: t('deadlineRemove'),
+        body: t('deadlineRemoveBody', { name: dl.title }),
+        cta: t('deadlineRemove'),
+        onConfirm: () => plugin.removeDeadline(dl),
+      }).open()));
+  } else {
+    menu.addItem((i) => i.setTitle(t('deadlineDone')).setIcon('check')
+      .onClick(() => plugin.removeDeadline(dl)));
+  }
+  return menu;
+}
+
+// 누르면 그 노트가 열리고, 우클릭하면 지우거나 끝났다고 적는다. 칩과 목록 줄이 같은 규칙을 쓴다.
+function bindDeadline(plugin, el, dl) {
+  el.setAttr('title', deadlineTip(dl));
+  el.setAttr('aria-label', deadlineTip(dl));
+  el.addEventListener('pointerdown', (e) => e.stopPropagation());
+  el.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    plugin.openNote(dl.file, e.ctrlKey || e.metaKey);
+  });
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    deadlineMenu(plugin, dl).showAtMouseEvent(e);
+  });
+}
+
+function renderDueChip(plugin, cell, dl) {
+  const chip = cell.createDiv({ cls: 'ctt-due' + (dl.kind === 'exam' ? ' is-exam' : ''), text: dl.title });
+  chip.style.setProperty('--ctt-color', dl.course.color);
+  bindDeadline(plugin, chip, dl);
+}
+
+// 며칠 남았는지 · 무엇인지 · 어느 수업인지. 가까운 것부터 몇 줄만 보이고 나머지는 접는다.
+function renderUpcoming(plugin, parent, list, o) {
+  if (!list.length) return null;
+  const today = today0();
+  const box = parent.createDiv({ cls: 'ctt-upcoming' });
+  const limit = o.limit || list.length;
+  const folded = list.length > limit + 1 && !o.open;
+  const rows = folded ? list.slice(0, limit) : list;
+
+  for (const dl of rows) {
+    const gap = dayDiff(parseYmd(dl.date), today);
+    const row = box.createDiv({ cls: 'ctt-up-row' + (dl.kind === 'exam' ? ' is-exam' : '') });
+    row.style.setProperty('--ctt-color', dl.course.color);
+    const badge = row.createSpan({ cls: 'ctt-up-day', text: dLabel(gap) });
+    if (gap <= 1) badge.addClass('is-soon');
+    row.createSpan({ cls: 'ctt-up-title', text: dl.title });
+    row.createSpan({ cls: 'ctt-up-meta', text: dl.course.name + ' · ' + deadlineWhen(dl) });
+    bindDeadline(plugin, row, dl);
+  }
+
+  if (list.length > limit + 1 && o.onToggle) {
+    const more = box.createEl('button', {
+      cls: 'ctt-up-more',
+      text: folded ? t('moreItems', { n: list.length - limit }) : t('showLess'),
+    });
+    more.onclick = (e) => { e.preventDefault(); e.stopPropagation(); o.onToggle(); };
+  }
+  return box;
 }
 
 // 처음 켠 사람이 보는 화면. 할 수 있는 일 두 가지와, 규칙 한 줄.
@@ -2545,6 +3419,18 @@ function renderEmpty(plugin, containerEl) {
   sample.onclick = () => plugin.createSample();
 
   card.createEl('pre', { cls: 'ctt-empty-code', text: t('emptyCode') });
+
+  // 처음 쓰다 막힌 사람이 말할 곳. 여기서 떠나는 사람의 이유가 가장 듣기 어렵다.
+  feedbackLink(card.createDiv({ cls: 'ctt-empty-feedback' }), t('emptyFeedback'), FEEDBACK_IDEA_URL);
+}
+
+// 바깥 링크. 옵시디언이 기본 브라우저로 연다. 플러그인이 요청을 보내는 것이 아니다.
+function feedbackLink(parent, text, url) {
+  const a = parent.createEl('a', { cls: 'ctt-feedback-link', text });
+  a.setAttr('href', url);
+  a.setAttr('target', '_blank');
+  a.setAttr('rel', 'noopener');
+  return a;
 }
 
 // 오늘 이미 끝난 것은 흐리게, 지금 진행 중인 것은 또렷하게. 지나간 만큼은 색으로 채운다.
@@ -2611,10 +3497,9 @@ function saveOnEnter(input, fn) {
   });
 }
 
-function paintStatus(el, byDay, courseCount) {
-  const ti = todayIndex();
+// todays: 오늘 실제로 있는 것들 (휴강·격주·지난 일회성은 이미 빠져 있다), 시작 시각 순
+function paintStatus(el, todays, courseCount) {
   const now = nowMinutes();
-  const todays = byDay[ti].slice().sort((a, b) => a.slot.start - b.slot.start);
 
   const label = (it) => (it.kind === 'plan' ? it.plan.title : it.course.name);
   const color = (it) => (it.kind === 'plan' ? (it.plan.color || PLAN_COLOR) : it.course.color);
@@ -2648,12 +3533,12 @@ function paintStatus(el, byDay, courseCount) {
 
 // 지금 진행 중이면 끝날 때까지, 아니면 다음 일정까지.
 // 오늘 것이 다 끝났으면 시간대에 맞는 인사를 대신 보여준다.
-function paintNext(bar, byDay, now, ti) {
-  const sorted = (d) => byDay[d].slice().sort((a, b) => a.slot.start - b.slot.start);
+// dayItems(d): 오늘부터 d 일 뒤에 실제로 있는 것들. 주가 바뀌어도 그 날짜의 것을 돌려준다.
+function paintNext(bar, dayItems, now, ti) {
   const isCourse = (it) => it.kind === 'course';
   const nameOf = (it) => (it.kind === 'plan' ? it.plan.title : it.course.name);
 
-  const todays = sorted(ti);
+  const todays = dayItems(0);
 
   // 지금 진행 중인 것이 있으면 그것이 끝날 때까지
   const live = todays.find((it) => now >= it.slot.start && now < it.slot.end);
@@ -2683,7 +3568,7 @@ function paintNext(bar, byDay, now, ti) {
   let best = null;
   for (let d = 0; d < 8 && !best; d++) {
     const day = (ti + d) % 7;
-    const items = sorted(day).filter((it) => (d === 0 ? it.slot.start > now : true));
+    const items = dayItems(d).filter((it) => (d === 0 ? it.slot.start > now : true));
     if (items.length) best = { item: items[0], gap: d * 1440 + items[0].slot.start - now, day };
   }
   if (!best) return;
@@ -2751,9 +3636,13 @@ function renderBlock(plugin, col, item, geo) {
   el.style.width = 'calc(' + w + '% - 3px)';
   el.style.setProperty('--ctt-color', course.color);
   if (item.conflicts.length) el.addClass('is-conflict');
-  markTiming(el, slot, geo);
+  // 휴강은 자리는 지키되 물러나 보인다. "지금 수업"으로 칠하지도 않는다.
+  if (item.cancelled) el.addClass('is-cancelled');
+  else markTiming(el, slot, geo);
 
-  const sub = (course.subtitle != null && course.subtitle !== '') ? course.subtitle : slot.location;
+  const sub = item.cancelled
+    ? t('cancelled')
+    : ((course.subtitle != null && course.subtitle !== '') ? course.subtitle : slot.location);
   const subCount = sub ? String(sub).split(/\r?\n/).length : 0;
   const fit = fitBlockText(el, height, course.name, subCount, geo);
   if (fit.nameLines) {
@@ -2762,7 +3651,8 @@ function renderBlock(plugin, col, item, geo) {
   }
   if (fit.subLines) addSubLines(el, sub, fit.subLines);
 
-  const tip = [course.name, dayLabel(slot.day) + ' ' + hhmm(slot.start) + '~' + hhmm(slot.end)];
+  const tip = [course.name, dayLabel(slot.day) + ' ' + hhmm(slot.start) + '~' + hhmm(slot.end)
+    + (slot.parity ? ' · ' + parityLabel(slot.parity) : '')];
   if (sub) tip.push(sub);
   tip.push(course.notesPath ? t('notesTo', { path: course.notesPath }) : t('notesUnset'));
   if (item.conflicts.length) {
@@ -2772,7 +3662,7 @@ function renderBlock(plugin, col, item, geo) {
   el.setAttr('aria-label', tip.join('\n'));
   el.setAttr('title', tip.join('\n'));
 
-  if (plugin.mode === 'edit') {
+  if (geo.mode === 'edit') {
     el.addClass('is-editable');
     el.createDiv({ cls: 'ctt-handle is-top' });
     el.createDiv({ cls: 'ctt-handle is-bottom' });
@@ -2783,25 +3673,30 @@ function renderBlock(plugin, col, item, geo) {
 
   el.addEventListener('click', (e) => {
     e.preventDefault();
-    if (plugin.mode === 'edit') {
+    if (geo.mode === 'edit') {
       if (el.dataset.dragged === '1') { delete el.dataset.dragged; return; }
       new CourseEditModal(plugin, { course }).open();
       return;
     }
-    if (plugin.mode === 'plan') return;
+    if (geo.mode === 'plan') return;
     // 좌클릭은 책장을 연다. 노트를 만드는 것은 되돌리기 어려우니 우클릭에서 고르게 한다.
-    plugin.openCourseView(course, e.ctrlKey || e.metaKey);
+    // 노트 안 시간표에서 눌렀다면, 읽던 노트를 밀어내지 않게 새 탭에 연다 (이미 열린 책장이 있으면 거기에).
+    const besideNote = geo.embed && !plugin.app.workspace.getLeavesOfType(FOLDER_VIEW_TYPE).length;
+    plugin.openCourseView(course, e.ctrlKey || e.metaKey || besideNote);
   });
 
   el.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    courseMenu(plugin, course, slot).showAtMouseEvent(e);
+    courseMenu(plugin, course, slot, item.date, item.cancelled).showAtMouseEvent(e);
   });
 }
 
-function courseMenu(plugin, course, slot) {
+// date: 그 칸이 가리키는 날짜 (보고 있는 주의 그 요일). 노트 이름과 휴강 표시가 이 날짜를 쓴다.
+function courseMenu(plugin, course, slot, date, cancelled) {
   const menu = new Menu();
+  const when = date || dateOfWeekday(slot.day);
+  const isToday = dayDiff(when, new Date()) === 0;
   const shortcuts = plugin.shortcutsOf(course);
 
   const fillShortcuts = (m) => {
@@ -2818,20 +3713,30 @@ function courseMenu(plugin, course, slot) {
 
   // 순서는 손이 가는 빈도대로: 노트 쓰기 → 자료 보기 → 바로가기 → 노트 규칙 → 수업 자체 고치기.
 
-  // 기본 템플릿이 '새 노트 생성하기'. 템플릿이 더 있으면 그 아래로 이름을 달아 편다.
+  // 첫 줄은 기본 템플릿의 필기 노트. 이름이 약속하는 날짜와 만들어지는 노트의 날짜가 같아야 한다:
+  // 오늘 수업이면 "오늘의", 다른 날의 칸이면 그 날짜를 적는다.
   const templates = plugin.settings.templates || [];
   const preferred = plugin.template(plugin.settings.defaultTemplate);
   if (preferred) {
-    menu.addItem((i) => i.setTitle(t('newNoteCreate')).setIcon('file-plus')
-      .onClick(() => plugin.createFromTemplate(course, slot, preferred.id)));
+    menu.addItem((i) => i.setTitle(isToday ? t('newNoteCreate') : t('newNoteFor', { date: dateLabel(when) })).setIcon('file-plus')
+      .onClick(() => plugin.createFromTemplate(course, slot, preferred.id, when)));
   }
   for (const tpl of templates) {
     if (preferred && tpl.id === preferred.id) continue;
     menu.addItem((i) => i.setTitle(t('newNote', { name: tpl.name })).setIcon('file-plus')
-      .onClick(() => plugin.createFromTemplate(course, slot, tpl.id)));
+      .onClick(() => plugin.createFromTemplate(course, slot, tpl.id, when)));
   }
   menu.addItem((i) => i.setTitle(t('openShelf')).setIcon('library')
     .onClick(() => plugin.openCourseView(course, false)));
+
+  // 이 날 하루의 일: 휴강, 그리고 시험·마감
+  menu.addSeparator();
+  menu.addItem((i) => i.setTitle(t(cancelled ? 'uncancelClass' : 'cancelClass', { date: dateLabel(when) }))
+    .setIcon(cancelled ? 'rotate-ccw' : 'calendar-x')
+    .onClick(() => plugin.toggleCancelled(course, slot, when)));
+  menu.addItem((i) => i.setTitle(t('addDeadline')).setIcon('flag')
+    .onClick(() => new DeadlineModal(plugin, { course, date: ymd(when) }).open()));
+  menu.addSeparator();
 
   // 마우스를 올리면 옆으로 펼쳐지는 창. 안 되는 버전에서는 평평하게 편다.
   let nested = false;
@@ -2903,7 +3808,7 @@ function renderPlanBlock(plugin, col, item, geo) {
   el.setAttr('aria-label', tip.join('\n'));
   el.setAttr('title', tip.join('\n'));
 
-  if (plugin.mode !== 'view') {
+  if (geo.mode !== 'view') {
     el.addClass('is-editable');
     el.createDiv({ cls: 'ctt-handle is-top' });
     el.createDiv({ cls: 'ctt-handle is-bottom' });
@@ -3006,7 +3911,10 @@ function attachBlockDrag(plugin, el, item, geo) {
       if (!moved()) return;
       el.dataset.dragged = '1';
       if (item.kind === 'plan') {
-        plugin.savePlan(Object.assign({}, item.plan, { day: cur.day, start: cur.start, end: cur.end }));
+        const next = { day: cur.day, start: cur.start, end: cur.end };
+        // 일회성 일정은 보고 있는 주의 그 요일로 날짜도 같이 옮긴다
+        if (item.plan.once && geo.week) next.date = ymd(geo.week.dates[cur.day]);
+        plugin.savePlan(Object.assign({}, item.plan, next));
       } else {
         plugin.moveSlot(item.course, item.slot, cur);
       }
@@ -3056,7 +3964,7 @@ function attachDragCreate(plugin, col, day, geo) {
       if (end - start < 15) end = start + 60;
       if (end > 24 * 60) { end = 24 * 60; start = Math.min(start, end - 30); }
 
-      if (plugin.mode === 'plan') new PlanEditModal(plugin, { prefill: { day, start, end } }).open();
+      if (geo.mode === 'plan') new PlanEditModal(plugin, { prefill: { day, start, end, date: geo.week ? ymd(geo.week.dates[day]) : '' } }).open();
       else new CourseEditModal(plugin, { prefill: { day, start, end } }).open();
     };
     document.addEventListener('pointermove', move);
@@ -3279,7 +4187,8 @@ function drawTimetableImage(plugin) {
       const sub = isPlan
         ? (it.plan.note || '')
         : ((it.course.subtitle != null && it.course.subtitle !== '') ? it.course.subtitle : it.slot.location);
-      const time = hhmm(it.slot.start) + '–' + hhmm(it.slot.end);
+      const time = hhmm(it.slot.start) + '–' + hhmm(it.slot.end)
+        + (it.slot.parity ? ' · ' + parityLabel(it.slot.parity) : '');
 
       let cy = y + 8;
       setFont(700, 13);
@@ -3324,6 +4233,104 @@ class TimetableView extends ItemView {
     if (super.onPaneMenu) super.onPaneMenu(menu, source);
     menu.addItem((i) => i.setTitle(t('exportSave')).setIcon('image-down').onClick(() => this.plugin.exportImage('save')));
     menu.addItem((i) => i.setTitle(t('exportCopy')).setIcon('copy').onClick(() => this.plugin.exportImage('copy')));
+  }
+}
+
+/* ────────────────────── 노트 안 시간표 (코드블록) ──────────────────────
+ *
+ *   ```class-timetable
+ *   view: week        week(기본) · today · upcoming
+ *   height: 420       격자의 높이(px)
+ *   days: 14          upcoming 일 때 며칠 앞까지
+ *   upcoming: false   시간표 위의 시험·마감 목록을 감춘다
+ *   ```
+ *
+ * 옵션은 전부 선택이다. 빈 블록이면 이번 주 시간표가 나온다.
+ */
+
+function parseEmbedOptions(source) {
+  const opts = { view: 'week', height: 420, days: null, upcoming: true };
+  for (const line of String(source || '').split(/\r?\n/)) {
+    const m = /^\s*([A-Za-z]+)\s*[:=]\s*(.*?)\s*$/.exec(line);
+    if (!m) continue;
+    const key = m[1].toLowerCase(), val = m[2].toLowerCase();
+    if (key === 'view' || key === 'mode') {
+      if (val === 'today' || val === 'day') opts.view = 'today';
+      else if (val === 'upcoming' || val === 'deadlines') opts.view = 'upcoming';
+      else opts.view = 'week';
+    } else if (key === 'height') {
+      const n = parseInt(val, 10);
+      if (Number.isFinite(n)) opts.height = Math.max(160, Math.min(1600, n));
+    } else if (key === 'days') {
+      const n = parseInt(val, 10);
+      if (Number.isFinite(n)) opts.days = Math.max(1, Math.min(366, n));
+    } else if (key === 'upcoming') {
+      opts.upcoming = !/^(false|no|off|0)$/.test(val);
+    }
+  }
+  return opts;
+}
+
+class TimetableEmbed extends MarkdownRenderChild {
+  constructor(containerEl, plugin, options) {
+    super(containerEl);
+    this.containerEl = containerEl;
+    this.plugin = plugin;
+    this.options = options;
+    this.state = { weekOffset: 0, navAt: 0, upcomingOpen: false }; // 블록마다 따로 넘긴다
+    this.lastWidth = -1;
+  }
+
+  onload() {
+    this.plugin.embeds.add(this);
+    this.host = this.containerEl.createDiv({ cls: 'ctt-embed' });
+    // 편집 화면(라이브 프리뷰)에서 블록 안을 눌러도 코드가 펼쳐지지 않게 한다
+    this.host.addEventListener('mousedown', (e) => e.stopPropagation());
+    this.render();
+
+    // 코드블록은 문서에 붙기 전에 그려진다. 폭을 알게 된 뒤, 그리고 폭이 바뀔 때 다시 그린다.
+    if (typeof ResizeObserver === 'function') {
+      this.observer = new ResizeObserver(() => {
+        const w = Math.round(this.host.clientWidth);
+        if (!w || w === this.lastWidth) return;
+        this.lastWidth = w;
+        this.render();
+      });
+      this.observer.observe(this.host);
+    }
+  }
+
+  onunload() {
+    this.plugin.embeds.delete(this);
+    if (this.observer) this.observer.disconnect();
+  }
+
+  render() {
+    if (!this.host) return;
+    const o = this.options;
+    const plugin = this.plugin;
+
+    if (o.view === 'upcoming') {
+      this.host.empty();
+      this.host.addClass('ctt-root');
+      this.host.addClass('is-embed');
+      this.host.addClass('is-list');
+      const days = o.days != null ? o.days : (upcomingHorizon(plugin.settings) || 14);
+      const list = plugin.upcomingDeadlines(plugin.getCourses().deadlines, days);
+      if (!renderUpcoming(plugin, this.host, list, {})) {
+        this.host.createDiv({ cls: 'ctt-notice', text: t('noUpcoming') });
+      }
+      return;
+    }
+
+    this.host.style.height = o.height + 'px';
+    renderTimetable(plugin, this.host, {
+      embed: true,
+      viewMode: o.view,
+      upcoming: o.upcoming,
+      state: this.state,
+      rerender: () => this.render(),
+    });
   }
 }
 
@@ -3452,7 +4459,7 @@ class FolderView extends ItemView {
       const card = grid.createDiv({ cls: 'ctf-card is-course' });
       card.style.setProperty('--ctf-color', c.color);
       card.createDiv({ cls: 'ctf-card-name', text: c.name });
-      const session = nextSession(c);
+      const session = nextSession(this.plugin.settings, c);
       if (session) card.createDiv({ cls: 'ctf-session' + (session.live ? ' is-live' : ''), text: session.label });
       card.createDiv({ cls: 'ctf-card-sub', text: scheduleSummary(c) });
       card.onclick = () => { this.courseKey = c.key; this.go(''); };
@@ -3479,13 +4486,30 @@ class FolderView extends ItemView {
 
     // 언제 하는 수업인지, 그리고 지금 기준으로 다음은 언제인지
     const metaRow = text.createDiv({ cls: 'ctf-metarow' });
-    const session = nextSession(course);
+    const session = nextSession(this.plugin.settings, course);
     if (session) {
       const pill = metaRow.createSpan({ cls: 'ctf-session' + (session.live ? ' is-live' : '') });
       pill.setText(session.label);
     }
     const summary = scheduleSummary(course);
     if (summary) metaRow.createSpan({ cls: 'ctf-meta', text: summary });
+
+    // 이 수업의 시험·마감. 지난 것은 빼고 가까운 순으로. 맨 위에서만 보인다.
+    if (!this.rel) {
+      const today = today0();
+      const mine = (this.plugin.getCourses().deadlines || [])
+        .filter((dl) => dl.course.key === course.key && dayDiff(parseYmd(dl.date), today) >= 0);
+      const row = text.createDiv({ cls: 'ctf-dues' });
+      for (const dl of mine.slice(0, 6)) {
+        const chip = row.createEl('button', { cls: 'ctf-due' + (dl.kind === 'exam' ? ' is-exam' : '') });
+        chip.createSpan({ cls: 'ctf-due-day', text: dLabel(dayDiff(parseYmd(dl.date), today)) });
+        chip.createSpan({ cls: 'ctf-due-title', text: dl.title });
+        bindDeadline(this.plugin, chip, dl);
+      }
+      if (mine.length > 6) row.createSpan({ cls: 'ctf-due-more', text: t('moreItems', { n: mine.length - 6 }) });
+      const add = row.createEl('button', { cls: 'ctf-due is-add', text: t('addDeadlineShort') });
+      add.onclick = () => new DeadlineModal(this.plugin, { course }).open();
+    }
 
     const scs = this.plugin.shortcutsOf(course);
     if (scs.length) {
@@ -3530,8 +4554,8 @@ class FolderView extends ItemView {
       const today = bar.createEl('button', { cls: 'ctf-toolbtn is-primary', text: t('todayNote') });
       today.setAttr('title', t('todayNoteHint', { name: course.name }));
       today.onclick = () => {
-        const hit = session && session.slot.day === todayIndex() ? session.slot : null;
-        this.plugin.createFromTemplate(course, hit);
+        const hit = session && dayDiff(session.date, new Date()) === 0 ? session.slot : null;
+        this.plugin.createFromTemplate(course, hit, undefined, new Date());
       };
     }
 
@@ -3938,6 +4962,21 @@ class PlanEditModal extends Modal {
       note: (p && p.note) || '',
       once: !!(p && p.once),
     };
+    // 다른 주를 보다가 그 칸을 끌어 만들었으면, "이번 한 번만"은 그 주의 그 요일이다
+    const anchor = parseYmd((pre && pre.date) || (p && p.once ? p.date : ''));
+    this.weekMonday = anchor && dayDiff(mondayOf(anchor), mondayOf(new Date())) !== 0 ? mondayOf(anchor) : null;
+  }
+
+  // 일회성 일정이 가리키는 날짜. 고치는 중인 일정은 요일을 안 바꿨으면 원래 날짜를 지킨다.
+  onceDate() {
+    const p = this.opts.plan;
+    const e = parseTime(this.state.end);
+    if (p && p.once && p.date && weekdayOfDate(p.date) === this.state.day && !planExpired(p)) return p.date;
+    if (this.weekMonday) {
+      const d = addDays(this.weekMonday, this.state.day);
+      if (dayDiff(d, new Date()) >= 0) return ymd(d);
+    }
+    return nextDateOf(this.state.day, e == null ? 0 : e);
   }
 
   onOpen() {
@@ -3995,8 +5034,7 @@ class PlanEditModal extends Modal {
     const repeatHint = repeatField.createDiv({ cls: 'ctt-field-hint' });
     const paintHint = () => {
       if (!this.state.once) { repeatHint.setText(''); return; }
-      const e = parseTime(this.state.end);
-      repeatHint.setText(t('planOnceHint', { date: nextDateOf(this.state.day, e == null ? 0 : e) }));
+      repeatHint.setText(t('planOnceHint', { date: this.onceDate() }));
     };
     repeat.onchange = () => { this.state.once = repeat.value === 'once'; paintHint(); };
     day.onchange = () => { this.state.day = Number(day.value); paintHint(); };
@@ -4045,7 +5083,7 @@ class PlanEditModal extends Modal {
       color: this.state.color,
       note: this.state.note.trim(),
       once: this.state.once,
-      date: this.opts.plan ? this.opts.plan.date || '' : '',
+      date: this.state.once ? this.onceDate() : '',
     });
     this.close();
   }
@@ -4131,12 +5169,12 @@ class CourseEditModal extends Modal {
     this.color = c && c.hasColor ? c.color : ''; // 빈 값 = 자동
 
     if (c) {
-      this.rows = c.slots.map((s) => ({ day: s.day, start: hhmm(s.start), end: hhmm(s.end), location: s.location }));
+      this.rows = c.slots.map((s) => ({ day: s.day, start: hhmm(s.start), end: hhmm(s.end), location: s.location, parity: s.parity || '' }));
     } else if (this.opts.prefill) {
       const p = this.opts.prefill;
-      this.rows = [{ day: p.day, start: hhmm(p.start), end: hhmm(p.end), location: '' }];
+      this.rows = [{ day: p.day, start: hhmm(p.start), end: hhmm(p.end), location: '', parity: '' }];
     } else {
-      this.rows = [{ day: Math.min(todayIndex(), 4), start: '09:00', end: '10:15', location: '' }];
+      this.rows = [{ day: Math.min(todayIndex(), 4), start: '09:00', end: '10:15', location: '', parity: '' }];
     }
   }
 
@@ -4225,6 +5263,17 @@ class CourseEditModal extends Modal {
     const timeField = el.createDiv({ cls: 'ctt-field' });
     timeField.createDiv({ cls: 'ctt-field-label', text: t('time') });
 
+    // 격주를 고르면 이번 주가 어느 쪽인지 알려 준다. 안 그러면 홀짝을 거꾸로 고르기 쉽다.
+    let parityHint = null;
+    const paintParity = () => {
+      if (!parityHint) return;
+      if (!this.rows.some((x) => x.parity)) { parityHint.setText(''); return; }
+      const st = this.plugin.settings;
+      const n = weekIndex(st.semesterStart, new Date());
+      const label = t(weekParity(st, new Date()) === 'odd' ? 'thisWeekOdd' : 'thisWeekEven');
+      parityHint.setText(n != null && n > 0 ? t('parityHint', { n, p: label }) : t('parityHintNoStart', { p: label }));
+    };
+
     this.rows.forEach((row, idx) => {
       const r = timeField.createDiv({ cls: 'ctt-timerow' });
 
@@ -4246,6 +5295,15 @@ class CourseEditModal extends Modal {
       end.oninput = () => { row.end = end.value; };
       saveOnEnter(end, () => this.trySave());
 
+      // 매주 · 홀수 주 · 짝수 주
+      const every = r.createEl('select', { cls: 'dropdown ctt-parity' });
+      for (const [v, text] of [['', t('repeatEvery')], ['odd', t('repeatOdd')], ['even', t('repeatEven')]]) {
+        const o = every.createEl('option', { text });
+        o.value = v;
+        if (v === (row.parity || '')) o.selected = true;
+      }
+      every.onchange = () => { row.parity = every.value; paintParity(); };
+
       const spacer = r.createDiv({ cls: 'ctt-rowspacer' });
       spacer.setText('');
 
@@ -4260,9 +5318,11 @@ class CourseEditModal extends Modal {
 
     timeField.createEl('button', { cls: 'ctt-addrow', text: t('addTime') }).onclick = () => {
       const last = this.rows[this.rows.length - 1];
-      this.rows.push({ day: (last.day + 2) % 7, start: last.start, end: last.end, location: last.location });
+      this.rows.push({ day: (last.day + 2) % 7, start: last.start, end: last.end, location: last.location, parity: last.parity || '' });
       this.draw();
     };
+    parityHint = timeField.createDiv({ cls: 'ctt-field-hint' });
+    paintParity();
 
     const buttons = el.createDiv({ cls: 'ctt-modal-buttons' });
     // 일정 모달과 같은 자리에 같은 모양으로. 우클릭 메뉴에만 있으면 찾기 어렵다.
@@ -4293,7 +5353,7 @@ class CourseEditModal extends Modal {
         return null;
       }
       // 강의실 칸은 없앴지만 이미 적혀 있던 값은 지우지 않는다
-      slots.push({ day: row.day, start, end, location: (row.location || '').trim() });
+      slots.push({ day: row.day, start, end, location: (row.location || '').trim(), parity: row.parity || '' });
     }
     return slots;
   }
@@ -4348,6 +5408,114 @@ class CourseEditModal extends Modal {
       }
     }
     await run();
+  }
+
+  onClose() { this.contentEl.empty(); }
+}
+
+/* ── 시험 · 마감: 수업 노트의 frontmatter 에 한 줄로 적는다 ── */
+
+class DeadlineModal extends Modal {
+  constructor(plugin, opts) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.opts = opts || {};
+    const hit = this.opts.course ? null : plugin.classNow();
+    this.courseKey = this.opts.course ? this.opts.course.key : (hit ? hit.course.key : '');
+    this.state = { kind: 'exam', title: '', date: this.opts.date || ymd(new Date()), time: '' };
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.addClass('ctt-modal');
+    contentEl.createEl('h3', { text: t('deadlineTitle') });
+    const el = contentEl.createDiv();
+
+    const courses = this.plugin.getCourses().courses;
+    if (!courses.length) {
+      el.createEl('p', { text: t('noCourses') });
+      el.createDiv({ cls: 'ctt-modal-buttons' })
+        .createEl('button', { cls: 'mod-cta', text: t('close') }).onclick = () => this.close();
+      return;
+    }
+    if (!courses.some((c) => c.key === this.courseKey)) this.courseKey = courses[0].key;
+
+    const courseField = el.createDiv({ cls: 'ctt-field' });
+    courseField.createDiv({ cls: 'ctt-field-label', text: t('course') });
+    const pick = courseField.createEl('select', { cls: 'ctt-select' });
+    for (const c of courses) {
+      const o = pick.createEl('option', { text: c.name });
+      o.value = c.key;
+      if (c.key === this.courseKey) o.selected = true;
+    }
+    const hint = courseField.createDiv({ cls: 'ctt-field-hint' });
+    const paintHint = () => {
+      const c = courses.find((x) => x.key === this.courseKey);
+      hint.setText(c ? t('deadlineHint', { path: c.file.path }) : '');
+    };
+    pick.onchange = () => { this.courseKey = pick.value; paintHint(); };
+    paintHint();
+
+    const typeField = el.createDiv({ cls: 'ctt-field' });
+    typeField.createDiv({ cls: 'ctt-field-label', text: t('deadlineType') });
+    const type = typeField.createEl('select', { cls: 'ctt-select' });
+    for (const [v, text] of [['exam', t('examKind')], ['due', t('dueKind')]]) {
+      const o = type.createEl('option', { text });
+      o.value = v;
+      if (v === this.state.kind) o.selected = true;
+    }
+    type.onchange = () => { this.state.kind = type.value; };
+
+    const nameField = el.createDiv({ cls: 'ctt-field' });
+    nameField.createDiv({ cls: 'ctt-field-label', text: t('deadlineName') });
+    const name = nameField.createEl('input', { type: 'text' });
+    name.placeholder = t('deadlineNamePh');
+    name.oninput = () => { this.state.title = name.value; };
+    saveOnEnter(name, () => this.trySave());
+
+    const whenField = el.createDiv({ cls: 'ctt-field' });
+    whenField.createDiv({ cls: 'ctt-field-label', text: t('deadlineDate') + ' · ' + t('deadlineTime') });
+    const row = whenField.createDiv({ cls: 'ctt-timerow' });
+    // 날짜는 기기의 날짜 고르개를 쓴다. 폰에서 YYYY-MM-DD 를 손으로 치게 하지 않는다.
+    const date = row.createEl('input', { type: 'date', cls: 'ctt-date-input' });
+    date.value = this.state.date;
+    date.oninput = () => { this.state.date = date.value; };
+    const time = row.createEl('input', { type: 'text', cls: 'ctt-time-input ctt-deadline-time' });
+    time.placeholder = '13:00';
+    time.oninput = () => { this.state.time = time.value; };
+    saveOnEnter(time, () => this.trySave());
+
+    const buttons = el.createDiv({ cls: 'ctt-modal-buttons' });
+    buttons.createEl('button', { cls: 'mod-cta', text: t('save') }).onclick = () => this.trySave();
+    buttons.createEl('button', { text: t('cancel') }).onclick = () => this.close();
+
+    window.setTimeout(() => name.focus(), 0);
+  }
+
+  async trySave() {
+    const course = this.plugin.courseByKey(this.courseKey);
+    if (!course) return;
+
+    const d = parseYmd(this.state.date);
+    if (!d) { failNotice('errDate', { v: this.state.date || '—' }); return; }
+
+    // 시각은 "13:00" 이나 "13:00-15:00". 비우면 그날 하루.
+    let time = null, end = null;
+    const raw = this.state.time.trim();
+    if (raw) {
+      const parts = raw.split(/\s*[-~–—]\s*/);
+      time = parseTime(parts[0]);
+      end = parts.length > 1 ? parseTime(parts[1]) : null;
+      if (time === null || parts.length > 2 || (parts.length > 1 && (end === null || end <= time))) {
+        failNotice('errTime', { v: raw });
+        return;
+      }
+    }
+
+    // 줄바꿈이 들어가면 한 줄 표기가 깨진다
+    const title = this.state.title.replace(/\s+/g, ' ').trim();
+    this.close();
+    await this.plugin.addDeadline(course, this.state.kind, { date: ymd(d), time, end, title });
   }
 
   onClose() { this.contentEl.empty(); }
@@ -4420,6 +5588,21 @@ class PrefsModal extends Modal {
 
     range.createDiv({ cls: 'ctt-field-hint', text: t('hourRangeHint') });
 
+    /* 다가오는 시험·마감을 며칠 앞까지 보여 줄지 */
+    const up = el.createDiv({ cls: 'ctt-field' });
+    up.createDiv({ cls: 'ctt-field-label', text: t('upcoming') });
+    const upSel = up.createEl('select', { cls: 'ctt-select' });
+    const horizon = upcomingHorizon(s);
+    const choices = [0, 7, 14, 30];
+    if (!choices.includes(horizon)) choices.push(horizon); // data.json 에 손으로 적은 값도 고른 값으로 보인다
+    for (const n of choices.sort((a, b) => a - b)) {
+      const o = upSel.createEl('option', { text: n ? t('upcomingN', { n }) : t('upcomingOff') });
+      o.value = String(n);
+    }
+    upSel.value = String(horizon);
+    upSel.onchange = async () => { s.upcomingDays = Number(upSel.value); await this.plugin.saveSettings(); };
+    up.createDiv({ cls: 'ctt-field-hint', text: t('upcomingHint') });
+
     /* 공유 — 보이는 시간 범위가 그림에도 그대로 쓰이므로 그 바로 아래에 둔다 */
     const share = el.createDiv({ cls: 'ctt-field' });
     share.createDiv({ cls: 'ctt-field-label', text: t('share') });
@@ -4433,6 +5616,11 @@ class PrefsModal extends Modal {
     copyBtn.createSpan({ text: t('exportCopy') });
     copyBtn.onclick = () => { this.close(); this.plugin.exportImage('copy'); };
     share.createDiv({ cls: 'ctt-field-hint', text: t('exportHint') });
+
+    const fb = el.createDiv({ cls: 'ctt-field ctt-feedback-row' });
+    feedbackLink(fb, t('feedbackBug'), FEEDBACK_BUG_URL);
+    fb.createSpan({ cls: 'ctt-feedback-sep', text: '·' });
+    feedbackLink(fb, t('feedbackIdea'), FEEDBACK_IDEA_URL);
 
     const buttons = el.createDiv({ cls: 'ctt-modal-buttons' });
     buttons.createEl('button', { text: t('moreSettings') }).onclick = () => {
@@ -4670,7 +5858,13 @@ class TimetableSettingTab extends PluginSettingTab {
       .setName(t('semesterStart'))
       .setDesc(t('semesterStartDesc'))
       .addText((x) => x.setPlaceholder('YYYY-MM-DD').setValue(s.semesterStart)
-        .onChange((v) => { s.semesterStart = v; save(); }));
+        .onChange((v) => { s.semesterStart = v.trim(); save(); }));
+
+    new Setting(containerEl)
+      .setName(t('semesterEnd'))
+      .setDesc(t('semesterEndDesc'))
+      .addText((x) => x.setPlaceholder('YYYY-MM-DD').setValue(s.semesterEnd || '')
+        .onChange((v) => { s.semesterEnd = v.trim(); save(); }));
 
     new Setting(containerEl)
       .setName(t('templateSetting'))
@@ -4681,6 +5875,18 @@ class TimetableSettingTab extends PluginSettingTab {
     help.createDiv({ cls: 'ctt-help-title', text: t('helpTitle') });
     help.createEl('pre', { text: t('helpExample').join('\n') });
     help.createEl('p', { cls: 'ctt-help-note', text: t('helpNote') });
+
+    const more = containerEl.createDiv({ cls: 'ctt-help' });
+    more.createDiv({ cls: 'ctt-help-title', text: t('helpMoreTitle') });
+    more.createEl('pre', { text: t('helpMore').join('\n') });
+    more.createEl('p', { cls: 'ctt-help-note', text: t('helpMoreNote') });
+
+    // 의견 보내기 — 맨 아래. 쓰다가 아쉬운 것이 생겼을 때 찾아오는 자리다.
+    new Setting(containerEl)
+      .setName(t('feedback'))
+      .setDesc(t('feedbackDesc'))
+      .addButton((b) => b.setButtonText(t('feedbackBug')).onClick(() => window.open(FEEDBACK_BUG_URL)))
+      .addButton((b) => b.setButtonText(t('feedbackIdea')).onClick(() => window.open(FEEDBACK_IDEA_URL)));
   }
 }
 

@@ -1,0 +1,47 @@
+name: Bug report
+description: Something is wrong, broken, or not where you expected it
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Short is fine — one sentence and a screenshot often does it.
+        한국어로 적으셔도 됩니다.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you saw, and what you expected to see instead.
+    validations:
+      required: true
+  - type: textarea
+    id: frontmatter
+    attributes:
+      label: The frontmatter of the class (if it is about one class)
+      description: Copy the block between the two `---` lines. Rename anything you would rather not share.
+      render: yaml
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where are you using Obsidian?
+      multiple: true
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - iPhone
+        - iPad
+        - Android
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Plugin version
+      description: Settings → Community plugins → Class Timetable
+      placeholder: "1.2.0"
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Screenshots, other plugins that might be involved, the theme you use.

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions, setups and half-formed ideas
+    url: https://github.com/elliott-json-park/obsidian-class-timetable/discussions
+    about: Not sure it is a bug? Want to show how you lay out your semester? Start a discussion instead.

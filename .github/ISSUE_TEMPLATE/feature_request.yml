@@ -1,0 +1,34 @@
+name: Feature request
+description: Something you wish the timetable could do
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tell me about your week, not about the feature. "My labs only meet every other week" is more useful than "add a recurrence option".
+        한국어로 적으셔도 됩니다.
+  - type: textarea
+    id: situation
+    attributes:
+      label: What are you trying to do?
+      description: The situation at school or work that the timetable does not handle yet.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: How do you get around it today?
+      description: Another app, a paper planner, a workaround inside Obsidian — or you just go without.
+  - type: textarea
+    id: idea
+    attributes:
+      label: An idea for how it could work (optional)
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where would you use it most?
+      multiple: true
+      options:
+        - Desktop
+        - Phone
+        - Tablet

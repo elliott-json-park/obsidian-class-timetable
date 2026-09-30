@@ -25,7 +25,13 @@ Or install **Class Timetable** from Settings → Community plugins.
 
 ![The shelf view for one course, in class now — Today's note, its shelves and notes](docs/shelf.png)
 
-**Start today's note in one step.** Right-click a class → *Create a note*, press *Today's note* on its shelves, or bind a hotkey to *Create today's note for the current class*. The file name and body come from a template you define (`{{course}}`, `{{date:MMDD}}`, `{{dow}}`, `{{week}}` …). If today's note already exists, it opens instead of being overwritten.
+**Start today's note in one step.** Right-click a class → *Open today's note*, press *Today's note* on its shelves, or bind a hotkey to *Create today's note for the current class*. The file name and body come from a template you define (`{{course}}`, `{{date:MMDD}}`, `{{dow}}`, `{{week}}` …). If today's note already exists, it opens instead of being overwritten. Right-click a class on another day and the menu names that day instead — *Open the note for 10/5 (Mon)* — and that is the date the note gets.
+
+**Every week is not the same week.** The arrows above the grid step through weeks; the label shows the dates and, once you set a semester start, the week number. Right-click a class to mark that one day as **cancelled** — it stays in place, struck through, and stops counting as your next class. A class that only meets every other week takes `odd` or `even`. Set a **semester end** and the classes stop being drawn after it.
+
+**Exams and deadlines, where you will see them.** Write them under `exam:` and `due:` in the class note, or let an assignment note carry its own `due:` date. They sit under the day they fall on, and the next ones are listed above the grid with the days left. Click one to open its note.
+
+**The timetable inside a note.** A `class-timetable` code block draws the same week in a daily note or a dashboard — or just the list of what is coming up.
 
 **See where you are in the day.** The class in progress is outlined and fills up as it goes; classes already over today step back. The shelves say whether you're in class now or when the next session is.
 
@@ -61,8 +67,52 @@ Everything else is optional:
 | `shortcuts` | Files pinned to the top of the right-click menu |
 | `color` | Block color. Omit it and one is picked from the palette |
 | `semester` | Filter, so last term's classes can stay in the vault |
+| `exam` | Exams, one per line: `2026-10-22 13:00-15:00 Midterm` |
+| `due` | Assignment deadlines, one per line: `2026-10-15 Problem set 1` |
+| `cancelled` | Dates this class does not meet: `2026-10-05` |
 
 Times are read generously: `월`, `월요일`, `mon`, `m`, `月`, `一` all work, as do `9`, `9:00`, `09:00` and `0900`.
+
+## Biweekly classes, cancelled days, exams and deadlines
+
+```yaml
+---
+schedule:
+  - mon 10:30-12:00 @ Room 301
+  - wed 10:30-12:00 odd @ Lab 2     # odd weeks only; `even` for the others
+exam:
+  - 2026-10-22 13:00-15:00 Midterm
+due:
+  - 2026-10-15 Problem set 1
+cancelled:
+  - 2026-10-05
+---
+```
+
+You rarely type any of this. *Edit class* has an every week / odd weeks / even weeks choice per time, and the right-click menu has *Mark 10/5 (Mon) as cancelled* and *Add an exam or deadline…*.
+
+- **Odd and even weeks** are counted from the *Semester start* in Settings — that week is week 1. The edit window tells you which kind this week is, so you do not pick the wrong one.
+- **A date is enough** for an exam or a deadline. A time (`13:00` or `13:00-15:00`) and a name are read if they are there.
+- **An assignment note can carry its own deadline.** A note with `due: 2026-10-15` in its frontmatter, anywhere inside a course's folder, shows up as that course's deadline under the note's name. Add `done: true` and it drops off the list. If the course is a plain note rather than a folder note, name the course in the assignment: `course: Linear Algebra`.
+- **Upcoming** lists the next 14 days above the grid. The gear changes that to 7 or 30 days, or hides it.
+
+## The timetable inside a note
+
+````markdown
+```class-timetable
+```
+````
+
+An empty block draws this week. It is the same timetable as the sidebar, read-only: step through weeks, click a class for its shelves, click a deadline for its note. Options go inside the block, one per line:
+
+| Option | |
+|---|---|
+| `view: week` | The week (default). `today` for one day, `upcoming` for just the list of exams and deadlines |
+| `height: 420` | Height of the block in pixels |
+| `days: 30` | With `view: upcoming`, how far ahead to look |
+| `upcoming: false` | Leave the list of exams and deadlines out of the week view |
+
+*Insert timetable into note* and *Insert upcoming exams and deadlines into note* in the command palette write the block for you.
 
 ## Getting started
 
@@ -76,7 +126,7 @@ The timetable opens in the right sidebar the first time the plugin is enabled. A
 2. Pick the note or folder the class belongs to. The times are written into that note's frontmatter.
 3. Click a class block to open its shelves; right-click for today's note, shortcuts and settings.
 
-In Settings you can point the plugin at one or more **course folders** so it only scans those, set the current semester, and edit templates. The **gear** in the timetable's top bar holds the display options: language and the hours the grid shows. The timetable follows Obsidian's light or dark theme.
+In Settings you can point the plugin at one or more **course folders** so it only scans those, set the current semester with its start and end dates, and edit templates. The **gear** in the timetable's top bar holds the display options: language and the hours the grid shows. The timetable follows Obsidian's light or dark theme.
 
 ## Commands
 
@@ -86,6 +136,9 @@ In Settings you can point the plugin at one or more **course folders** so it onl
 | Create today's note for the current class | The class in progress — or the nearest one today — gets today's note from your template |
 | Open shelves of the current class | Same class, its shelves |
 | Add class · Add plan | Open the editor directly |
+| Next week · Previous week · This week | Step the timetable through weeks |
+| Add an exam or deadline | For the class in progress, or any class you pick |
+| Insert timetable into note · Insert upcoming exams and deadlines into note | Write the code block at the cursor |
 | Save timetable as PNG · Copy timetable image | The whole week as an image, in your current theme |
 | Create a sample timetable · Remove the sample timetable | Look around first, clean up in one step |
 
@@ -94,13 +147,15 @@ In Settings you can point the plugin at one or more **course folders** so it onl
 | | |
 |---|---|
 | Left click | Open the class's shelves (`Ctrl`/`Cmd` for a new tab) |
-| Right click | Menu — today's note, shelves, shortcuts, then editing the class |
+| Right click | Menu — today's note, shelves, cancelling that day, exams and deadlines, shortcuts, then editing the class |
 | Pencil → drag | Move a class, or drag its edge to resize. 15-minute steps |
 | Plus → drag | Add a plan on the grid, with no file behind it |
 
 Finer times than 15 minutes are typed in by hand, on purpose — a shaky drag should not produce a class that starts at 11:47.
 
-When a change would overlap another class or plan, a confirmation appears **before** anything is written, listing everything it collides with. Overlaps found while scanning (someone else's sync, hand-edited YAML) are only outlined in red — no dialog interrupts your typing.
+Dragging a class changes its weekly time, whichever week you are looking at. A one-time plan belongs to the week you drew it in.
+
+When a change would overlap another class or plan, a confirmation appears **before** anything is written, listing everything it collides with. An odd-week class and an even-week class at the same hour do not collide. Overlaps found while scanning (someone else's sync, hand-edited YAML) are only outlined in red — no dialog interrupts your typing.
 
 Mouse, touch and pen are all handled, so editing works the same on a tablet.
 
@@ -119,11 +174,15 @@ handled for touch and pen as well as the mouse.
 
 ## Notes on data
 
-Classes live in your notes. Plans live in the plugin's `data.json`, since they have no file of their own — which also means they don't sync between devices the way your notes do.
+Classes live in your notes — and so do their exams, deadlines and cancelled days. Plans live in the plugin's `data.json`, since they have no file of their own — which also means they don't sync between devices the way your notes do.
 
 Nothing is ever deleted without asking. *Remove from timetable* clears only the `schedule:` field; the note and its folder stay.
 
 The plugin makes no network requests and collects nothing. It only writes to the clipboard when you press *Copy image*, and never reads from it.
+
+## Feedback
+
+Something broken, or something your semester needs that is not here? [Report a bug](https://github.com/elliott-json-park/obsidian-class-timetable/issues/new?template=bug_report.yml) or [suggest a feature](https://github.com/elliott-json-park/obsidian-class-timetable/issues/new?template=feature_request.yml) — the same two links are at the bottom of the plugin's settings. Questions and setups go in [Discussions](https://github.com/elliott-json-park/obsidian-class-timetable/discussions). 한국어로 적으셔도 됩니다.
 
 ## 한국어
 
@@ -141,6 +200,28 @@ schedule:
 처음 켜면 시간표가 오른쪽 사이드바에 열립니다. 먼저 둘러보고 싶다면 빈 시간표의 **예시 시간표 불러오기**를 누르세요. 다섯 과목짜리 예시가 `시간표 예시` 폴더에 만들어지고, 다 보면 **예시 시간표 지우기** 명령으로 한 번에 치울 수 있습니다.
 
 수업 중에는 **지금 수업의 오늘 노트 만들기** 명령(단축키 지정 가능)이나 책장의 **＋ 오늘 노트** 버튼으로 템플릿에 맞춘 필기 노트를 바로 엽니다.
+
+격자 위의 화살표로 **지난주·다음 주**를 넘겨 볼 수 있습니다. 수업을 우클릭하면 **그 날 하루만 휴강**으로 표시할 수 있고, 격주 수업은 시간 뒤에 `odd`(홀수 주)·`even`(짝수 주)을 붙입니다. 설정에 **학기 시작일·종료일**을 적으면 주차가 표시되고, 종료일 뒤에는 수업을 그리지 않습니다.
+
+**시험과 과제 마감**은 수업 노트의 `exam:` · `due:` 에 한 줄씩 적습니다(우클릭 → **시험·마감 추가…** 로도 됩니다). 그 날짜의 요일 아래에 뜨고, 가까운 것은 시간표 위에 D-day 와 함께 나옵니다. 과제 노트에 `due: 2026-10-15` 만 적어도, 그 노트가 수업 폴더 안에 있으면 마감으로 잡힙니다.
+
+```yaml
+---
+schedule:
+  - 월 10:30-12:00 @ 301호
+  - 수 10:30-12:00 odd @ 301호
+exam:
+  - 2026-10-22 13:00 중간고사
+due:
+  - 2026-10-15 과제 1
+cancelled:
+  - 2026-10-05
+---
+```
+
+노트 안에 시간표를 넣으려면 `class-timetable` 코드블록을 씁니다. 빈 블록이면 이번 주가 나오고, `view: today` · `view: upcoming` · `height: 420` 같은 옵션을 한 줄씩 적을 수 있습니다.
+
+버그나 필요한 기능은 설정 맨 아래 **의견 보내기**로 알려 주세요.
 
 톱니 → **PNG로 저장 / 이미지 복사**로 한 주 전체를 지금 테마 색 그대로 그림으로 뽑을 수 있습니다. 사이드바가 좁아도 잘리지 않고, 저장한 그림은 첨부 파일 폴더에 들어갑니다.
 
