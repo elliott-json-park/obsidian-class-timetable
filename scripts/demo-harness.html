@@ -354,6 +354,7 @@ class Setting {
   }
   setName(v) { this.nameEl.setText(v); return this; }
   setDesc(v) { this.descEl.setText(v); return this; }
+  setClass(c) { this.settingEl.classList.add(c); return this; }
 
   addButton(cb) {
     const el = this.controlEl.createEl('button');
@@ -368,6 +369,16 @@ class Setting {
   }
   addText(cb) {
     const el = this.controlEl.createEl('input', { type: 'text' });
+    cb({
+      inputEl: el,
+      setPlaceholder: function (p) { el.placeholder = p; return this; },
+      setValue: function (v) { el.value = v == null ? '' : v; return this; },
+      onChange: function (fn) { el.oninput = () => fn(el.value); return this; },
+    });
+    return this;
+  }
+  addTextArea(cb) {
+    const el = this.controlEl.createEl('textarea');
     cb({
       inputEl: el,
       setPlaceholder: function (p) { el.placeholder = p; return this; },

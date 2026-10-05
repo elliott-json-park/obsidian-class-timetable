@@ -1306,6 +1306,76 @@ const I18N_V20 = {
 
 for (const code of Object.keys(I18N_V20)) Object.assign(I18N[code], I18N_V20[code]);
 
+/* ── 1.3.0: 지난 마감 · 완료 표시 · 과제 노트 · 수업 없는 날 ── */
+const I18N_V30 = {
+  ko: {
+    dLate: '{n}일 지남',
+    deadlineDone: '완료로 표시',
+    deadlineUndone: '완료 취소',
+    assignNote: '과제 노트로 만들기',
+    assignNoteHint: '{path} 에 노트를 만들고 frontmatter 에 due: 를 적습니다.',
+    assignAdd: '＋ 과제 노트',
+    assignCmd: '새 과제 노트',
+    assignWord: '과제',
+    holidays: '수업 없는 날',
+    holidaysDesc: '공휴일, 시험 주간, 방학 중 쉬는 주처럼 모든 수업이 쉬는 날. 한 줄에 하나씩, 날짜 하나나 기간에 이름을 붙일 수 있습니다.',
+    holidaysPh: '2026-10-09 한글날\n2026-10-20 ~ 2026-10-24 중간고사 주간',
+    noClassDay: '수업 없음',
+    holidayMenu: '{date} 수업 없는 날',
+    helpMoreNote: 'odd · even 은 홀수 주 · 짝수 주에만 있는 수업입니다. 과제 노트에 due: 2026-10-15 만 적어도, 그 노트가 수업 폴더 안에 있으면 마감으로 잡힙니다. 끝낸 마감은 줄 끝에 ✓ 를 붙이면(우클릭 → 완료로 표시) 목록에서 빠지고 기록은 남습니다. 노트 안에 시간표를 넣으려면 ```class-timetable 코드블록을 쓰세요.',
+  },
+  en: {
+    dLate: '{n}d late',
+    deadlineDone: 'Mark as done',
+    deadlineUndone: 'Mark as not done',
+    assignNote: 'Create an assignment note',
+    assignNoteHint: 'A note is created in {path} with due: in its frontmatter.',
+    assignAdd: '＋ Assignment note',
+    assignCmd: 'New assignment note',
+    assignWord: 'Assignment',
+    holidays: 'Days without classes',
+    holidaysDesc: 'Holidays, exam weeks, reading weeks — days when no class meets. One per line: a date or a range, optionally with a name.',
+    holidaysPh: '2026-11-26 Thanksgiving\n2026-10-19 ~ 2026-10-23 Reading week',
+    noClassDay: 'No classes',
+    holidayMenu: 'No classes on {date}',
+    helpMoreNote: 'odd and even mark a class that only meets on odd or even weeks. A note inside a course folder with just due: 2026-10-15 in its frontmatter also counts as a deadline. A ✓ at the end of a line (right-click → Mark as done) takes it off the list but keeps the record. To put the timetable inside a note, use a ```class-timetable code block.',
+  },
+  zh: {
+    dLate: '逾期{n}天',
+    deadlineDone: '标为已完成',
+    deadlineUndone: '标为未完成',
+    assignNote: '创建作业笔记',
+    assignNoteHint: '在 {path} 创建笔记，并在 frontmatter 写上 due:。',
+    assignAdd: '＋ 作业笔记',
+    assignCmd: '新建作业笔记',
+    assignWord: '作业',
+    holidays: '不上课的日子',
+    holidaysDesc: '节假日、考试周、假期中停课的周等所有课程都不上的日子。每行一个：一个日期或一个区间，可以加上名称。',
+    holidaysPh: '2026-10-01 ~ 2026-10-07 国庆节\n2026-11-09 ~ 2026-11-13 期中考试周',
+    noClassDay: '不上课',
+    holidayMenu: '{date} 不上课',
+    helpMoreNote: 'odd · even 表示只在单周或双周上的课。课程文件夹里的笔记只要在 frontmatter 写上 due: 2026-10-15，也会被当作截止日期。完成的截止项在行尾加 ✓（右键 → 标为已完成）就会从列表中移除，但记录会保留。要把课程表放进笔记，请使用 ```class-timetable 代码块。',
+  },
+  ja: {
+    dLate: '{n}日超過',
+    deadlineDone: '完了にする',
+    deadlineUndone: '完了を取り消す',
+    assignNote: '課題ノートとして作る',
+    assignNoteHint: '{path} にノートを作り、frontmatter に due: を書きます。',
+    assignAdd: '＋ 課題ノート',
+    assignCmd: '新しい課題ノート',
+    assignWord: '課題',
+    holidays: '授業のない日',
+    holidaysDesc: '祝日、試験週間、休講週などすべての授業が休みになる日。1 行に 1 つ、日付か期間に名前を付けられます。',
+    holidaysPh: '2026-11-03 文化の日\n2026-11-16 ~ 2026-11-20 中間試験週間',
+    noClassDay: '授業なし',
+    holidayMenu: '{date} は授業なし',
+    helpMoreNote: 'odd · even は奇数週・偶数週だけの授業です。授業フォルダの中のノートに due: 2026-10-15 と書くだけでも締切として扱われます。終わった締切は行末に ✓ を付けると（右クリック → 完了にする）一覧から消え、記録は残ります。ノートに時間割を入れるには ```class-timetable コードブロックを使ってください。',
+  },
+};
+
+for (const code of Object.keys(I18N_V30)) Object.assign(I18N[code], I18N_V30[code]);
+
 
 
 
@@ -1390,6 +1460,9 @@ const TOUCH_ZONE = 13;
 // 책장 칸 안에 미리 보여 주는 줄 수
 const SHELF_PREVIEW = 3;
 
+// 안 끝낸 마감은 지나도 이만큼은 목록에 남긴다. 그보다 오래된 것은 지난 학기의 잔해로 본다.
+const OVERDUE_DAYS = 30;
+
 const DEFAULT_SETTINGS = {
   lang: '',                           // 비어 있으면 처음 켤 때 옵시디언 언어를 따라 정한다
   welcomed: false,                    // 처음 한 번은 시간표를 사이드바에 열어 준다
@@ -1400,6 +1473,7 @@ const DEFAULT_SETTINGS = {
   semesterStart: '',
   semesterEnd: '',                    // 비어 있으면 끝이 없다
   upcomingDays: 14,                   // 다가오는 시험·마감을 며칠 앞까지 보여 줄지. 0 이면 안 보인다
+  holidays: '',                       // 모든 수업이 쉬는 날. 한 줄에 날짜 하나나 기간 하나
   templates: [],
   defaultTemplate: '',
   plans: [],                          // 파일이 아닌, 시간표 위에만 있는 일정
@@ -1518,13 +1592,14 @@ function scheduleSummary(course) {
 }
 
 // 이 수업이 지금 진행 중인지, 아니면 다음은 언제인지. 책장 머리에 한 줄로 쓴다.
-// 휴강인 날, 격주라 없는 주, 학기가 끝난 뒤는 건너뛴다. 두 주 앞까지만 본다.
+// 휴강인 날, 수업 없는 날, 격주라 없는 주, 학기가 끝난 뒤는 건너뛴다. 두 주 앞까지만 본다.
 function nextSession(settings, course) {
   const today = today0();
   const now = nowMinutes();
   let best = null;
   for (let d = 0; d < 14 && !best; d++) {
     const date = addDays(today, d);
+    if (holidayOf(settings, date)) continue;
     const day = (date.getDay() + 6) % 7;
     for (const slot of course.slots) {
       if (slot.day !== day || !slotRuns(settings, slot, date) || isCancelled(course, slot, ymd(date))) continue;
@@ -1699,6 +1774,36 @@ function slotRuns(settings, slot, date) {
   return true;
 }
 
+/* ── 수업 없는 날 ──
+ *
+ * 설정에 한 줄에 하나:  2026-10-09 한글날
+ *                       2026-10-20 ~ 2026-10-24 중간고사 주간
+ * 그 날의 수업은 모두 휴강처럼 그린다. 수업 노트에는 아무것도 쓰지 않는다.
+ */
+function parseHolidays(text) {
+  const out = [];
+  const date = '(\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2})';
+  const re = new RegExp('^' + date + '(?:\\s*(?:[~–—]|\\.\\.)\\s*|\\s+-\\s+)?' + '(?:' + date + ')?(?:\\s+(.*))?$');
+  for (const line of String(text || '').split(/\r?\n/)) {
+    const m = re.exec(line.trim());
+    if (!m) continue;
+    const from = parseYmd(m[1]);
+    const to = m[2] ? parseYmd(m[2]) : from;
+    if (!from || !to) continue;
+    out.push(dayDiff(to, from) >= 0 ? { from, to, name: (m[3] || '').trim() } : { from: to, to: from, name: (m[3] || '').trim() });
+  }
+  return out;
+}
+
+// 그 날짜가 수업 없는 날이면 { name }, 아니면 null
+function holidayOf(settings, date) {
+  if (!settings || !settings.holidays) return null;
+  for (const h of parseHolidays(settings.holidays)) {
+    if (dayDiff(date, h.from) >= 0 && dayDiff(date, h.to) <= 0) return { name: h.name };
+  }
+  return null;
+}
+
 // cancelled: 에 그 날짜가 있으면 휴강. 하루에 두 번 있는 수업은 '날짜 시:분' 으로 하나만 가리킬 수 있다.
 function isCancelled(course, slot, dateStr) {
   const list = course.cancelled;
@@ -1718,16 +1823,22 @@ function normCancelled(v) {
  *
  * 한 줄에 하나:  2026-10-22 13:00-15:00 중간고사
  * 날짜만 있어도 되고, 시각과 이름은 있으면 읽는다.
+ * 끝낸 것은 줄 끝에 ✓:      2026-10-15 과제 1 ✓
  */
+const DONE_MARK = /\s*[✓✔]\s*$/;
+
 function parseDeadline(raw) {
   if (raw == null || raw === '') return null;
   if (Object.prototype.toString.call(raw) === '[object Date]') {
     if (isNaN(raw.getTime())) return null;
     // YAML 이 날짜로 읽어 준 값은 UTC 자정이다
     const date = raw.getUTCFullYear() + '-' + pad2(raw.getUTCMonth() + 1) + '-' + pad2(raw.getUTCDate());
-    return { date, time: null, end: null, title: '' };
+    return { date, time: null, end: null, title: '', done: false };
   }
-  const m = /^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})(?:[T\s]+(\d{1,2}:\d{2})(?::\d{2})?(?:\s*[-~–—]\s*(\d{1,2}:\d{2}))?)?(?:\s+(.*))?$/.exec(String(raw).trim());
+  let s = String(raw).trim();
+  const done = DONE_MARK.test(s);
+  if (done) s = s.replace(DONE_MARK, '');
+  const m = /^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})(?:[T\s]+(\d{1,2}:\d{2})(?::\d{2})?(?:\s*[-~–—]\s*(\d{1,2}:\d{2}))?)?(?:\s+(.*))?$/.exec(s);
   if (!m) return null;
   const d = parseYmd(m[1]);
   if (!d) return null;
@@ -1738,13 +1849,25 @@ function parseDeadline(raw) {
     time,
     end: time != null && end != null && end > time ? end : null,
     title: (m[4] || '').trim(),
+    done,
   };
 }
 
 function formatDeadline(d) {
   let out = d.date;
   if (d.time != null) out += ' ' + hhmm(d.time) + (d.end != null ? '-' + hhmm(d.end) : '');
-  return d.title ? out + ' ' + d.title : out;
+  if (d.title) out += ' ' + d.title;
+  return d.done ? out + ' ✓' : out;
+}
+
+// 줄 하나의 완료 표시만 바꾼다. 사람이 쓴 모양은 되도록 그대로 둔다.
+function markDeadlineLine(raw, done) {
+  if (typeof raw !== 'string') {
+    const d = parseDeadline(raw);
+    return d ? formatDeadline(Object.assign({}, d, { done })) : raw;
+  }
+  const base = raw.replace(DONE_MARK, '');
+  return done ? base + ' ✓' : base;
 }
 
 function listOf(v) {
@@ -1761,6 +1884,11 @@ function dLabel(days) {
   if (days <= 0) return t('dToday');
   if (days === 1) return t('dTomorrow');
   return t('dIn', { n: days });
+}
+
+// 지난 것까지: 2일 지남 · 오늘 · D-3
+function dueLabel(days) {
+  return days < 0 ? t('dLate', { n: -days }) : dLabel(days);
 }
 
 function deadlineWhen(dl) {
@@ -1918,10 +2046,12 @@ function buildItems(courses, plans) {
 // 달력의 어느 한 주. 그 주에 실제로 있는 것만 담는다:
 // 격주 수업은 맞는 주에만, 일회성 일정은 그 날짜가 든 주에만, 학기가 끝난 뒤의 수업은 없다.
 // 휴강은 빼지 않고 표시만 한다 — 원래 그 자리에 수업이 있다는 것은 보여야 한다.
+// 수업 없는 날(설정)도 휴강과 같이 그리되, 이름을 붙인다.
 function buildWeek(settings, courses, plans, monday) {
   const dates = weekDates(monday);
   const byDay = [[], [], [], [], [], [], []];
   const end = parseYmd(settings && settings.semesterEnd);
+  const holidays = dates.map((date) => holidayOf(settings, date));
   let ended = false;
 
   for (const c of courses) {
@@ -1929,9 +2059,11 @@ function buildWeek(settings, courses, plans, monday) {
       const date = dates[s.day];
       if (end && dayDiff(date, end) > 0) { ended = true; continue; }
       if (s.parity && s.parity !== weekParity(settings, date)) continue;
+      const holiday = holidays[s.day];
       byDay[s.day].push({
         kind: 'course', course: c, slot: s, date,
-        cancelled: isCancelled(c, s, ymd(date)),
+        cancelled: !!holiday || isCancelled(c, s, ymd(date)),
+        holiday,
         lane: 0, lanes: 1, conflicts: [],
       });
     }
@@ -1947,7 +2079,7 @@ function buildWeek(settings, courses, plans, monday) {
     });
   }
   markConflicts(byDay);
-  return { byDay, dates, monday: dates[0], ended };
+  return { byDay, dates, holidays, monday: dates[0], ended };
 }
 
 /* ────────────────────────────── 플러그인 ────────────────────────────── */
@@ -2094,6 +2226,11 @@ class ClassTimetablePlugin extends Plugin {
       id: 'add-deadline',
       name: t('deadlineTitle'),
       callback: () => new DeadlineModal(this, {}).open(),
+    });
+    this.addCommand({
+      id: 'add-assignment-note',
+      name: t('assignCmd'),
+      callback: () => new DeadlineModal(this, { kind: 'due', asNote: true }).open(),
     });
 
     const insert = (text) => (editor) => editor.replaceSelection(text);
@@ -2498,11 +2635,11 @@ class ClassTimetablePlugin extends Plugin {
    *   수업 노트의 exam: · due: 목록   →  "2026-10-22 13:00 중간고사" 처럼 한 줄에 하나
    *   수업 폴더 안 다른 노트의 due: · exam:  →  그 노트가 곧 과제다. 이름은 노트 이름.
    *     (폴더노트가 아닌 수업은 폴더를 남과 나눠 쓸 수 있으므로, 그때는 course: 로 수업을 적는다)
-   * done: true 인 노트는 끝난 일이라 빼 둔다.
+   * 끝낸 것(줄 끝 ✓, 노트의 done: true)도 읽어 둔다. 그 날짜 칸에는 줄 그어 남고, 다가오는 목록에서만 빠진다.
    */
   collectDeadlines(courses, loose) {
     const out = [];
-    const push = (kind, raw, course, file, own) => {
+    const push = (kind, raw, course, file, own, noteDone) => {
       const d = parseDeadline(raw);
       if (!d) return;
       const fallback = own ? t(kind === 'exam' ? 'examKind' : 'dueKind') : (file.basename || file.name.replace(/\.md$/i, ''));
@@ -2511,6 +2648,7 @@ class ClassTimetablePlugin extends Plugin {
         date: d.date, time: d.time, end: d.end,
         rawTitle: d.title,
         title: d.title || fallback,
+        done: d.done || !!noteDone,
       });
     };
 
@@ -2520,7 +2658,7 @@ class ClassTimetablePlugin extends Plugin {
     }
 
     for (const { file, fm } of loose.values()) {
-      if (isTruthy(fm.done) || isTruthy(fm.completed)) continue;
+      const noteDone = isTruthy(fm.done) || isTruthy(fm.completed);
 
       let course = null;
       if (fm.course != null) {
@@ -2542,8 +2680,8 @@ class ClassTimetablePlugin extends Plugin {
       }
       if (!course) continue;
 
-      for (const raw of listOf(fm.exam != null ? fm.exam : fm.exams)) push('exam', raw, course, file, false);
-      for (const raw of listOf(fm.due)) push('due', raw, course, file, false);
+      for (const raw of listOf(fm.exam != null ? fm.exam : fm.exams)) push('exam', raw, course, file, false, noteDone);
+      for (const raw of listOf(fm.due)) push('due', raw, course, file, false, noteDone);
     }
 
     out.sort((a, b) => a.date.localeCompare(b.date)
@@ -2552,14 +2690,17 @@ class ClassTimetablePlugin extends Plugin {
     return out;
   }
 
-  // 오늘부터 days 일 앞까지의 시험·마감
+  // 오늘부터 days 일 앞까지의 시험·마감, 그리고 아직 안 끝낸 지난 마감.
+  // 마감은 날짜가 지났다고 끝난 게 아니다 — 완료로 표시할 때까지(최대 OVERDUE_DAYS) 맨 위에 남는다.
   upcomingDeadlines(deadlines, days) {
     const today = today0();
     return (deadlines || []).filter((dl) => {
+      if (dl.done) return false;
       const d = parseYmd(dl.date);
       if (!d) return false;
       const gap = dayDiff(d, today);
-      return gap >= 0 && gap <= days;
+      if (gap < 0) return dl.kind === 'due' && gap >= -OVERDUE_DAYS;
+      return gap <= days;
     });
   }
 
@@ -2579,7 +2720,42 @@ class ClassTimetablePlugin extends Plugin {
     this.refreshAll();
   }
 
-  // 수업 노트에 적은 줄은 지우고, 과제 노트라면 done: true 를 적는다. 노트 자체는 건드리지 않는다.
+  // 끝냈다고 적거나 되돌린다. 수업 노트의 줄이면 줄 끝 ✓, 과제 노트면 done: true.
+  // 지우지 않으므로 무엇을 언제 냈는지가 남는다.
+  async setDeadlineDone(dl, done) {
+    if (!dl || !dl.file) return;
+    const same = (x) => {
+      const d = parseDeadline(x);
+      return !!d && d.date === dl.date && d.time === dl.time && d.title === dl.rawTitle;
+    };
+    if (dl.own) {
+      const key = dl.kind === 'exam' ? 'exam' : 'due';
+      const next = (dl.kind === 'exam' ? dl.course.examRaw : dl.course.dueRaw).slice();
+      const i = next.findIndex(same);
+      if (i !== -1) next[i] = markDeadlineLine(next[i], done);
+      this.markPending(dl.file.path, { [key]: next });
+    } else {
+      this.markPending(dl.file.path, { done });
+    }
+    try {
+      await this.app.fileManager.processFrontMatter(dl.file, (fm) => {
+        if (!dl.own) {
+          if (done) fm.done = true;
+          else { delete fm.done; delete fm.completed; }
+          return;
+        }
+        const field = dl.kind === 'exam' ? (fm.exam != null ? 'exam' : 'exams') : 'due';
+        const list = listOf(fm[field]).slice();
+        const i = list.findIndex(same);
+        if (i === -1) return;
+        list[i] = markDeadlineLine(list[i], done);
+        fm[field] = Array.isArray(fm[field]) ? list : list[0];
+      });
+    } catch (e) { failNotice('errSaveCourse', {}, e); }
+    this.refreshAll();
+  }
+
+  // 수업 노트에 적은 줄을 지운다. 노트 자체는 건드리지 않는다.
   async removeDeadline(dl) {
     if (!dl || !dl.file) return;
     try {
@@ -2884,6 +3060,56 @@ class ClassTimetablePlugin extends Plugin {
     }
     if (!(file instanceof TFile)) return null;
 
+    await this.openNote(file, false);
+    this.refreshAll();
+    return file;
+  }
+
+  /* ── 과제 노트 ──
+   *
+   * 과제 하나 = 노트 하나. frontmatter 에 due: 와 course: 를 적어 두면 시간표가 마감으로 읽는다.
+   * 놓을 곳은 수업 폴더 안의 과제 폴더(assignments · 과제 · 作业 · 課題 …). 없으면 수업 폴더 자체.
+   * 새 폴더를 만들지는 않는다 — 폴더 구조는 사용자의 것이다.
+   */
+  assignmentFolder(course) {
+    const re = /^(assignments?|homeworks?|hw|problem[ -]?sets?|psets?|과제|숙제|作业|作業|課題|宿題)$/i;
+    if (course.isFolderNote) {
+      for (const space of course.spaces || []) {
+        const queue = [[space, 0]];
+        while (queue.length) {
+          const [f, depth] = queue.shift();
+          if (f !== space && re.test(f.name)) return f;
+          if (depth < 2) for (const c of subfolders(f)) queue.push([c, depth + 1]);
+        }
+      }
+    }
+    return (course.spaces && course.spaces[0]) || course.folder || null;
+  }
+
+  async createAssignmentNote(course, entry) {
+    const folder = this.assignmentFolder(course);
+    if (!folder) { new Notice(t('notesUnset')); return null; }
+
+    const base = this.safeName(entry.title) || t('assignWord') + ' ' + formatDate(parseYmd(entry.date), 'MMDD');
+    const dir = folder.path === '/' ? '' : folder.path + '/';
+    let path = normalizePath(dir + base + '.md');
+    for (let n = 2; this.app.vault.getAbstractFileByPath(path); n++) path = normalizePath(dir + base + ' ' + n + '.md');
+
+    // 이름은 노트 이름이 맡는다. due: 에는 날짜와 시각만.
+    const due = formatDeadline({ date: entry.date, time: entry.time, end: entry.end, title: '' });
+    const link = '[[' + course.file.path.replace(/\.md$/i, '') + '|' + course.name + ']]';
+    let file;
+    try {
+      file = await this.app.vault.create(path, '');
+      this.markPending(file.path, { due, course: link });
+      await this.app.fileManager.processFrontMatter(file, (fm) => {
+        fm.due = due;
+        fm.course = link;
+      });
+    } catch (e) {
+      failNotice('errNote', { name: base }, e);
+      return null;
+    }
     await this.openNote(file, false);
     this.refreshAll();
     return file;
@@ -3226,24 +3452,33 @@ function renderTimetable(plugin, containerEl, opts) {
       pill.createSpan({ cls: 'ctt-daynum', text: String(week.dates[d].getDate()) });
     }
     if (!offset && d === ti) h.addClass('is-today');
+    if (week.holidays[d]) h.addClass('is-holiday');
   }
 
   // 그 날의 시험·마감은 요일 머리 바로 아래에 얹는다. 시간 칸을 차지하지 않는다.
+  // 수업 없는 날이면 그 이름이 맨 위에 온다.
   const dues = days.map((d) => {
     const key = ymd(week.dates[d]);
     return deadlines.filter((dl) => dl.date === key);
   });
-  if (dues.some((list) => list.length)) {
+  if (dues.some((list) => list.length) || days.some((d) => week.holidays[d])) {
     head.createDiv({ cls: 'ctt-corner' });
-    for (const list of dues) {
+    days.forEach((d, k) => {
+      const list = dues[k];
       const cell = head.createDiv({ cls: 'ctt-duecell' });
+      const hol = week.holidays[d];
+      if (hol) {
+        const text = hol.name || t('noClassDay');
+        const chip = cell.createDiv({ cls: 'ctt-due is-holiday', text });
+        chip.setAttr('title', t('holidays') + ' · ' + text);
+      }
       const shown = list.length > DUE_CHIPS + 1 ? DUE_CHIPS : list.length;
       for (const dl of list.slice(0, shown)) renderDueChip(plugin, cell, dl);
       if (list.length > shown) {
         const more = cell.createDiv({ cls: 'ctt-due is-more', text: '+' + (list.length - shown) });
         more.setAttr('title', list.slice(shown).map((dl) => dl.title + ' · ' + dl.course.name).join('\n'));
       }
-    }
+    });
   }
 
   const avail = scroll.clientHeight - head.offsetHeight;
@@ -3319,6 +3554,11 @@ function deadlineMenu(plugin, dl) {
   const menu = new Menu();
   menu.addItem((i) => i.setTitle(t('deadlineOpen')).setIcon('file-text')
     .onClick(() => plugin.openNote(dl.file, false)));
+  // 끝냈다는 표시는 마감에, 그리고 과제 노트라면 시험에도. 수업 노트에 적은 시험은 날짜가 지나면 저절로 빠진다.
+  if (dl.kind === 'due' || !dl.own) {
+    menu.addItem((i) => i.setTitle(t(dl.done ? 'deadlineUndone' : 'deadlineDone')).setIcon(dl.done ? 'rotate-ccw' : 'check')
+      .onClick(() => plugin.setDeadlineDone(dl, !dl.done)));
+  }
   if (dl.own) {
     menu.addItem((i) => i.setTitle(t('deadlineRemove')).setIcon('trash')
       .onClick(() => new ConfirmModal(plugin.app, {
@@ -3327,14 +3567,11 @@ function deadlineMenu(plugin, dl) {
         cta: t('deadlineRemove'),
         onConfirm: () => plugin.removeDeadline(dl),
       }).open()));
-  } else {
-    menu.addItem((i) => i.setTitle(t('deadlineDone')).setIcon('check')
-      .onClick(() => plugin.removeDeadline(dl)));
   }
   return menu;
 }
 
-// 누르면 그 노트가 열리고, 우클릭하면 지우거나 끝났다고 적는다. 칩과 목록 줄이 같은 규칙을 쓴다.
+// 누르면 그 노트가 열리고, 우클릭하면 끝났다고 적거나 지운다. 칩과 목록 줄이 같은 규칙을 쓴다.
 function bindDeadline(plugin, el, dl) {
   el.setAttr('title', deadlineTip(dl));
   el.setAttr('aria-label', deadlineTip(dl));
@@ -3352,7 +3589,7 @@ function bindDeadline(plugin, el, dl) {
 }
 
 function renderDueChip(plugin, cell, dl) {
-  const chip = cell.createDiv({ cls: 'ctt-due' + (dl.kind === 'exam' ? ' is-exam' : ''), text: dl.title });
+  const chip = cell.createDiv({ cls: 'ctt-due' + (dl.kind === 'exam' ? ' is-exam' : '') + (dl.done ? ' is-done' : ''), text: dl.title });
   chip.style.setProperty('--ctt-color', dl.course.color);
   bindDeadline(plugin, chip, dl);
 }
@@ -3368,9 +3605,9 @@ function renderUpcoming(plugin, parent, list, o) {
 
   for (const dl of rows) {
     const gap = dayDiff(parseYmd(dl.date), today);
-    const row = box.createDiv({ cls: 'ctt-up-row' + (dl.kind === 'exam' ? ' is-exam' : '') });
+    const row = box.createDiv({ cls: 'ctt-up-row' + (dl.kind === 'exam' ? ' is-exam' : '') + (gap < 0 ? ' is-late' : '') });
     row.style.setProperty('--ctt-color', dl.course.color);
-    const badge = row.createSpan({ cls: 'ctt-up-day', text: dLabel(gap) });
+    const badge = row.createSpan({ cls: 'ctt-up-day', text: dueLabel(gap) });
     if (gap <= 1) badge.addClass('is-soon');
     row.createSpan({ cls: 'ctt-up-title', text: dl.title });
     row.createSpan({ cls: 'ctt-up-meta', text: dl.course.name + ' · ' + deadlineWhen(dl) });
@@ -3640,9 +3877,11 @@ function renderBlock(plugin, col, item, geo) {
   if (item.cancelled) el.addClass('is-cancelled');
   else markTiming(el, slot, geo);
 
-  const sub = item.cancelled
-    ? t('cancelled')
-    : ((course.subtitle != null && course.subtitle !== '') ? course.subtitle : slot.location);
+  const sub = item.holiday
+    ? (item.holiday.name || t('noClassDay'))
+    : item.cancelled
+      ? t('cancelled')
+      : ((course.subtitle != null && course.subtitle !== '') ? course.subtitle : slot.location);
   const subCount = sub ? String(sub).split(/\r?\n/).length : 0;
   const fit = fitBlockText(el, height, course.name, subCount, geo);
   if (fit.nameLines) {
@@ -3688,12 +3927,13 @@ function renderBlock(plugin, col, item, geo) {
   el.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    courseMenu(plugin, course, slot, item.date, item.cancelled).showAtMouseEvent(e);
+    courseMenu(plugin, course, slot, item.date, item.cancelled, item.holiday).showAtMouseEvent(e);
   });
 }
 
 // date: 그 칸이 가리키는 날짜 (보고 있는 주의 그 요일). 노트 이름과 휴강 표시가 이 날짜를 쓴다.
-function courseMenu(plugin, course, slot, date, cancelled) {
+// holiday: 그 날이 설정의 "수업 없는 날"이면 { name }. 수업 하나만 휴강을 켜고 끌 수는 없다.
+function courseMenu(plugin, course, slot, date, cancelled, holiday) {
   const menu = new Menu();
   const when = date || dateOfWeekday(slot.day);
   const isToday = dayDiff(when, new Date()) === 0;
@@ -3731,9 +3971,14 @@ function courseMenu(plugin, course, slot, date, cancelled) {
 
   // 이 날 하루의 일: 휴강, 그리고 시험·마감
   menu.addSeparator();
-  menu.addItem((i) => i.setTitle(t(cancelled ? 'uncancelClass' : 'cancelClass', { date: dateLabel(when) }))
-    .setIcon(cancelled ? 'rotate-ccw' : 'calendar-x')
-    .onClick(() => plugin.toggleCancelled(course, slot, when)));
+  if (holiday) {
+    menu.addItem((i) => i.setTitle(t('holidayMenu', { date: dateLabel(when) }) + (holiday.name ? ' · ' + holiday.name : ''))
+      .setIcon('calendar-off').setDisabled(true));
+  } else {
+    menu.addItem((i) => i.setTitle(t(cancelled ? 'uncancelClass' : 'cancelClass', { date: dateLabel(when) }))
+      .setIcon(cancelled ? 'rotate-ccw' : 'calendar-x')
+      .onClick(() => plugin.toggleCancelled(course, slot, when)));
+  }
   menu.addItem((i) => i.setTitle(t('addDeadline')).setIcon('flag')
     .onClick(() => new DeadlineModal(plugin, { course, date: ymd(when) }).open()));
   menu.addSeparator();
@@ -4494,21 +4739,24 @@ class FolderView extends ItemView {
     const summary = scheduleSummary(course);
     if (summary) metaRow.createSpan({ cls: 'ctf-meta', text: summary });
 
-    // 이 수업의 시험·마감. 지난 것은 빼고 가까운 순으로. 맨 위에서만 보인다.
+    // 이 수업의 시험·마감. 끝낸 것은 빼고, 안 끝낸 지난 마감부터 가까운 순으로. 맨 위에서만 보인다.
     if (!this.rel) {
       const today = today0();
-      const mine = (this.plugin.getCourses().deadlines || [])
-        .filter((dl) => dl.course.key === course.key && dayDiff(parseYmd(dl.date), today) >= 0);
+      const mine = this.plugin.upcomingDeadlines(this.plugin.getCourses().deadlines, Infinity)
+        .filter((dl) => dl.course.key === course.key);
       const row = text.createDiv({ cls: 'ctf-dues' });
       for (const dl of mine.slice(0, 6)) {
-        const chip = row.createEl('button', { cls: 'ctf-due' + (dl.kind === 'exam' ? ' is-exam' : '') });
-        chip.createSpan({ cls: 'ctf-due-day', text: dLabel(dayDiff(parseYmd(dl.date), today)) });
+        const gap = dayDiff(parseYmd(dl.date), today);
+        const chip = row.createEl('button', { cls: 'ctf-due' + (dl.kind === 'exam' ? ' is-exam' : '') + (gap < 0 ? ' is-late' : '') });
+        chip.createSpan({ cls: 'ctf-due-day', text: dueLabel(gap) });
         chip.createSpan({ cls: 'ctf-due-title', text: dl.title });
         bindDeadline(this.plugin, chip, dl);
       }
       if (mine.length > 6) row.createSpan({ cls: 'ctf-due-more', text: t('moreItems', { n: mine.length - 6 }) });
       const add = row.createEl('button', { cls: 'ctf-due is-add', text: t('addDeadlineShort') });
       add.onclick = () => new DeadlineModal(this.plugin, { course }).open();
+      const assign = row.createEl('button', { cls: 'ctf-due is-add', text: t('assignAdd') });
+      assign.onclick = () => new DeadlineModal(this.plugin, { course, kind: 'due', asNote: true }).open();
     }
 
     const scs = this.plugin.shortcutsOf(course);
@@ -5422,13 +5670,19 @@ class DeadlineModal extends Modal {
     this.opts = opts || {};
     const hit = this.opts.course ? null : plugin.classNow();
     this.courseKey = this.opts.course ? this.opts.course.key : (hit ? hit.course.key : '');
-    this.state = { kind: 'exam', title: '', date: this.opts.date || ymd(new Date()), time: '' };
+    this.state = {
+      kind: this.opts.kind || 'exam',
+      title: '',
+      date: this.opts.date || ymd(new Date()),
+      time: '',
+      asNote: !!this.opts.asNote, // 마감을 줄 하나가 아니라 과제 노트 하나로 만든다
+    };
   }
 
   onOpen() {
     const { contentEl } = this;
     contentEl.addClass('ctt-modal');
-    contentEl.createEl('h3', { text: t('deadlineTitle') });
+    contentEl.createEl('h3', { text: t(this.opts.asNote ? 'assignCmd' : 'deadlineTitle') });
     const el = contentEl.createDiv();
 
     const courses = this.plugin.getCourses().courses;
@@ -5449,12 +5703,17 @@ class DeadlineModal extends Modal {
       if (c.key === this.courseKey) o.selected = true;
     }
     const hint = courseField.createDiv({ cls: 'ctt-field-hint' });
+    let noteRow = null;
     const paintHint = () => {
       const c = courses.find((x) => x.key === this.courseKey);
-      hint.setText(c ? t('deadlineHint', { path: c.file.path }) : '');
+      const asNote = this.state.kind === 'due' && this.state.asNote;
+      const folder = c && asNote ? this.plugin.assignmentFolder(c) : null;
+      hint.setText(!c ? '' : asNote
+        ? t('assignNoteHint', { path: folder ? folder.path : '—' })
+        : t('deadlineHint', { path: c.file.path }));
+      if (noteRow) noteRow.toggleClass('is-hidden', this.state.kind !== 'due');
     };
     pick.onchange = () => { this.courseKey = pick.value; paintHint(); };
-    paintHint();
 
     const typeField = el.createDiv({ cls: 'ctt-field' });
     typeField.createDiv({ cls: 'ctt-field-label', text: t('deadlineType') });
@@ -5464,7 +5723,15 @@ class DeadlineModal extends Modal {
       o.value = v;
       if (v === this.state.kind) o.selected = true;
     }
-    type.onchange = () => { this.state.kind = type.value; };
+    type.onchange = () => { this.state.kind = type.value; paintHint(); };
+
+    // 마감이면 과제 노트로 만들 수 있다. 노트 이름이 곧 과제 이름이 된다.
+    noteRow = typeField.createEl('label', { cls: 'ctt-check-row' });
+    const check = noteRow.createEl('input', { type: 'checkbox' });
+    check.checked = this.state.asNote;
+    noteRow.createSpan({ text: t('assignNote') });
+    check.onchange = () => { this.state.asNote = check.checked; paintHint(); };
+    paintHint();
 
     const nameField = el.createDiv({ cls: 'ctt-field' });
     nameField.createDiv({ cls: 'ctt-field-label', text: t('deadlineName') });
@@ -5515,7 +5782,9 @@ class DeadlineModal extends Modal {
     // 줄바꿈이 들어가면 한 줄 표기가 깨진다
     const title = this.state.title.replace(/\s+/g, ' ').trim();
     this.close();
-    await this.plugin.addDeadline(course, this.state.kind, { date: ymd(d), time, end, title });
+    const entry = { date: ymd(d), time, end, title };
+    if (this.state.kind === 'due' && this.state.asNote) await this.plugin.createAssignmentNote(course, entry);
+    else await this.plugin.addDeadline(course, this.state.kind, entry);
   }
 
   onClose() { this.contentEl.empty(); }
@@ -5865,6 +6134,16 @@ class TimetableSettingTab extends PluginSettingTab {
       .setDesc(t('semesterEndDesc'))
       .addText((x) => x.setPlaceholder('YYYY-MM-DD').setValue(s.semesterEnd || '')
         .onChange((v) => { s.semesterEnd = v.trim(); save(); }));
+
+    new Setting(containerEl)
+      .setName(t('holidays'))
+      .setDesc(t('holidaysDesc'))
+      .setClass('ctt-setting-holidays')
+      .addTextArea((x) => {
+        x.inputEl.rows = 4;
+        x.setPlaceholder(t('holidaysPh')).setValue(s.holidays || '')
+          .onChange((v) => { s.holidays = v; save(); });
+      });
 
     new Setting(containerEl)
       .setName(t('templateSetting'))

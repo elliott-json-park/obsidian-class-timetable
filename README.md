@@ -27,9 +27,9 @@ Or install **Class Timetable** from Settings → Community plugins.
 
 **Start today's note in one step.** Right-click a class → *Open today's note*, press *Today's note* on its shelves, or bind a hotkey to *Create today's note for the current class*. The file name and body come from a template you define (`{{course}}`, `{{date:MMDD}}`, `{{dow}}`, `{{week}}` …). If today's note already exists, it opens instead of being overwritten. Right-click a class on another day and the menu names that day instead — *Open the note for 10/5 (Mon)* — and that is the date the note gets.
 
-**Every week is not the same week.** The arrows above the grid step through weeks; the label shows the dates and, once you set a semester start, the week number. Right-click a class to mark that one day as **cancelled** — it stays in place, struck through, and stops counting as your next class. A class that only meets every other week takes `odd` or `even`. Set a **semester end** and the classes stop being drawn after it.
+**Every week is not the same week.** The arrows above the grid step through weeks; the label shows the dates and, once you set a semester start, the week number. Right-click a class to mark that one day as **cancelled** — it stays in place, struck through, and stops counting as your next class. A class that only meets every other week takes `odd` or `even`. Set a **semester end** and the classes stop being drawn after it. List **days without classes** — holidays, exam weeks, reading weeks — and every class on those days is struck through at once, with the day's name above it.
 
-**Exams and deadlines, where you will see them.** Write them under `exam:` and `due:` in the class note, or let an assignment note carry its own `due:` date. They sit under the day they fall on, and the next ones are listed above the grid with the days left. Click one to open its note.
+**Exams and deadlines, where you will see them.** Write them under `exam:` and `due:` in the class note, or give each assignment a note of its own with *New assignment note*. They sit under the day they fall on, and the next ones are listed above the grid with the days left. A deadline you missed does not quietly disappear: it stays at the top in red — *2d late* — until you mark it done. Done items keep their record, struck through on their day. Click one to open its note.
 
 **The timetable inside a note.** A `class-timetable` code block draws the same week in a daily note or a dashboard — or just the list of what is coming up.
 
@@ -68,7 +68,7 @@ Everything else is optional:
 | `color` | Block color. Omit it and one is picked from the palette |
 | `semester` | Filter, so last term's classes can stay in the vault |
 | `exam` | Exams, one per line: `2026-10-22 13:00-15:00 Midterm` |
-| `due` | Assignment deadlines, one per line: `2026-10-15 Problem set 1` |
+| `due` | Assignment deadlines, one per line: `2026-10-15 Problem set 1`. A `✓` at the end marks it done |
 | `cancelled` | Dates this class does not meet: `2026-10-05` |
 
 Times are read generously: `월`, `월요일`, `mon`, `m`, `月`, `一` all work, as do `9`, `9:00`, `09:00` and `0900`.
@@ -83,18 +83,33 @@ schedule:
 exam:
   - 2026-10-22 13:00-15:00 Midterm
 due:
+  - 2026-10-08 Reading response ✓  # done
   - 2026-10-15 Problem set 1
 cancelled:
   - 2026-10-05
 ---
 ```
 
-You rarely type any of this. *Edit class* has an every week / odd weeks / even weeks choice per time, and the right-click menu has *Mark 10/5 (Mon) as cancelled* and *Add an exam or deadline…*.
+You rarely type any of this. *Edit class* has an every week / odd weeks / even weeks choice per time, the right-click menu has *Mark 10/5 (Mon) as cancelled* and *Add an exam or deadline…*, and right-clicking a deadline has *Mark as done*.
 
 - **Odd and even weeks** are counted from the *Semester start* in Settings — that week is week 1. The edit window tells you which kind this week is, so you do not pick the wrong one.
 - **A date is enough** for an exam or a deadline. A time (`13:00` or `13:00-15:00`) and a name are read if they are there.
-- **An assignment note can carry its own deadline.** A note with `due: 2026-10-15` in its frontmatter, anywhere inside a course's folder, shows up as that course's deadline under the note's name. Add `done: true` and it drops off the list. If the course is a plain note rather than a folder note, name the course in the assignment: `course: Linear Algebra`.
+- **Done is a mark, not a deletion.** *Mark as done* adds a `✓` to the end of the line (or `done: true` to an assignment note). The item leaves the upcoming list and stays on its day, struck through. *Mark as not done* takes it back.
+- **Missed deadlines stay.** An unfinished deadline that has passed is listed first, in red, until you mark it done — for up to 30 days, so last term's leftovers do not pile up. Exams leave the list once their day is over.
+- **An assignment note can carry its own deadline.** A note with `due: 2026-10-15` in its frontmatter, anywhere inside a course's folder, shows up as that course's deadline under the note's name. If the course is a plain note rather than a folder note, name the course in the assignment: `course: Linear Algebra`.
+- **New assignment note** (on a course's shelves, in the command palette, or as a checkbox in *Add an exam or deadline…*) writes that note for you: named after the assignment, with `due:` and a `course:` link filled in. It goes into the course's assignments folder if it has one (`assignments`, `homework`, `과제`, `作业`, `課題` …), otherwise into the course folder. No folder is ever created for you.
 - **Upcoming** lists the next 14 days above the grid. The gear changes that to 7 or 30 days, or hides it.
+
+## Days without classes
+
+Settings → *Days without classes*, one per line — a date or a range, with an optional name:
+
+```
+2026-11-26 Thanksgiving
+2026-10-19 ~ 2026-10-23 Reading week
+```
+
+Every class on those days is drawn struck through, the name sits above the day, and *next class* and *today's note* skip them. Nothing is written to your class notes. To cancel just one class on one day, right-click it instead.
 
 ## The timetable inside a note
 
@@ -138,6 +153,7 @@ In Settings you can point the plugin at one or more **course folders** so it onl
 | Add class · Add plan | Open the editor directly |
 | Next week · Previous week · This week | Step the timetable through weeks |
 | Add an exam or deadline | For the class in progress, or any class you pick |
+| New assignment note | A note for one assignment, with its `due:` date and course filled in |
 | Insert timetable into note · Insert upcoming exams and deadlines into note | Write the code block at the cursor |
 | Save timetable as PNG · Copy timetable image | The whole week as an image, in your current theme |
 | Create a sample timetable · Remove the sample timetable | Look around first, clean up in one step |
@@ -174,7 +190,7 @@ handled for touch and pen as well as the mouse.
 
 ## Notes on data
 
-Classes live in your notes — and so do their exams, deadlines and cancelled days. Plans live in the plugin's `data.json`, since they have no file of their own — which also means they don't sync between devices the way your notes do.
+Classes live in your notes — and so do their exams, deadlines and cancelled days. Plans and days without classes live in the plugin's `data.json`, since they have no file of their own — which also means they don't sync between devices the way your notes do.
 
 Nothing is ever deleted without asking. *Remove from timetable* clears only the `schedule:` field; the note and its folder stay.
 
@@ -218,6 +234,10 @@ cancelled:
   - 2026-10-05
 ---
 ```
+
+끝낸 마감은 우클릭 → **완료로 표시**를 누르면 줄 끝에 `✓`가 붙고(과제 노트라면 `done: true`), 다가오는 목록에서 빠진 채 그 날짜 칸에 줄 그은 채로 남습니다. **완료로 표시하지 않은 마감은 날짜가 지나도 사라지지 않고** "2일 지남"으로 목록 맨 위에 빨갛게 남습니다(최대 30일). 과제를 노트 한 장으로 관리하고 싶다면 수업 책장의 **＋ 과제 노트**나 **새 과제 노트** 명령을 쓰세요. 과제 이름으로 노트를 만들고 `due:` 와 `course:` 를 채워 줍니다. 수업 폴더 안에 `과제`·`assignments` 같은 폴더가 있으면 그 안에 만듭니다.
+
+공휴일·시험 주간처럼 **모든 수업이 쉬는 날**은 설정의 **수업 없는 날**에 한 줄씩 적습니다(`2026-10-09 한글날`, `2026-10-20 ~ 2026-10-24 중간고사 주간`). 그 날의 수업은 한꺼번에 줄이 그어지고, 요일 위에 이름이 뜹니다. 수업 노트에는 아무것도 쓰지 않습니다.
 
 노트 안에 시간표를 넣으려면 `class-timetable` 코드블록을 씁니다. 빈 블록이면 이번 주가 나오고, `view: today` · `view: upcoming` · `height: 420` 같은 옵션을 한 줄씩 적을 수 있습니다.
 
