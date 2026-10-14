@@ -200,6 +200,13 @@ The plugin makes no network requests and collects nothing. It only writes to the
 
 Something broken, or something your semester needs that is not here? [Report a bug](https://github.com/elliott-json-park/obsidian-class-timetable/issues/new?template=bug_report.yml) or [suggest a feature](https://github.com/elliott-json-park/obsidian-class-timetable/issues/new?template=feature_request.yml) — the same two links are at the bottom of the plugin's settings. Questions and setups go in [Discussions](https://github.com/elliott-json-park/obsidian-class-timetable/discussions). 한국어로 적으셔도 됩니다.
 
+## More from the same author
+
+- **[Vault Orrery](https://community.obsidian.md/plugins/vault-orrery)**: your vault as a 3D galaxy, where every folder is a solar system. Replay how it grew, note by note.
+- **[Vault Pet](https://community.obsidian.md/plugins/vault-pet)**: a pixel cat that lives at the bottom of your workspace and levels up as you write.
+- **[Tag Graph](https://community.obsidian.md/plugins/tag-graph)**: a graph view for Bases where tags, folders and properties become hubs. Tag, retag and merge by dragging.
+- **[Download Pulse](https://community.obsidian.md/plugins/plugin-pulse)**: download stats for plugin authors: every plugin's downloads, rank and milestones in one dashboard.
+
 ## 한국어
 
 수업 시간표를 옵시디언 사이드바에 상시 띄워 두고, 블록을 누르면 그 수업의 폴더들이 책장처럼 펼쳐집니다. 시간 정보는 플러그인 설정이 아니라 **노트의 frontmatter**에 저장되므로 폴더를 옮기거나 이름을 바꿔도 깨지지 않습니다.
