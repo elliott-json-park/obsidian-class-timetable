@@ -2674,10 +2674,13 @@
 .ctt-settings details.ctt-help summary { cursor: pointer; }
 .ctt-settings details.ctt-help[open] summary { margin-bottom: 8px; }
 
-/* ── 움직임 줄이기 ── */
+/* ── 움직임 줄이기 ──
+ * 강제 표시 없이 모든 움직임 규칙을 이기도록, 어디에도 없는 id 하나를 :not() 으로 걸어
+ * id 급 우선순위를 얻는다 (이 플러그인의 다른 규칙은 전부 클래스 선택자다). */
 @media (prefers-reduced-motion: reduce) {
-  .ctt-root *, .ctt-root *::before, .ctt-root *::after,
-  .ctf-root *, .ctt-modal * { animation: none !important; transition: none !important; }
+  :is(.ctt-root, .ctf-root, .ctt-modal):not(#ctt-reduce-motion) *,
+  :is(.ctt-root, .ctf-root, .ctt-modal):not(#ctt-reduce-motion) *::before,
+  :is(.ctt-root, .ctf-root, .ctt-modal):not(#ctt-reduce-motion) *::after { animation: none; transition: none; }
 }
 
 /* 시험·마감 줄에는 ⋯ 가 없다 — 그 자리를 비워 날짜를 할 일 줄과 맞춘다 */
