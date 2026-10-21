@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Class Timetable — live demo</title>
 
 <!-- 플러그인의 실제 스타일시트를 그대로 읽는다 -->
@@ -209,6 +210,12 @@ input[type="text"], input[type="number"], select {
 .pv-menu-sep { height: 1px; background: var(--background-modifier-border); margin: 4px 2px; }
 .pv-menu-item.is-disabled { color: var(--text-faint); cursor: default; }
 .pv-menu-item.has-sub { display: flex; justify-content: space-between; gap: 12px; }
+
+/* 휴대폰으로 데모를 열면 사이드바(플러그인)만 화면 가득 보여 준다 */
+@media (max-width: 700px) {
+  .pv-note-text, .pv-main, .pv-split, .pv-sidebar-head { display: none; }
+  .pv-sidebar { flex: 1 1 auto !important; }
+}
 .pv-menu-arrow { color: var(--text-faint); }
 </style>
 </head>
@@ -274,7 +281,9 @@ window.module = { exports: {} };
 
 function notice(text) {
   const wrap = document.getElementById('pv-notices');
-  const el = wrap.createDiv({ cls: 'pv-notice', text: String(text) });
+  const el = wrap.createDiv({ cls: 'pv-notice' });
+  if (text && typeof text === 'object' && text.nodeType) el.appendChild(text);
+  else el.textContent = String(text);
   setTimeout(() => el.remove(), 4200);
 }
 
@@ -295,7 +304,7 @@ class TFile {
   }
 }
 
-class Notice { constructor(text) { notice(text); } }
+class Notice { constructor(text) { notice(text); } hide() {} }
 
 class Modal {
   constructor(app) {
@@ -384,6 +393,14 @@ class Setting {
       setPlaceholder: function (p) { el.placeholder = p; return this; },
       setValue: function (v) { el.value = v == null ? '' : v; return this; },
       onChange: function (fn) { el.oninput = () => fn(el.value); return this; },
+    });
+    return this;
+  }
+  addToggle(cb) {
+    const el = this.controlEl.createEl('input', { type: 'checkbox' });
+    cb({
+      setValue: function (v) { el.checked = !!v; return this; },
+      onChange: function (fn) { el.onchange = () => fn(el.checked); return this; },
     });
     return this;
   }
@@ -498,6 +515,21 @@ const ICONS = {
   'copy': '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
   'chevron-left': '<path d="m15 18-6-6 6-6"/>',
   'chevron-right': '<path d="m9 18 6-6-6-6"/>',
+  'sun': '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+  'list-checks': '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
+  'check': '<path d="M20 6 9 17l-5-5"/>',
+  'check-circle': '<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>',
+  'more-horizontal': '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  'file-plus': '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M12 18v-6"/>',
+  'library': '<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>',
+  'flag': '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>',
+  'calendar-off': '<path d="M4.2 4.2A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18"/><path d="M21 15.5V6a2 2 0 0 0-2-2H9.5"/><path d="M16 2v4"/><path d="M3 10h7"/><path d="M21 10h-5.5"/><path d="m2 2 20 20"/>',
+  'coffee': '<path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/><path d="M6 2v2"/>',
+  'upload': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+  'calendar-plus': '<path d="M8 2v4"/><path d="M16 2v4"/><path d="M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"/><path d="M3 10h18"/><path d="M16 19h6"/><path d="M19 16v6"/>',
+  'clipboard-paste': '<path d="M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1Z"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10"/><path d="m17 10 4 4-4 4"/>',
+  'calendar': '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+  'book-open': '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
   'sparkles':'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 17v4"/><path d="M17 19h4"/>',
 };
 function setIcon(el, name) {
@@ -638,8 +670,8 @@ function mkFolder(path) {
 }
 
 function mkFile(folderPath, name, fm) {
-  const folder = mkFolder(folderPath);
-  const p = folderPath + '/' + name;
+  const folder = folderPath ? mkFolder(folderPath) : root;
+  const p = folderPath ? folderPath + '/' + name : name;
   const file = new TFile(p);
   files[p] = { file, fm: Object.assign({}, fm || {}) };
   folder.children.push(file);
@@ -718,6 +750,17 @@ function buildVault() {
   hub('Intro to Psychology').cancelled = [ymd(dateOfWeekday(2))];
   // 과제 노트가 스스로 마감일을 갖는 경우 — 수업 폴더 안에 있으면 그 수업의 마감으로 잡힌다
   files['Semester/raw/Statistics/assignments/Term project brief.md'].fm.due = inDays(12);
+  // 지난 마감 하나(안 끝냄)와 끝낸 마감 하나 — 할 일 탭의 "지난 것"과 줄 그은 기록이 보이게
+  files['Semester/raw/Organic Chemistry/assignments/Problem set 1.md'].fm.due = inDays(-2);
+  hub('Creative Writing').due = [inDays(-1) + ' Story draft ✓'];
+  // 수업에 묶인 할 일 (수업 노트의 todo:)
+  hub('Statistics').todo = [inDays(0) + ' Review sampling slides', 'Ask about the term project data'];
+  hub('Linear Algebra').todo = [inDays(3) + ' Redo problem 4'];
+  // 필기하다 적은 체크박스 — 할 일 탭의 "노트 속 할 일"에 모인다
+  files['Semester/raw/Linear Algebra/lectures/0914(Mon)lecture.md'].content =
+    '# Eigenvalues\n\n- [ ] Read section 5.2 before Wednesday\n- [x] Copy the board notes\n- [ ] Try the 3x3 example by hand\n';
+  files['Semester/raw/Statistics/lectures/0915(Tue)lecture.md'].content =
+    '# Sampling\n\n- [ ] Email the TA about lab access\n';
 }
 buildVault();
 
@@ -732,7 +775,10 @@ function showHint() {
   viewHost.empty();
   const h = viewHost.createDiv({ cls: 'pv-hint' });
   h.createDiv({ text: 'This is the note pane.' });
-  h.createDiv({ text: 'Click a class block on the right and that course’s shelves open here.' });
+  h.createDiv({ text: 'The sidebar has three tabs: Today (your day, top to bottom, with the class in progress on a card), Week (the grid) and To-do.' });
+  h.createDiv({ text: 'To-do gathers deadlines, your own to-dos and the - [ ] checkboxes written in lecture notes. Type a to-do and press Enter; tick one and it is crossed out.' });
+  h.createDiv({ text: 'The plus button adds anything — a class, a whole timetable pasted from your school portal or an .ics file, a to-do, an exam, a plan.' });
+  h.createDiv({ text: 'Click a class block on the right and that course’s shelves open here, with its notes record, deadlines and to-dos beside them.' });
   h.createDiv({ text: 'Click a shelf header to enter the folder; square cards are folders, wide cards are files.' });
   h.createDiv({ text: 'Right-click a block for today’s note, shortcuts and settings — or press “Today’s note” on its shelves.' });
   h.createDiv({ text: 'Pencil unlocks editing — drag to move or resize a class, in 15-minute steps.' });
@@ -799,11 +845,22 @@ const app = {
     getAbstractFileByPath: (p) => folders[p] || (files[p] && files[p].file) || null,
     createFolder: async (p) => mkFolder(p),
     create: async (p, content) => {
-      const dir = p.slice(0, p.lastIndexOf('/'));
+      const dir = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '';
       const f = mkFile(dir, p.slice(p.lastIndexOf('/') + 1), {});
-      files[p].content = content || '';
+      files[f.path].content = content || '';
+      // 볼트가 메모리에만 있으니, .ics 는 브라우저 다운로드로도 건넨다. 서버로 가는 것은 없다.
+      if (/\.ics$/i.test(p)) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([content], { type: 'text/calendar' }));
+        a.download = p.split('/').pop();
+        a.click();
+      }
       return f;
     },
+    read: async (f) => (files[f.path] && files[f.path].content) || '',
+    cachedRead: async (f) => (files[f.path] && files[f.path].content) || '',
+    modify: async (f, data) => { if (files[f.path]) { files[f.path].content = data; f.stat.mtime = Date.now(); } paint(); },
+    process: async (f, fn) => { const rec = files[f.path]; if (!rec) return; rec.content = fn(rec.content || ''); f.stat.mtime = Date.now(); paint(); },
     // 볼트가 메모리에만 있으니, 그림은 브라우저 다운로드로 건넨다. 서버로 가는 것은 없다.
     createBinary: async (p, data) => {
       const a = document.createElement('a');
@@ -816,7 +873,17 @@ const app = {
     on: () => ({}),
   },
   metadataCache: {
-    getFileCache: (file) => (files[file.path] ? { frontmatter: files[file.path].fm } : null),
+    getFileCache: (file) => {
+      const rec = files[file.path];
+      if (!rec) return null;
+      // 옵시디언처럼 체크박스가 어느 줄에 있는지만 알려 준다 (글은 파일을 읽어야 안다)
+      const listItems = [];
+      String(rec.content || '').split('\n').forEach((line, i) => {
+        const m = /^\s*[-*+]\s+\[(.)\]/.exec(line);
+        if (m) listItems.push({ task: m[1], position: { start: { line: i } } });
+      });
+      return { frontmatter: rec.fm, listItems: listItems.length ? listItems : undefined };
+    },
     on: () => ({}),
   },
   fileManager: {
@@ -869,6 +936,12 @@ plugin.settings = Object.assign({}, DEFAULT_SETTINGS, {
 plugin.mode = 'view';                 // 생성자를 건너뛰었으니 onload 가 하던 일을 여기서 한다
 plugin.pending = new Map();
 plugin.pendingTimers = new Map();
+plugin.settings.todos = [
+  { id: 'd1', text: 'Renew the library card', date: '', done: false, doneAt: '' },
+  { id: 'd2', text: 'Buy lab goggles', date: ymd(addDays(new Date(), 1)), done: false, doneAt: '' },
+];
+migrateSettings(plugin.settings);
+plugin.initRuntime();
 plugin.saveData = async () => {};
 plugin.refreshAll = () => paint();
 plugin.refreshTimetables = () => paint();
@@ -876,7 +949,11 @@ plugin.saveSettings = async () => { LANG = I18N[plugin.settings.lang] ? plugin.s
 LANG = plugin.settings.lang;
 
 const host = document.getElementById('ctt-host');
-function paint() { renderTimetable(plugin, host); }
+function paint() {
+  renderTimetable(plugin, host);
+  if (folderView && viewHost.classList.contains('ctf-root')) folderView.render();
+  plugin.ui.anim = '';
+}
 
 /* ══════════════════════════════════════════════════════════════
    7. 프리뷰 껍데기 — 테마는 시스템, 폭은 드래그

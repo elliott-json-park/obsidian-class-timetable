@@ -1,13 +1,15 @@
 'use strict';
 
 /*
- * 수업 시간표 (class-timetable) — Obsidian plugin, v0.7.0
+ * 수업 시간표 (class-timetable) — Obsidian plugin
  *
- * 시간표를 보고, 눌러서 그 수업의 자료로 간다.
+ * 시간표를 보고, 눌러서 그 수업의 자료로 간다. 오늘 할 일과 마감을 한 곳에서 본다.
  *
  * 저장 규칙
  *  - 수업은 볼트에 산다. 폴더노트 frontmatter 의 schedule: 이 진실 원천이다.
- *  - 일정은 볼트에 안 산다. 파일을 만들지 않고 시간표 위에만 그린다 — 설정에 남는다.
+ *    그 수업의 시험·마감(exam: · due:)과 할 일(todo:)도 같은 노트에 산다.
+ *  - 일정과, 수업에 묶이지 않은 할 일은 볼트에 안 산다. 파일을 만들지 않는다 — 설정에 남는다.
+ *  - 노트 안의 - [ ] 체크박스는 읽기만 한다. 체크할 때만 그 한 줄의 [ ] 를 [x] 로 바꾼다.
  *  - frontmatter 에 쓰는 요일·시각 표기는 언어 설정과 무관하게 늘 같다.
  *    화면 언어를 바꿔도 파일은 그대로다.
  */
@@ -22,6 +24,9 @@ const {
 const MarkdownRenderChild = obsidian.MarkdownRenderChild || class {
   constructor(containerEl) { this.containerEl = containerEl; }
 };
+
+// 상태 표시줄은 데스크톱에만 있다. 모르는 환경이면 데스크톱으로 친다.
+const Platform = obsidian.Platform || { isMobile: false };
 
 const VIEW_TYPE = 'class-timetable-view';
 const FOLDER_VIEW_TYPE = 'class-folder-view';
@@ -510,10 +515,6 @@ const I18N_EXTRA = {
   ko: {
     nextClassIn: '다음 수업까지 {v}',
     nextClassTomorrow: '{dow} {time} · {v} 뒤',
-    byeAfternoon: '오늘 하루도 고생하셨습니다',
-    byeEvening: '오늘 저녁은 따끈한 라면 어때요?',
-    byeNight: '저녁에 가벼운 산책을 추천해요',
-    byeLate: '좋은 꿈 꾸세요',
     planNote: '메모',
     planNotePh: '이 일정에 남길 메모 (선택)',
     target: '수업 노트',
@@ -528,10 +529,6 @@ const I18N_EXTRA = {
   en: {
     nextClassIn: 'Next class in {v}',
     nextClassTomorrow: '{dow} {time} · in {v}',
-    byeAfternoon: 'Nice work today',
-    byeEvening: 'How about a warm bowl of ramen?',
-    byeNight: 'A short evening walk sounds good',
-    byeLate: 'Sleep well',
     planNote: 'Note',
     planNotePh: 'a memo for this plan (optional)',
     target: 'Course note',
@@ -546,10 +543,6 @@ const I18N_EXTRA = {
   zh: {
     nextClassIn: '距离下节课 {v}',
     nextClassTomorrow: '{dow} {time} · {v} 后',
-    byeAfternoon: '今天也辛苦了',
-    byeEvening: '晚饭来碗热汤面怎么样？',
-    byeNight: '晚上散散步吧',
-    byeLate: '做个好梦',
     planNote: '备注',
     planNotePh: '给这个日程留个备注（可选）',
     target: '课程笔记',
@@ -564,10 +557,6 @@ const I18N_EXTRA = {
   ja: {
     nextClassIn: '次の授業まで {v}',
     nextClassTomorrow: '{dow} {time} · {v} 後',
-    byeAfternoon: '今日もおつかれさまでした',
-    byeEvening: '夕食に温かいラーメンはいかがですか',
-    byeNight: '夜の軽い散歩はいかがですか',
-    byeLate: 'よい夢を',
     planNote: 'メモ',
     planNotePh: 'この予定へのメモ（任意）',
     target: '授業ノート',
@@ -1376,6 +1365,340 @@ const I18N_V30 = {
 
 for (const code of Object.keys(I18N_V30)) Object.assign(I18N[code], I18N_V30[code]);
 
+/* ── 2.0: 탭 · 오늘 · 할 일 · 한 번에 등록 · .ics · 학기 · 노트 기록 · 알림 · 되돌리기 ── */
+const I18N_V40 = {
+  ko: {
+    tabToday: '오늘', tabWeek: '주간', tabTodo: '할 일',
+    badgeHint: '오늘까지 할 일 {n}개',
+    addMenu: '추가하기', moreMenu: '더 보기', planDrawMenu: '시간표에 끌어서 일정 그리기',
+    importMenu: '시간표 한 번에 등록 (붙여넣기 · .ics)',
+    cmdOpenToday: '오늘 일정 보기', cmdOpenTodo: '할 일 보기',
+    // 오늘
+    dYesterday: '어제', dayPrev: '전날', dayNext: '다음 날', backToday: '오늘로',
+    dayEmptyOn: '이 날은 수업이 없습니다', nextIs: '다음 수업 · {when}',
+    nowTag: '수업 중', nextTag: '다음 수업', startsIn: '{v} 뒤 시작',
+    noteOpen: '오늘 노트 열기', todayNoteShort: '오늘 노트', noteShort: '노트', noteAdd: '노트', noteMissing: '노트 없음',
+    gapFree: '공강 {v}', gapChores: '할 일 {n}개',
+    agendaTodo: '오늘 할 일', agendaTodoOn: '이 날 할 일',
+    nextTomorrow: '내일 {time}', nextOnDay: '{dow} {time}',
+    statusNext: '다음 {name} · {time}',
+    // 할 일
+    todoAddTitle: '할 일 추가', todoAddFor: '이 수업에 할 일 추가…', todoAddPh: '할 일을 적고 Enter', todoAddPhDay: '이 날 할 일 추가',
+    todoAddBtn: '추가', todoAdded: '할 일을 추가했습니다', todoWhat: '할 일', todoGeneral: '수업 없음',
+    todoNoDate: '날짜 없음', todoDate: '날짜', todoPickDate: '날짜 고르기…', optional: '선택',
+    todoHintCourse: '{path} 의 todo: 에 적습니다. 노트와 함께 다른 기기로 갑니다.',
+    todoHintGeneral: '파일을 만들지 않고 플러그인 설정에만 남습니다.',
+    todoRemoved: '지웠습니다 — {name}', todoEmpty: '할 일이 없어요',
+    todoEmptySub: '위 칸에 적고 Enter. 수업 노트에 적은 - [ ] 체크박스도 여기에 모입니다.',
+    todoEmptyCourse: '이 수업의 할 일을 위 칸에 적어 보세요.',
+    secLate: '지난 것', secToday: '오늘', secSoon: '다가오는 것', secAnytime: '언제든', secTasks: '노트 속 할 일', secDone: '끝낸 것',
+    secTasksHint: '수업 폴더의 노트에 적은 - [ ] 체크박스. 체크하면 그 노트의 줄도 [x] 가 됩니다.',
+    clearDone: '끝낸 것 치우기', clearDoneBody: '끝낸 할 일 {n}개를 목록에서 지웁니다. 수업 노트의 ✓ 줄도 함께 지웁니다.',
+    openTaskNote: '노트에서 보기', openCourseNote: '수업 노트 열기', promoteTodo: '이 수업의 마감으로 올리기',
+    seeAllTodo: '할 일 탭에서 모두 보기', upcomingShort: '시험 · 마감', noAssignments: '아직 적힌 시험·마감이 없습니다',
+    assignProgress: '{n}/{m} 끝냄',
+    // 노트 기록
+    attendTitle: '노트 기록', attendCount: '{n} / {m}회', attendHint: '노트가 없는 수업 {n}회 — 점을 누르면 그 날의 노트를 만듭니다.',
+    recentNotes: '최근 노트',
+    // 짧은 이름
+    shortLabel: '짧은 이름', shortPh: '좁은 칸에서 쓸 이름',
+    // 한 번에 등록
+    emptyImport: '시간표 붙여넣기로 시작',
+    importTitle: '시간표 한 번에 등록', importCmd: '시간표 한 번에 등록 (붙여넣기 · .ics)',
+    importIntro: '학교 포털 · 엑셀 · 메모에서 복사해 붙여넣거나, 캘린더에서 내보낸 .ics 파일을 고르세요. 만들기 전에 미리 보여 줍니다.',
+    importPaste: '붙여넣기', importIcs: '.ics 파일',
+    importPastePh: '통계학 월,수 10:30-12:00 301호\n선형대수 화 9:00-10:15 @ 공학관 204\n심리학개론 | 목 13:00-15:00 | 인문관 101',
+    importPasteHint: '한 줄에 수업 하나: 이름 · 요일 · 시간 · 강의실. 요일은 월수 · 월,수 · Mon/Wed 모두 됩니다.',
+    importIcsHint: '매주 반복하는 일정만 수업으로 읽습니다. 격주 일정은 홀수·짝수 주가 됩니다.',
+    importPick: '.ics 파일 고르기', importWhere: '만들 위치', importFolder: '수업',
+    importWhereHint: '수업마다 폴더 하나와 폴더노트, 그 안에 강의 노트 폴더를 만듭니다. 이름이 같은 수업이 있으면 시간만 더합니다.',
+    importMerge: '기존 수업에 더함', importEmptyPaste: '붙여넣으면 여기에 만들 수업이 보입니다',
+    importBadLine: '{n}번째 줄을 읽지 못했습니다 — {v}', importSkipped: '반복되지 않는 일정 {n}개는 건너뜁니다',
+    importGo: '수업 {n}개 만들기', importGoNone: '만들 수업이 없습니다',
+    importDone: '새 수업 {n}개, 시간을 더한 수업 {m}개', importSettingDesc: '이미 다른 곳에 있는 시간표를 다시 치지 않고 옮겨 옵니다.',
+    // .ics
+    icsExport: '캘린더로 내보내기 (.ics)', icsExportShort: '.ics 만들기', icsExportCmd: '시간표를 캘린더 파일(.ics)로 내보내기',
+    icsHint: '.ics 는 학기 동안 반복하는 수업과 시험·마감(하루 전 알림)을 담습니다. 구글 캘린더 · 아이폰 캘린더의 “가져오기”로 넣으세요.',
+    icsSaved: '캘린더 파일을 만들었습니다 — {path}', icsFail: '캘린더 파일을 만들지 못했습니다',
+    // 학기
+    semSection: '학기', semSectionDesc: '학기마다 시작일·종료일·수업 없는 날이 따로 저장됩니다. 지난 학기로 돌아가 볼 수도 있습니다.',
+    semCurrent: '지금 보는 학기', semCurrentDesc: '바꾸면 그 학기의 수업과 날짜로 시간표가 바뀝니다.',
+    semUnnamed: '학기 {n}', semName: '학기 이름',
+    semNewCmd: '새 학기 시작…', semNewTitle: '새 학기 시작',
+    semNewIntro: '지금 학기의 수업은 그대로 보관되고, 새 학기는 빈 시간표로 시작합니다. 노트는 아무것도 지워지지 않습니다.',
+    semArchive: '지금 수업', semArchiveLabel: '지금 수업 {n}개를 지난 학기로 보관',
+    semOldName: '지난 학기 이름', semOldHint: '보관하는 수업의 semester: 에 이 이름이 적힙니다.',
+    semNewName: '새 학기 이름', semDatesHint: '비워 두고 나중에 설정에서 정해도 됩니다.', semNewGo: '새 학기 시작',
+    semStarted: '{name} 을(를) 시작했습니다', semDelete: '저장된 학기 지우기',
+    semDeleteDesc: '학기의 날짜 정보만 지웁니다. 수업 노트는 그대로입니다.', semDeleteBody: '{name} 의 날짜 정보를 지웁니다.',
+    semNameFmt: '{y}년 {h}', semHalf1: '1학기', semHalf2: '2학기',
+    // 설정 묶음
+    notesSection: '노트', remindSection: '알림과 표시', advancedSection: '고급',
+    advancedDesc: '처음에는 몰라도 됩니다. 볼트 전체에서 schedule: 이 있는 노트를 찾습니다.',
+    noteTasksToggle: '노트 속 체크박스도 할 일로 보기',
+    noteTasksDesc: '수업 폴더의 노트에 적은 - [ ] 를 할 일 탭에 모읍니다. 체크하면 그 노트의 줄도 바뀝니다.',
+    remindTitle: '수업 시작 알림', remindOff: '알리지 않음', remindN: '{n}분 전',
+    remindHint: '옵시디언이 켜져 있을 때 알림을 띄웁니다. 오늘 노트를 바로 열 수 있습니다.',
+    remindIn: '{v} 뒤 시작',
+    statusBarToggle: '상태 표시줄에 지금 수업 보이기', statusBarDesc: '화면 아래에 “통계학 · 25분 남음”처럼 보입니다. 누르면 시간표가 열립니다.',
+    showTitle: '표시',
+    // 되돌리기
+    undo: '되돌리기', undoCmd: '마지막 변경 되돌리기', undoNothing: '되돌릴 것이 없습니다', undone: '되돌렸습니다',
+    movedClass: '{name} → {v}', cancelledNotice: '{name} · {date} 휴강', planRemoved: '일정을 지웠습니다 — {name}',
+    insertAssignCmd: '노트에 학기 전체 시험·마감 넣기', insertTodoCmd: '노트에 할 일 목록 넣기',
+    helpTodo: ['---', 'todo:', '  - 3장 다시 보기', '  - 2026-10-22 발표 자료 만들기', '  - 교수님께 메일 ✓', 'short: 통계', '---'],
+    helpTodoNote: 'todo: 는 그 수업의 할 일, short: 는 좁은 칸에서 쓸 짧은 이름입니다. 노트 안에 ```class-timetable 블록을 두고 view: todo · view: assignments 로 할 일과 학기 전체 마감을 볼 수 있습니다 (course: 이름 으로 한 수업만).',
+  },
+  en: {
+    tabToday: 'Today', tabWeek: 'Week', tabTodo: 'To-do',
+    badgeHint: '{n} things due by today',
+    addMenu: 'Add', moreMenu: 'More', planDrawMenu: 'Draw a plan on the grid',
+    importMenu: 'Add your whole timetable (paste · .ics)',
+    cmdOpenToday: 'Show today', cmdOpenTodo: 'Show to-do',
+    dYesterday: 'Yesterday', dayPrev: 'Previous day', dayNext: 'Next day', backToday: 'Today',
+    dayEmptyOn: 'No classes on this day', nextIs: 'Next class · {when}',
+    nowTag: 'In class', nextTag: 'Up next', startsIn: 'Starts in {v}',
+    noteOpen: 'Open today\'s note', todayNoteShort: 'Today\'s note', noteShort: 'Note', noteAdd: 'Note', noteMissing: 'no note',
+    gapFree: 'Free · {v}', gapChores: '{n} to-dos',
+    agendaTodo: 'Due today', agendaTodoOn: 'Due this day',
+    nextTomorrow: 'Tomorrow {time}', nextOnDay: '{dow} {time}',
+    statusNext: 'Next: {name} · {time}',
+    todoAddTitle: 'Add a to-do', todoAddFor: 'Add a to-do for this class…', todoAddPh: 'Type a to-do and press Enter', todoAddPhDay: 'Add a to-do for this day',
+    todoAddBtn: 'Add', todoAdded: 'To-do added', todoWhat: 'To-do', todoGeneral: 'No class',
+    todoNoDate: 'No date', todoDate: 'Date', todoPickDate: 'Pick a date…', optional: 'optional',
+    todoHintCourse: 'Written under todo: in {path}. It travels with the note to your other devices.',
+    todoHintGeneral: 'Kept in the plugin settings. No file is created.',
+    todoRemoved: 'Removed — {name}', todoEmpty: 'Nothing to do',
+    todoEmptySub: 'Type above and press Enter. - [ ] checkboxes in your class notes show up here too.',
+    todoEmptyCourse: 'Add this class\'s to-dos in the box above.',
+    secLate: 'Overdue', secToday: 'Today', secSoon: 'Coming up', secAnytime: 'Anytime', secTasks: 'From your notes', secDone: 'Done',
+    secTasksHint: '- [ ] checkboxes in notes inside your class folders. Checking one here checks it in the note.',
+    clearDone: 'Clear done', clearDoneBody: 'Removes {n} finished to-dos, including the ✓ lines in your class notes.',
+    openTaskNote: 'Show in note', openCourseNote: 'Open class note', promoteTodo: 'Turn into a deadline for this class',
+    seeAllTodo: 'See all in To-do', upcomingShort: 'Exams · deadlines', noAssignments: 'No exams or deadlines written yet',
+    assignProgress: '{n}/{m} done',
+    attendTitle: 'Notes taken', attendCount: '{n} of {m}', attendHint: '{n} classes without a note — click a dot to write that day\'s note.',
+    recentNotes: 'Recent notes',
+    shortLabel: 'Short name', shortPh: 'used when the column is narrow',
+    emptyImport: 'Paste your timetable',
+    importTitle: 'Add your whole timetable', importCmd: 'Add your whole timetable (paste · .ics)',
+    importIntro: 'Paste rows copied from your school portal, a spreadsheet or a note — or pick an .ics file exported from a calendar. You see the result before anything is created.',
+    importPaste: 'Paste', importIcs: '.ics file',
+    importPastePh: 'Statistics Mon,Wed 10:30-12:00 Room 301\nLinear Algebra Tue 9:00-10:15 @ Hall B\nPsychology | Thu 13:00-15:00 | Room 101',
+    importPasteHint: 'One class per line: name · days · time · room. Days can be Mon/Wed, Mon,Wed or 월수.',
+    importIcsHint: 'Only weekly repeating events become classes. Every-other-week events become odd or even weeks.',
+    importPick: 'Choose an .ics file', importWhere: 'Create in', importFolder: 'Classes',
+    importWhereHint: 'Each class gets a folder with a folder note and a lecture-notes folder inside. A class that already exists only gets the new times.',
+    importMerge: 'adds to existing', importEmptyPaste: 'Paste something and the classes appear here',
+    importBadLine: 'Could not read line {n} — {v}', importSkipped: '{n} non-repeating events are skipped',
+    importGo: 'Create {n} classes', importGoNone: 'Nothing to create',
+    importDone: '{n} new classes, {m} classes got new times', importSettingDesc: 'Bring in a timetable you already have elsewhere instead of typing it again.',
+    icsExport: 'Export to calendar (.ics)', icsExportShort: 'Create .ics', icsExportCmd: 'Export timetable as a calendar file (.ics)',
+    icsHint: 'The .ics holds your classes repeating through the semester, plus exams and deadlines with a reminder the day before. Import it in Google Calendar or Apple Calendar.',
+    icsSaved: 'Calendar file created — {path}', icsFail: 'Could not create the calendar file',
+    semSection: 'Semester', semSectionDesc: 'Each semester keeps its own start, end and days without classes. You can switch back to look at a past one.',
+    semCurrent: 'Semester shown', semCurrentDesc: 'Switching changes the timetable to that semester\'s classes and dates.',
+    semUnnamed: 'Semester {n}', semName: 'Semester name',
+    semNewCmd: 'Start a new semester…', semNewTitle: 'Start a new semester',
+    semNewIntro: 'This semester\'s classes are kept as they are and the new one starts with an empty timetable. No note is deleted.',
+    semArchive: 'Current classes', semArchiveLabel: 'Keep the {n} current classes in the past semester',
+    semOldName: 'Past semester\'s name', semOldHint: 'This name is written to semester: in the classes being kept.',
+    semNewName: 'New semester\'s name', semDatesHint: 'You can leave these empty and set them in Settings later.', semNewGo: 'Start semester',
+    semStarted: '{name} started', semDelete: 'Delete a saved semester',
+    semDeleteDesc: 'Only removes that semester\'s dates. Class notes stay.', semDeleteBody: 'Removes the dates saved for {name}.',
+    semNameFmt: '{h} {y}', semHalf1: 'Spring', semHalf2: 'Fall',
+    notesSection: 'Notes', remindSection: 'Reminders and display', advancedSection: 'Advanced',
+    advancedDesc: 'Safe to skip. By default the whole vault is searched for notes with schedule:.',
+    noteTasksToggle: 'Show checkboxes from notes as to-dos',
+    noteTasksDesc: 'Collects - [ ] items from notes in your class folders into the To-do tab. Checking one changes the note too.',
+    remindTitle: 'Class reminder', remindOff: 'Off', remindN: '{n} min before',
+    remindHint: 'Shows a notice while Obsidian is open, with a button for today\'s note.',
+    remindIn: 'starts in {v}',
+    statusBarToggle: 'Show the current class in the status bar', statusBarDesc: 'Like “Statistics · 25m left” at the bottom of the window. Click it to open the timetable.',
+    showTitle: 'Show',
+    undo: 'Undo', undoCmd: 'Undo the last change', undoNothing: 'Nothing to undo', undone: 'Undone',
+    movedClass: '{name} → {v}', cancelledNotice: '{name} · cancelled on {date}', planRemoved: 'Plan deleted — {name}',
+    insertAssignCmd: 'Insert all exams and deadlines of the semester into note', insertTodoCmd: 'Insert to-do list into note',
+    helpTodo: ['---', 'todo:', '  - Review chapter 3', '  - 2026-10-22 Make the slides', '  - Email the professor ✓', 'short: Stats', '---'],
+    helpTodoNote: 'todo: holds that class\'s to-dos, short: is the name used in narrow columns. Put a ```class-timetable block in a note with view: todo or view: assignments to see to-dos or the whole semester\'s deadlines (add course: Name for one class).',
+  },
+  zh: {
+    tabToday: '今天', tabWeek: '本周', tabTodo: '待办',
+    badgeHint: '截至今天有 {n} 项',
+    addMenu: '添加', moreMenu: '更多', planDrawMenu: '在课程表上拖动画日程',
+    importMenu: '一次录入课程表（粘贴 · .ics）',
+    cmdOpenToday: '查看今天', cmdOpenTodo: '查看待办',
+    dYesterday: '昨天', dayPrev: '前一天', dayNext: '后一天', backToday: '回到今天',
+    dayEmptyOn: '这一天没有课', nextIs: '下节课 · {when}',
+    nowTag: '上课中', nextTag: '下节课', startsIn: '{v} 后开始',
+    noteOpen: '打开今天的笔记', todayNoteShort: '今天的笔记', noteShort: '笔记', noteAdd: '笔记', noteMissing: '没有笔记',
+    gapFree: '空堂 {v}', gapChores: '待办 {n} 项',
+    agendaTodo: '今天要做', agendaTodoOn: '这一天要做',
+    nextTomorrow: '明天 {time}', nextOnDay: '周{dow} {time}',
+    statusNext: '下一个 {name} · {time}',
+    todoAddTitle: '添加待办', todoAddFor: '为这门课添加待办…', todoAddPh: '写下待办后按 Enter', todoAddPhDay: '为这一天添加待办',
+    todoAddBtn: '添加', todoAdded: '已添加待办', todoWhat: '待办', todoGeneral: '不属于课程',
+    todoNoDate: '无日期', todoDate: '日期', todoPickDate: '选择日期…', optional: '可选',
+    todoHintCourse: '写入 {path} 的 todo:，会随笔记同步到其他设备。',
+    todoHintGeneral: '只保存在插件设置里，不会创建文件。',
+    todoRemoved: '已删除 — {name}', todoEmpty: '没有待办',
+    todoEmptySub: '在上方输入后按 Enter。课程笔记里的 - [ ] 复选框也会汇集到这里。',
+    todoEmptyCourse: '在上方为这门课写下待办。',
+    secLate: '已过期', secToday: '今天', secSoon: '即将到来', secAnytime: '随时', secTasks: '笔记里的待办', secDone: '已完成',
+    secTasksHint: '课程文件夹中笔记里的 - [ ] 复选框。在这里勾选，笔记里的那一行也会变成 [x]。',
+    clearDone: '清除已完成', clearDoneBody: '从列表中删除 {n} 项已完成的待办，课程笔记中带 ✓ 的行也会一起删除。',
+    openTaskNote: '在笔记中查看', openCourseNote: '打开课程笔记', promoteTodo: '改为这门课的截止事项',
+    seeAllTodo: '在待办中查看全部', upcomingShort: '考试 · 截止', noAssignments: '还没有记录考试或截止日期',
+    assignProgress: '已完成 {n}/{m}',
+    attendTitle: '笔记记录', attendCount: '{n} / {m} 次', attendHint: '有 {n} 次课没有笔记 — 点击圆点即可创建那天的笔记。',
+    recentNotes: '最近的笔记',
+    shortLabel: '简称', shortPh: '栏位较窄时使用',
+    emptyImport: '粘贴课程表开始',
+    importTitle: '一次录入课程表', importCmd: '一次录入课程表（粘贴 · .ics）',
+    importIntro: '粘贴从教务系统、表格或备忘录复制的内容，或选择日历导出的 .ics 文件。创建前会先预览。',
+    importPaste: '粘贴', importIcs: '.ics 文件',
+    importPastePh: '统计学 一,三 10:30-12:00 301教室\n线性代数 二 9:00-10:15 @ 工学楼 204\n心理学导论 | 四 13:00-15:00 | 文科楼 101',
+    importPasteHint: '每行一门课：名称 · 星期 · 时间 · 教室。星期可写 一三、一,三 或 Mon/Wed。',
+    importIcsHint: '只把每周重复的日程读作课程。隔周的日程会成为单周或双周。',
+    importPick: '选择 .ics 文件', importWhere: '创建位置', importFolder: '课程',
+    importWhereHint: '每门课会创建一个文件夹和文件夹笔记，里面还有课堂笔记文件夹。已有同名课程时只补充时间。',
+    importMerge: '补充到已有课程', importEmptyPaste: '粘贴后，要创建的课程会显示在这里',
+    importBadLine: '无法识别第 {n} 行 — {v}', importSkipped: '跳过 {n} 个不重复的日程',
+    importGo: '创建 {n} 门课', importGoNone: '没有可创建的课程',
+    importDone: '新课程 {n} 门，补充时间 {m} 门', importSettingDesc: '把别处已有的课程表搬过来，不用重新输入。',
+    icsExport: '导出到日历 (.ics)', icsExportShort: '生成 .ics', icsExportCmd: '将课程表导出为日历文件 (.ics)',
+    icsHint: '.ics 包含整个学期重复的课程，以及考试和截止日期（提前一天提醒）。可在 Google 日历或苹果日历中“导入”。',
+    icsSaved: '已创建日历文件 — {path}', icsFail: '无法创建日历文件',
+    semSection: '学期', semSectionDesc: '每个学期分别保存开始日、结束日和不上课的日子，也可以切回去查看以前的学期。',
+    semCurrent: '当前显示的学期', semCurrentDesc: '切换后，课程表会显示那个学期的课程和日期。',
+    semUnnamed: '学期 {n}', semName: '学期名称',
+    semNewCmd: '开始新学期…', semNewTitle: '开始新学期',
+    semNewIntro: '本学期的课程会原样保留，新学期从空课程表开始。不会删除任何笔记。',
+    semArchive: '当前课程', semArchiveLabel: '把当前 {n} 门课保留在上一学期',
+    semOldName: '上一学期的名称', semOldHint: '保留的课程的 semester: 会写上这个名称。',
+    semNewName: '新学期名称', semDatesHint: '可以先留空，之后在设置里填写。', semNewGo: '开始新学期',
+    semStarted: '已开始 {name}', semDelete: '删除保存的学期',
+    semDeleteDesc: '只删除该学期的日期信息，课程笔记保持不变。', semDeleteBody: '删除 {name} 的日期信息。',
+    semNameFmt: '{y}年{h}', semHalf1: '春季学期', semHalf2: '秋季学期',
+    notesSection: '笔记', remindSection: '提醒与显示', advancedSection: '高级',
+    advancedDesc: '一开始可以不管。默认会在整个仓库中查找带 schedule: 的笔记。',
+    noteTasksToggle: '把笔记里的复选框也显示为待办',
+    noteTasksDesc: '把课程文件夹笔记中的 - [ ] 汇集到待办。勾选时笔记里的那一行也会改变。',
+    remindTitle: '上课提醒', remindOff: '不提醒', remindN: '提前 {n} 分钟',
+    remindHint: 'Obsidian 打开时显示提醒，并可直接打开今天的笔记。',
+    remindIn: '{v} 后开始',
+    statusBarToggle: '在状态栏显示当前课程', statusBarDesc: '窗口底部会显示“统计学 · 还剩 25分”。点击即可打开课程表。',
+    showTitle: '显示',
+    undo: '撤销', undoCmd: '撤销上一次更改', undoNothing: '没有可撤销的操作', undone: '已撤销',
+    movedClass: '{name} → {v}', cancelledNotice: '{name} · {date} 停课', planRemoved: '已删除日程 — {name}',
+    insertAssignCmd: '在笔记中插入整个学期的考试与截止', insertTodoCmd: '在笔记中插入待办列表',
+    helpTodo: ['---', 'todo:', '  - 复习第三章', '  - 2026-10-22 准备展示材料', '  - 给老师发邮件 ✓', 'short: 统计', '---'],
+    helpTodoNote: 'todo: 是这门课的待办，short: 是栏位较窄时使用的简称。在笔记中放一个 ```class-timetable 代码块并写 view: todo 或 view: assignments，即可查看待办或整个学期的截止事项（加 course: 名称 只看一门课）。',
+  },
+  ja: {
+    tabToday: '今日', tabWeek: '週', tabTodo: 'やること',
+    badgeHint: '今日までのやること {n} 件',
+    addMenu: '追加', moreMenu: 'その他', planDrawMenu: '時間割をドラッグして予定を描く',
+    importMenu: '時間割をまとめて登録（貼り付け · .ics）',
+    cmdOpenToday: '今日の予定を見る', cmdOpenTodo: 'やることを見る',
+    dYesterday: '昨日', dayPrev: '前の日', dayNext: '次の日', backToday: '今日に戻る',
+    dayEmptyOn: 'この日は授業がありません', nextIs: '次の授業 · {when}',
+    nowTag: '授業中', nextTag: '次の授業', startsIn: '{v} 後に開始',
+    noteOpen: '今日のノートを開く', todayNoteShort: '今日のノート', noteShort: 'ノート', noteAdd: 'ノート', noteMissing: 'ノートなし',
+    gapFree: '空きコマ {v}', gapChores: 'やること {n} 件',
+    agendaTodo: '今日のやること', agendaTodoOn: 'この日のやること',
+    nextTomorrow: '明日 {time}', nextOnDay: '{dow} {time}',
+    statusNext: '次 {name} · {time}',
+    todoAddTitle: 'やることを追加', todoAddFor: 'この授業のやることを追加…', todoAddPh: 'やることを書いて Enter', todoAddPhDay: 'この日のやることを追加',
+    todoAddBtn: '追加', todoAdded: 'やることを追加しました', todoWhat: 'やること', todoGeneral: '授業なし',
+    todoNoDate: '日付なし', todoDate: '日付', todoPickDate: '日付を選ぶ…', optional: '任意',
+    todoHintCourse: '{path} の todo: に書きます。ノートと一緒にほかの端末へ同期されます。',
+    todoHintGeneral: 'ファイルは作らず、プラグインの設定にだけ残ります。',
+    todoRemoved: '削除しました — {name}', todoEmpty: 'やることはありません',
+    todoEmptySub: '上の欄に書いて Enter。授業ノートの - [ ] チェックボックスもここに集まります。',
+    todoEmptyCourse: 'この授業のやることを上の欄に書いてみましょう。',
+    secLate: '期限切れ', secToday: '今日', secSoon: 'これから', secAnytime: 'いつでも', secTasks: 'ノートの中のやること', secDone: '完了',
+    secTasksHint: '授業フォルダのノートに書いた - [ ] チェックボックス。ここでチェックするとノートの行も [x] になります。',
+    clearDone: '完了したものを片付ける', clearDoneBody: '完了したやること {n} 件を一覧から消します。授業ノートの ✓ の行も消えます。',
+    openTaskNote: 'ノートで見る', openCourseNote: '授業ノートを開く', promoteTodo: 'この授業の締切にする',
+    seeAllTodo: 'やることタブですべて見る', upcomingShort: '試験 · 締切', noAssignments: 'まだ試験・締切が書かれていません',
+    assignProgress: '{n}/{m} 完了',
+    attendTitle: 'ノートの記録', attendCount: '{n} / {m} 回', attendHint: 'ノートのない授業が {n} 回 — 点を押すとその日のノートを作ります。',
+    recentNotes: '最近のノート',
+    shortLabel: '短い名前', shortPh: '狭い欄で使う名前',
+    emptyImport: '時間割を貼り付けて始める',
+    importTitle: '時間割をまとめて登録', importCmd: '時間割をまとめて登録（貼り付け · .ics）',
+    importIntro: '学校のポータル・表計算・メモからコピーして貼り付けるか、カレンダーから書き出した .ics ファイルを選んでください。作る前にプレビューします。',
+    importPaste: '貼り付け', importIcs: '.ics ファイル',
+    importPastePh: '統計学 月,水 10:30-12:00 301教室\n線形代数 火 9:00-10:15 @ 工学棟 204\n心理学入門 | 木 13:00-15:00 | 文学棟 101',
+    importPasteHint: '1 行に授業 1 つ：名前 · 曜日 · 時間 · 教室。曜日は 月水、月,水、Mon/Wed のどれでも読めます。',
+    importIcsHint: '毎週繰り返す予定だけを授業として読みます。隔週の予定は奇数週・偶数週になります。',
+    importPick: '.ics ファイルを選ぶ', importWhere: '作成する場所', importFolder: '授業',
+    importWhereHint: '授業ごとにフォルダとフォルダノート、その中に講義ノートのフォルダを作ります。同じ名前の授業があれば時間だけを足します。',
+    importMerge: '既存の授業に追加', importEmptyPaste: '貼り付けると作る授業がここに表示されます',
+    importBadLine: '{n} 行目を読み取れませんでした — {v}', importSkipped: '繰り返さない予定 {n} 件は飛ばします',
+    importGo: '授業を {n} 件作る', importGoNone: '作る授業がありません',
+    importDone: '新しい授業 {n} 件、時間を足した授業 {m} 件', importSettingDesc: 'ほかの場所にある時間割を打ち直さずに取り込みます。',
+    icsExport: 'カレンダーに書き出す (.ics)', icsExportShort: '.ics を作る', icsExportCmd: '時間割をカレンダーファイル (.ics) に書き出す',
+    icsHint: '.ics には学期中に繰り返す授業と、試験・締切（前日の通知つき）が入ります。Google カレンダーや Apple のカレンダーで「読み込み」してください。',
+    icsSaved: 'カレンダーファイルを作りました — {path}', icsFail: 'カレンダーファイルを作れませんでした',
+    semSection: '学期', semSectionDesc: '学期ごとに開始日・終了日・授業のない日を別々に保存します。過去の学期に戻って見ることもできます。',
+    semCurrent: '表示中の学期', semCurrentDesc: '切り替えると、その学期の授業と日付で時間割が変わります。',
+    semUnnamed: '学期 {n}', semName: '学期の名前',
+    semNewCmd: '新しい学期を始める…', semNewTitle: '新しい学期を始める',
+    semNewIntro: '今の学期の授業はそのまま保管され、新しい学期は空の時間割で始まります。ノートは何も消えません。',
+    semArchive: '今の授業', semArchiveLabel: '今の授業 {n} 件を前の学期として保管',
+    semOldName: '前の学期の名前', semOldHint: '保管する授業の semester: にこの名前が書かれます。',
+    semNewName: '新しい学期の名前', semDatesHint: '空欄のままにして、あとで設定で決めても大丈夫です。', semNewGo: '学期を始める',
+    semStarted: '{name} を始めました', semDelete: '保存した学期を消す',
+    semDeleteDesc: 'その学期の日付情報だけを消します。授業ノートはそのままです。', semDeleteBody: '{name} の日付情報を消します。',
+    semNameFmt: '{y}年度 {h}', semHalf1: '前期', semHalf2: '後期',
+    notesSection: 'ノート', remindSection: '通知と表示', advancedSection: '詳細',
+    advancedDesc: '最初は気にしなくて大丈夫です。既定では保管庫全体から schedule: のあるノートを探します。',
+    noteTasksToggle: 'ノートのチェックボックスもやることとして表示',
+    noteTasksDesc: '授業フォルダのノートの - [ ] をやることタブに集めます。チェックするとノートの行も変わります。',
+    remindTitle: '授業開始の通知', remindOff: '通知しない', remindN: '{n} 分前',
+    remindHint: 'Obsidian を開いているときに通知を出します。今日のノートをすぐに開けます。',
+    remindIn: '{v} 後に開始',
+    statusBarToggle: 'ステータスバーに今の授業を表示', statusBarDesc: '画面下に「統計学 · 残り 25分」のように表示されます。押すと時間割が開きます。',
+    showTitle: '表示',
+    undo: '元に戻す', undoCmd: '最後の変更を元に戻す', undoNothing: '元に戻すものはありません', undone: '元に戻しました',
+    movedClass: '{name} → {v}', cancelledNotice: '{name} · {date} 休講', planRemoved: '予定を削除しました — {name}',
+    insertAssignCmd: 'ノートに学期全体の試験・締切を挿入', insertTodoCmd: 'ノートにやることリストを挿入',
+    helpTodo: ['---', 'todo:', '  - 3章を復習', '  - 2026-10-22 発表資料を作る', '  - 先生にメール ✓', 'short: 統計', '---'],
+    helpTodoNote: 'todo: はその授業のやること、short: は狭い欄で使う短い名前です。ノートに ```class-timetable ブロックを置き view: todo や view: assignments と書くと、やることや学期全体の締切が見られます（course: 名前 で一つの授業だけ）。',
+  },
+};
+
+for (const code of Object.keys(I18N_V40)) Object.assign(I18N[code], I18N_V40[code]);
+
+// 처음 보는 사람에게 더 정확한 말로 — 예전 문구를 덮어쓴다
+const I18N_V40_FIX = {
+  ko: {
+    emptyBody: '학교 포털이나 엑셀에 있는 시간표를 복사해 붙여넣으면 한 번에 만들어집니다. 먼저 둘러보고 싶다면 예시 시간표를 불러오세요.',
+    emptyHowTitle: '노트에 직접 적고 싶다면',
+    emptyHowBody: '어떤 노트든 맨 위(속성)에 schedule: 을 적으면 수업이 됩니다. 수업 시간은 이렇게 노트 안에 저장되므로, 노트를 옮기거나 이름을 바꿔도 시간표가 따라갑니다.',
+    dayDone: '오늘 수업 끝',
+  },
+  en: {
+    emptyBody: 'Copy your timetable from your school portal or a spreadsheet and paste it — every class is created at once. Want to look around first? Load the sample timetable.',
+    emptyHowTitle: 'Prefer writing it in a note?',
+    emptyHowBody: 'Any note with schedule: at the top (in its properties) becomes a class. Class times live inside your notes, so the timetable follows when you move or rename them.',
+  },
+  zh: {
+    emptyBody: '从教务系统或表格复制课程表并粘贴，就能一次建好所有课程。想先看看？载入示例课程表。',
+    emptyHowTitle: '想直接写在笔记里？',
+    emptyHowBody: '任何笔记只要在顶部（属性）写上 schedule: 就会成为课程。上课时间保存在笔记里，移动或重命名笔记时课程表也会跟着变。',
+  },
+  ja: {
+    emptyBody: '学校のポータルや表計算ソフトの時間割をコピーして貼り付けると、まとめて作られます。まずは見てみたい場合はサンプルの時間割を読み込んでください。',
+    emptyHowTitle: 'ノートに直接書きたい場合',
+    emptyHowBody: 'どのノートでも先頭（プロパティ）に schedule: を書くと授業になります。授業の時間はノートの中に保存されるので、ノートを移動したり名前を変えたりしても時間割がついてきます。',
+  },
+};
+
+for (const code of Object.keys(I18N_V40_FIX)) Object.assign(I18N[code], I18N_V40_FIX[code]);
+
 
 
 
@@ -1479,7 +1802,66 @@ const DEFAULT_SETTINGS = {
   plans: [],                          // 파일이 아닌, 시간표 위에만 있는 일정
   dayStart: null,                     // 보이는 시간 범위. null 이면 수업에 맞춰 자동
   dayEnd: null,
+  tab: '',                            // 사이드바의 탭: today · week · todo. 비어 있으면 viewMode 에서 옮겨 온다
+  todos: [],                          // 수업에 묶이지 않은 할 일 { id, text, date, done, doneAt }
+  noteTasks: true,                    // 수업 폴더 노트 안의 - [ ] 도 할 일로 보여 준다
+  statusBar: true,                    // 데스크톱 상태 표시줄에 지금 수업을 띄운다
+  remindMins: 10,                     // 수업 시작 몇 분 전에 알릴지. 0 이면 안 알린다
+  semesters: [],                      // 저장해 둔 학기들 { id, name, start, end, holidays }
+  semesterId: '',                     // 그중 지금 학기. 지금 학기의 값은 위의 평평한 칸들이 들고 있다
 };
+
+// 한 번 끝낸 (수업에 묶이지 않은) 할 일은 이만큼 지나면 설정에서 걷어낸다
+const DONE_KEEP_DAYS = 7;
+
+// 공강으로 표시할 만큼의 빈 시간(분)
+const GAP_MIN = 30;
+
+/* ── 설정 옮기기 · 학기 ──
+ *
+ * 지금 학기의 이름·시작일·종료일·수업 없는 날은 예전처럼 평평한 칸(currentSemester …)에 둔다.
+ * 시간표의 모든 계산이 그 칸을 읽으므로, 학기를 바꾸는 일은 "그 칸들을 갈아 끼우는 일"이 된다.
+ * semesters 는 갈아 끼울 값들을 넣어 두는 서랍이다. 저장할 때마다 지금 학기 서랍을 평평한 칸으로 맞춘다.
+ */
+function migrateSettings(s) {
+  if (!['today', 'week', 'todo'].includes(s.tab)) s.tab = s.viewMode === 'today' ? 'today' : 'week';
+  if (!Array.isArray(s.todos)) s.todos = [];
+  if (!Array.isArray(s.semesters)) s.semesters = [];
+  if (!s.semesters.length) {
+    s.semesters.push({
+      id: 's' + Date.now().toString(36),
+      name: s.currentSemester || '', start: s.semesterStart || '', end: s.semesterEnd || '', holidays: s.holidays || '',
+    });
+  }
+  if (!s.semesters.some((x) => x.id === s.semesterId)) {
+    const byName = s.semesters.find((x) => x.name && x.name === s.currentSemester);
+    s.semesterId = (byName || s.semesters[0]).id;
+  }
+  return s;
+}
+
+function syncSemester(s) {
+  const cur = (s.semesters || []).find((x) => x.id === s.semesterId);
+  if (cur) Object.assign(cur, { name: s.currentSemester || '', start: s.semesterStart || '', end: s.semesterEnd || '', holidays: s.holidays || '' });
+}
+
+function loadSemester(s, id) {
+  syncSemester(s);
+  const next = (s.semesters || []).find((x) => x.id === id);
+  if (!next) return false;
+  s.semesterId = id;
+  s.currentSemester = next.name || '';
+  s.semesterStart = next.start || '';
+  s.semesterEnd = next.end || '';
+  s.holidays = next.holidays || '';
+  return true;
+}
+
+// 새 학기 이름을 미리 채워 준다. 1~6월에 시작하면 앞 학기, 7~12월이면 뒤 학기.
+function suggestSemesterName(date) {
+  const d = date || new Date();
+  return t('semNameFmt', { y: d.getFullYear(), h: t(d.getMonth() < 6 ? 'semHalf1' : 'semHalf2') });
+}
 
 function defaultTemplates() {
   return [{
@@ -1780,7 +2162,18 @@ function slotRuns(settings, slot, date) {
  *                       2026-10-20 ~ 2026-10-24 중간고사 주간
  * 그 날의 수업은 모두 휴강처럼 그린다. 수업 노트에는 아무것도 쓰지 않는다.
  */
+// 같은 글을 하루에도 수백 번 읽는다(날마다, 수업마다). 마지막으로 읽은 것만 기억해 둔다.
+let holidayMemo = { text: null, list: [] };
+
 function parseHolidays(text) {
+  const key = String(text || '');
+  if (holidayMemo.text === key) return holidayMemo.list;
+  const list = parseHolidaysRaw(key);
+  holidayMemo = { text: key, list };
+  return list;
+}
+
+function parseHolidaysRaw(text) {
   const out = [];
   const date = '(\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2})';
   const re = new RegExp('^' + date + '(?:\\s*(?:[~–—]|\\.\\.)\\s*|\\s+-\\s+)?' + '(?:' + date + ')?(?:\\s+(.*))?$');
@@ -1896,6 +2289,313 @@ function deadlineWhen(dl) {
   let out = d ? dateLabel(d) : dl.date;
   if (dl.time != null) out += ' ' + hhmm(dl.time) + (dl.end != null ? '~' + hhmm(dl.end) : '');
   return out;
+}
+
+/* ── 할 일 ──
+ *
+ * 수업 노트의 todo: 에 한 줄에 하나:   3장 다시 보기
+ *                                      2026-10-22 발표 자료 만들기
+ *                                      교수님께 메일 ✓
+ * 날짜는 있어도 되고 없어도 된다. 끝낸 것은 마감과 같은 규칙으로 줄 끝에 ✓.
+ */
+function parseTodo(raw) {
+  if (raw == null || raw === '') return null;
+  if (Object.prototype.toString.call(raw) === '[object Date]') {
+    const d = parseDeadline(raw);
+    return d ? { date: d.date, text: '', done: false } : null;
+  }
+  let s = String(raw).trim();
+  if (!s) return null;
+  const done = DONE_MARK.test(s);
+  if (done) s = s.replace(DONE_MARK, '');
+  let date = null;
+  const m = /^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})(?:\s+(.*))?$/.exec(s);
+  if (m && parseYmd(m[1])) { date = ymd(parseYmd(m[1])); s = (m[2] || '').trim(); }
+  return { date, text: s, done };
+}
+
+function formatTodo(td) {
+  const out = (td.date ? td.date + ' ' : '') + String(td.text || '').replace(/\s+/g, ' ').trim();
+  return td.done ? out + ' ✓' : out;
+}
+
+// 노트 안 체크박스 한 줄. Tasks 플러그인의 📅 날짜는 읽고, 나머지 표시는 걷어 낸다.
+const TASK_LINE = /^(\s*(?:[-*+]|\d+[.)])\s+\[)([ xX])(\]\s+)(.*)$/;
+
+function parseTaskLine(line) {
+  const m = TASK_LINE.exec(line);
+  if (!m) return null;
+  let text = m[4];
+  const due = /📅\s*(\d{4}-\d{2}-\d{2})/u.exec(text);
+  text = text
+    .replace(/\s*[📅⏳🛫✅➕❌]\s*\d{4}-\d{2}-\d{2}/gu, '')
+    .replace(/\s*🔁[^📅⏳🛫✅➕❌]*/gu, '')
+    .replace(/[⏫🔼🔽⏬🔺]/gu, '')
+    .replace(/\s+\^[\w-]+\s*$/, '')
+    .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2')
+    .replace(/\[\[([^\]]+)\]\]/g, '$1')
+    .trim();
+  if (!text) return null;
+  return { done: m[2] !== ' ', text, date: due ? due[1] : null };
+}
+
+/* ── 좁은 칸에 들어갈 짧은 이름 ──
+ * frontmatter 의 short: 가 먼저다. 없으면 이름에서 만든다:
+ *   Organic Chemistry → OC      선형대수 → 선형      세계사 → 세계사
+ */
+function autoShort(name) {
+  const s = String(name || '').trim();
+  if (!s) return '';
+  if (/^[\u2e80-\u9fff\uac00-\ud7af\uf900-\ufaff]/.test(s)) {
+    const first = s.split(/\s+/)[0];
+    return [...first].length <= 3 ? first : [...first].slice(0, 2).join('');
+  }
+  const words = s.split(/[\s\-_/]+/).filter((w) => /^[A-Za-z]/.test(w) && !/^(of|and|the|to|in|for|on|a|an|&)$/i.test(w));
+  const num = (/\b(\d+)\b/.exec(s) || [])[1] || '';
+  if (words.length >= 2) return words.slice(0, 3).map((w) => w[0].toUpperCase()).join('') + num;
+  return s.slice(0, 4) + (num && s.slice(0, 4).indexOf(num) === -1 ? num : '');
+}
+
+function shortName(course) { return course.short || autoShort(course.name); }
+
+// 칸보다 긴 단어만 줄인다: "Organic Chemistry" → "Organ. Chem." — 단어가 글자 단위로 쪼개지는 것보다 읽힌다.
+// 한중일 이름은 글자 단위로 끊겨도 읽히므로 그대로 둔다.
+function fitWords(name, width, fontPx) {
+  const s = String(name || '');
+  if (/[⺀-鿿가-힯]/.test(s)) return s;
+  return s.split(/(\s+)/).map((w) => {
+    if (!w.trim() || estimateWidth(w, fontPx) <= width) return w;
+    let cut = w;
+    while (cut.length > 2 && estimateWidth(cut + '.', fontPx) > width) cut = cut.slice(0, -1);
+    return cut + '.';
+  }).join('');
+}
+
+/* ── 노트 이름 속 날짜 ──
+ * 필기 노트가 어느 날의 것인지 이름에서 읽는다. 2026-10-05 · 20261005 · 1005(월) 처럼.
+ * 월일만 있으면 올해로 보되, 두 달 넘게 앞이면 작년 것이다.
+ */
+function datesInName(name) {
+  const s = String(name || '');
+  let m = /(20\d{2})[-._]?(\d{1,2})[-._]?(\d{1,2})(?!\d)/.exec(s);
+  if (m) {
+    const d = parseYmd(m[1] + '-' + m[2] + '-' + m[3]);
+    return d ? [ymd(d)] : [];
+  }
+  m = /^(\d{2})[-._]?(\d{2})(?!\d)/.exec(s);
+  if (!m) return [];
+  const mo = Number(m[1]), da = Number(m[2]);
+  const now = new Date();
+  let d = new Date(now.getFullYear(), mo - 1, da);
+  if (d.getMonth() !== mo - 1 || d.getDate() !== da) return [];
+  if (dayDiff(d, now) > 60) d = new Date(now.getFullYear() - 1, mo - 1, da);
+  return [ymd(d)];
+}
+
+/* ── 시간표 붙여넣기 ──
+ *
+ * 학교 포털·엑셀·메모에서 복사한 줄을 그대로 받는다. 한 줄에 수업 하나:
+ *   통계학 월 10:30-12:00 301호
+ *   통계학 | 월,수 10:30-12:00 | 301호
+ *   Linear Algebra  Mon/Wed  9:00-10:30  Room 301
+ *   통계학 화 13:30-14:45, 목 13:30-14:45 @ 214호
+ * 이름만 있는 줄 다음에 시간만 있는 줄이 와도 된다 (포털 표를 줄째로 복사한 모양).
+ */
+const CJK_DAYS = { '월': 0, '화': 1, '수': 2, '목': 3, '금': 4, '토': 5, '일': 6, '一': 0, '二': 1, '三': 2, '四': 3, '五': 4, '六': 5, '月': 0, '火': 1, '水': 2, '木': 3, '金': 4, '土': 5 };
+const TIME_RANGE = /^(\d{1,2}(?::\d{2})?|\d{4})[-~–—](\d{1,2}(?::\d{2})?|\d{4})$/;
+
+function dayListOf(token) {
+  const tok = String(token).replace(/^[([（【]+|[)\]）】.:]+$/g, '');
+  if (!tok) return null;
+  const one = DAY_ALIASES[tok.toLowerCase()];
+  if (one !== undefined) return [one];
+  // 월수 · 화목 · 月水金 — 한 글자 요일을 붙여 쓴 것. 요일요일(월요일수요일)도 읽는다.
+  const bare = tok.replace(/요일|曜日|曜|星期|周/g, '');
+  if (bare && bare.length <= 7 && [...bare].every((ch) => CJK_DAYS[ch] !== undefined)) return [...bare].map((ch) => CJK_DAYS[ch]);
+  if (tok === '日' || tok === '天') return [6];
+  return null;
+}
+
+function parseImportLine(line) {
+  let s = String(line || '').replace(/\u00a0/g, ' ').trim();
+  if (!s || /^#|^\/\//.test(s)) return null;
+
+  let room = '';
+  const at = s.indexOf('@');
+  if (at >= 0) { room = s.slice(at + 1).replace(/[|\t]/g, ' ').replace(/\s+/g, ' ').trim(); s = s.slice(0, at); }
+
+  // 칸 나눔과 쉼표는 띄어쓰기로, 시각 사이의 - 는 붙인다: "10:30 - 12:00" → "10:30-12:00"
+  s = s.replace(/[|\t,，、;/·]+/g, ' ')
+    .replace(/(\d)\s*([-~–—])\s*(\d)/g, '$1$2$3')
+    .replace(/([월화수목금토일一二三四五六月火水木金土]|요일)(\d)/g, '$1 $2');
+
+  const tokens = s.split(/\s+/).filter(Boolean);
+  const name = [], after = [];
+  const slots = [];
+  let days = [], dayToks = [];
+  let seen = false;
+  // 요일처럼 보인 말이 뒤에 시각을 못 만나면 요일이 아니었다 — 원래 자리로 돌려놓는다
+  const giveBack = () => { (seen ? after : name).push(...dayToks); days = []; dayToks = []; };
+  for (const tok of tokens) {
+    const tr = TIME_RANGE.exec(tok);
+    if (tr) {
+      const start = parseTime(tr[1]), end = parseTime(tr[2]);
+      if (start == null || end == null || end <= start || !days.length) { giveBack(); (seen ? after : name).push(tok); continue; }
+      for (const day of days) slots.push({ day, start, end, location: '', parity: '' });
+      days = [];
+      dayToks = [];
+      seen = true;
+      after.length = 0;           // 시각 사이에 낀 말은 다음 시각의 요일 앞말이다
+      continue;
+    }
+    const dl = dayListOf(tok);
+    if (dl) { days = days.concat(dl); dayToks.push(tok); continue; }
+    if (days.length) giveBack();  // 요일과 시각 사이에 다른 말이 끼면 그 요일은 이름의 일부였다
+    const par = PARITY_ALIASES[tok.toLowerCase()];
+    if (par && slots.length) { slots[slots.length - 1].parity = par; continue; }
+    (seen ? after : name).push(tok);
+  }
+  giveBack();
+
+  // 이름은 요일 앞에 오는 말, 강의실은 @ 뒤나 마지막 시각 뒤의 말
+  return { name: name.join(' ').trim(), place: room, tail: after.join(' ').trim(), slots };
+}
+
+// 여러 줄을 수업 목록으로. 같은 이름은 한 수업으로 묶는다.
+function parseImportText(text) {
+  const map = new Map();
+  const errors = [];
+  let pendingName = '';
+  let pending = null;                      // 이름만 있는 줄. 다음 줄들이 쓰지 않으면 읽지 못한 줄로 알린다.
+  const unused = () => { if (pending && !pending.used) errors.push({ line: pending.line, text: pending.text }); };
+  String(text || '').split(/\r?\n/).forEach((line, i) => {
+    const r = parseImportLine(line);
+    if (!r) return;
+    if (!r.slots.length) {
+      const only = [r.name, r.tail].filter(Boolean).join(' ');
+      if (only) {                          // 이름만 있는 줄: 다음 줄의 시간이 이 이름을 쓴다
+        unused();
+        pendingName = only;
+        pending = { line: i + 1, text: line.trim(), used: false };
+      } else errors.push({ line: i + 1, text: line.trim() });
+      return;
+    }
+    if (!r.name && pending) pending.used = true;
+    // "월 10:30-12:00 통계학" 처럼 요일이 먼저 오면, 시각 뒤의 말이 이름이다 (앞 줄에 이름이 없을 때)
+    let name = r.name, place = r.place || r.tail;
+    if (!name && pendingName) name = pendingName;
+    else if (!name && !r.place) { name = r.tail; place = ''; }
+    if (!name) { errors.push({ line: i + 1, text: line.trim() }); return; }
+    for (const sl of r.slots) sl.location = place;
+    addImported(map, name, r.slots);
+    if (r.name) { unused(); pendingName = ''; pending = null; }
+  });
+  unused();
+  errors.sort((a, b) => a.line - b.line);
+  return { courses: [...map.values()], errors, skipped: 0 };
+}
+
+function addImported(map, name, slots) {
+  const key = name.toLowerCase();
+  if (!map.has(key)) map.set(key, { name, slots: [] });
+  const c = map.get(key);
+  for (const sl of slots) if (!c.slots.some((x) => formatSlot(x) === formatSlot(sl))) c.slots.push(sl);
+}
+
+/* ── .ics ──
+ *
+ * 가져오기: 매주 반복하는 일정(RRULE:FREQ=WEEKLY)만 수업으로 읽는다. 격주(INTERVAL=2)는 odd · even 이 된다.
+ * 내보내기: 수업은 학기 동안 매주 반복하는 일정으로, 휴강·수업 없는 날은 빠진 날(EXDATE)로,
+ *           시험과 안 끝낸 마감은 하루 전 알림이 붙은 일정으로. 시각은 "그 지역 시각"(floating)으로 적는다 —
+ *           캘린더가 사용자의 시간대로 읽는다.
+ * 파일로만 주고받는다. 구독 URL 은 네트워크가 필요하므로 두지 않는다.
+ */
+const ICS_DAYS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+
+function icsUnescape(v) {
+  return String(v || '').replace(/\\n/gi, '\n').replace(/\\([,;\\])/g, '$1');
+}
+
+function icsEscape(v) {
+  return String(v || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/([,;])/g, '\\$1');
+}
+
+// 20260901T103000Z · 20260901T103000 · 20260901 → { date(그날 0시), minutes | null }
+function icsWhen(prop) {
+  if (!prop) return null;
+  const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?/.exec(String(prop.val).trim());
+  if (!m) return null;
+  if (m[4] == null) return { date: new Date(+m[1], +m[2] - 1, +m[3]), minutes: null };
+  const d = m[7]
+    ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)))
+    : new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  return { date: addDays(d, 0), minutes: d.getHours() * 60 + d.getMinutes() };
+}
+
+function parseIcs(text, settings) {
+  const lines = String(text || '').replace(/\r?\n[ \t]/g, '').split(/\r?\n/);
+  const events = [];
+  let cur = null;
+  for (const line of lines) {
+    if (/^BEGIN:VEVENT/i.test(line)) { cur = {}; continue; }
+    if (/^END:VEVENT/i.test(line)) { if (cur) events.push(cur); cur = null; continue; }
+    if (!cur) continue;
+    const i = line.indexOf(':');
+    if (i < 0) continue;
+    const name = line.slice(0, i).split(';')[0].toUpperCase();
+    if (!cur[name]) cur[name] = { val: line.slice(i + 1), head: line.slice(0, i) };
+  }
+
+  const map = new Map();
+  let skipped = 0;
+  for (const ev of events) {
+    const title = icsUnescape(ev.SUMMARY && ev.SUMMARY.val).replace(/\s+/g, ' ').trim();
+    const start = icsWhen(ev.DTSTART);
+    const end = icsWhen(ev.DTEND);
+    const rule = {};
+    if (ev.RRULE) for (const part of String(ev.RRULE.val).split(';')) { const [k, v] = part.split('='); rule[String(k).toUpperCase()] = v; }
+    const interval = Number(rule.INTERVAL || 1);
+    if (!title || !start || start.minutes == null || rule.FREQ !== 'WEEKLY' || interval > 2) { skipped++; continue; }
+    let endMin = end && end.minutes != null && dayDiff(end.date, start.date) === 0 ? end.minutes : null;
+    if (endMin == null || endMin <= start.minutes) endMin = Math.min(1440, start.minutes + 60);
+    const days = rule.BYDAY
+      ? rule.BYDAY.split(',').map((c) => ICS_DAYS.indexOf(c.replace(/^[+-]?\d+/, '').toUpperCase())).filter((d) => d >= 0)
+      : [(start.date.getDay() + 6) % 7];
+    const parity = interval === 2 ? weekParity(settings, start.date) : '';
+    const location = icsUnescape(ev.LOCATION && ev.LOCATION.val).replace(/\s+/g, ' ').trim();
+    addImported(map, title, days.map((day) => ({ day, start: start.minutes, end: endMin, location, parity })));
+  }
+  return { courses: [...map.values()], errors: [], skipped };
+}
+
+function icsLocal(date, minutes) {
+  return formatDate(date, 'YYYYMMDD') + 'T' + pad2(Math.floor(minutes / 60)) + pad2(minutes % 60) + '00';
+}
+
+function icsStampNow() {
+  const d = new Date();
+  return d.getUTCFullYear() + pad2(d.getUTCMonth() + 1) + pad2(d.getUTCDate()) + 'T'
+    + pad2(d.getUTCHours()) + pad2(d.getUTCMinutes()) + pad2(d.getUTCSeconds()) + 'Z';
+}
+
+// 한 줄은 75바이트까지. 넘으면 다음 줄을 공백 하나로 시작해 잇는다. 한글이 바이트 중간에서 끊기지 않게 글자 단위로 잰다.
+function icsFold(line) {
+  const out = [];
+  let cur = '', bytes = 0;
+  for (const ch of line) {
+    const b = new TextEncoder().encode(ch).length;
+    if (bytes + b > (out.length ? 74 : 75)) { out.push(cur); cur = ''; bytes = 0; }
+    cur += ch;
+    bytes += b;
+  }
+  out.push(cur);
+  return out.join('\r\n ');
+}
+
+function hashKey(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h.toString(36);
 }
 
 function applyTemplate(text, ctx) {
@@ -2096,9 +2796,10 @@ class ClassTimetablePlugin extends Plugin {
     // 파일에 쓴 값이 metadataCache 에 반영되기까지의 짧은 틈을 메운다
     this.pending = new Map();
     this.pendingTimers = new Map();
+    this.initRuntime();
 
     const data = await this.loadData();
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, data || {});
+    this.settings = migrateSettings(Object.assign({}, DEFAULT_SETTINGS, data || {}));
 
     if (!Array.isArray(this.settings.roots)) this.settings.roots = [];
     if (data && typeof data.rootFolder === 'string' && !this.settings.roots.length) {
@@ -2139,10 +2840,18 @@ class ClassTimetablePlugin extends Plugin {
     this.registerEvent(this.app.vault.on('delete', refresh));
     this.registerEvent(this.app.vault.on('create', refresh));
 
-    this.registerInterval(window.setInterval(() => this.refreshTimetables(), 60 * 1000));
+    // 지금 수업이 데스크톱 아래쪽에 늘 보인다. 누르면 시간표가 열린다.
+    if (!Platform.isMobile && typeof this.addStatusBarItem === 'function') {
+      this.statusEl = this.addStatusBarItem();
+      this.statusEl.addClass('ctt-statusbar');
+      this.statusEl.addEventListener('click', () => this.activateView());
+    }
+
+    this.registerInterval(window.setInterval(() => this.tick(), 60 * 1000));
 
     this.app.workspace.onLayoutReady(() => {
       this.refreshAll();
+      this.checkReminders();
       // 켜기만 하고 어디 있는지 몰라 지우는 일이 없도록, 처음 한 번은 사이드바에 열어 둔다
       if (!this.settings.welcomed) {
         this.settings.welcomed = true;
@@ -2159,6 +2868,120 @@ class ClassTimetablePlugin extends Plugin {
     this.pendingTimers.clear();
     this.pending.clear();
     if (this.embeds) this.embeds.clear();
+    if (this.taskTimer) window.clearTimeout(this.taskTimer);
+  }
+
+  // 저장하지 않는 화면 상태. 데모처럼 onload 를 건너뛰는 곳에서도 부를 수 있게 따로 둔다.
+  initRuntime() {
+    if (!this.nav) this.nav = { weekOffset: 0, navAt: 0, upcomingOpen: false };
+    if (!this.embeds) this.embeds = new Set();
+    if (!this.mode) this.mode = 'view';
+    this.ui = { dayOffset: 0, lastTab: '', anim: '', doneOpen: false, tasksOpen: {}, draft: null };
+    this.taskCache = new Map();         // 노트 경로 → { mtime, tasks }. 체크박스는 파일을 읽어야 글이 보인다
+    this.taskQueue = new Map();
+    this.taskTimer = 0;
+    this.reminded = new Set();
+    this.lastUndo = null;
+  }
+
+  // 1분마다: 시간이 흐르면 바뀌는 것들(지금 수업, 남은 시간)과 수업 시작 알림
+  tick() {
+    this.refreshTimetables();
+    this.checkReminders();
+  }
+
+  /* ── 탭 ── 오늘 · 주간 · 할 일. 고르면 기억한다. */
+  setTab(tab) {
+    if (!['today', 'week', 'todo'].includes(tab)) return;
+    if (this.settings.tab === tab) return;
+    this.ui.anim = 'tab';
+    this.settings.tab = tab;
+    if (tab !== 'week') this.mode = 'view';     // 끌어서 고치는 것은 주간 격자에서만
+    this.saveSettings();
+  }
+
+  /* ── 되돌리기 ──
+   * 끌어서 옮기기, 휴강, 지우기처럼 눌러서 바로 일어나는 일은 확인 창 대신 되돌릴 길을 준다.
+   * 알림 끝의 "되돌리기"를 누르거나, 명령 "마지막 변경 되돌리기"를 쓴다. 가장 마지막 하나만 기억한다.
+   */
+  offerUndo(message, undo) {
+    this.lastUndo = undo;
+    const frag = document.createDocumentFragment();
+    frag.appendChild(document.createTextNode(message + '  '));
+    const a = document.createElement('a');
+    a.className = 'ctt-undo-link';
+    a.textContent = t('undo');
+    a.setAttribute('href', '#');
+    a.addEventListener('click', (e) => { e.preventDefault(); this.runUndo(); });
+    frag.appendChild(a);
+    new Notice(frag, 7000);
+  }
+
+  async runUndo() {
+    const fn = this.lastUndo;
+    this.lastUndo = null;
+    if (!fn) { new Notice(t('undoNothing')); return; }
+    try { await fn(); } catch (e) { failNotice('errSaveCourse', {}, e); return; }
+    new Notice(t('undone'));
+  }
+
+  /* ── 수업 시작 알림 ──
+   * 정해 둔 분 전이 되면 옵시디언 알림을 한 번 띄운다. 오늘 노트를 바로 열 수 있다.
+   * 옵시디언이 켜져 있을 때만 온다 — 바깥으로 보내는 알림은 없다.
+   */
+  checkReminders() {
+    const mins = Number(this.settings.remindMins) || 0;
+    if (mins <= 0) return;
+    const now = nowMinutes();
+    const day = ymd(new Date());
+    const week = buildWeek(this.settings, this.getCourses().courses, [], mondayOf(new Date()));
+    for (const it of week.byDay[todayIndex()]) {
+      if (it.cancelled) continue;
+      const left = it.slot.start - now;
+      if (left <= 0 || left > mins) continue;
+      const key = day + '|' + it.course.key + '|' + it.slot.start;
+      if (this.reminded.has(key)) continue;
+      this.reminded.add(key);
+
+      const frag = document.createDocumentFragment();
+      const name = document.createElement('b');
+      name.textContent = it.course.name;
+      frag.appendChild(name);
+      frag.appendChild(document.createTextNode(' · ' + t('remindIn', { v: humanGap(left) }) + (it.slot.location ? ' · ' + it.slot.location : '') + '  '));
+      const a = document.createElement('a');
+      a.className = 'ctt-undo-link';
+      a.textContent = t('newNoteCreate');
+      a.setAttribute('href', '#');
+      a.addEventListener('click', (e) => { e.preventDefault(); this.createFromTemplate(it.course, it.slot, undefined, new Date()); });
+      frag.appendChild(a);
+      new Notice(frag, 12000);
+    }
+  }
+
+  // 상태 표시줄: 수업 중이면 남은 시간, 아니면 오늘의 다음 것. 오늘 남은 것이 없으면 비운다.
+  paintStatusBar() {
+    const el = this.statusEl;
+    if (!el) return;
+    el.empty();
+    const show = (on) => { el.style.display = on ? '' : 'none'; };
+    if (this.settings.statusBar === false) { show(false); return; }
+    const now = nowMinutes();
+    const res = this.getCourses();
+    const week = buildWeek(this.settings, res.courses, this.plans(), mondayOf(new Date()));
+    const todays = week.byDay[todayIndex()].filter((it) => !it.cancelled).sort((a, b) => a.slot.start - b.slot.start);
+    const label = (it) => (it.kind === 'plan' ? it.plan.title : it.course.name);
+    const color = (it) => (it.kind === 'plan' ? (it.plan.color || PLAN_COLOR) : it.course.color);
+    const live = todays.find((it) => now >= it.slot.start && now < it.slot.end);
+    const next = todays.find((it) => it.slot.start > now);
+    const it = live || next;
+    if (!it) { show(false); return; }
+    show(true);
+    const dot = el.createSpan({ cls: 'ctt-statusbar-dot' + (live ? '' : ' is-hollow') });
+    dot.style.setProperty('--ctt-color', color(it));
+    el.createSpan({ text: live
+      ? label(it) + ' · ' + t('nowLeft', { v: humanGap(it.slot.end - now) })
+      : t('statusNext', { name: label(it), time: hhmm(it.slot.start) }) });
+    el.setAttr('aria-label', t('openTimetable'));
   }
 
   /* ── 노트 안 시간표 ──
@@ -2233,9 +3056,22 @@ class ClassTimetablePlugin extends Plugin {
       callback: () => new DeadlineModal(this, { kind: 'due', asNote: true }).open(),
     });
 
+    // 탭을 바로 여는 명령. 단축키를 걸어 두면 "오늘 뭐 있지?"가 한 번에 열린다.
+    const tab = (id) => async () => { await this.activateView(); this.setTab(id); };
+    this.addCommand({ id: 'open-today', name: t('cmdOpenToday'), callback: tab('today') });
+    this.addCommand({ id: 'open-todo', name: t('cmdOpenTodo'), callback: tab('todo') });
+    this.addCommand({ id: 'add-todo', name: t('todoAddTitle'), callback: () => new TodoModal(this, {}).open() });
+
+    this.addCommand({ id: 'import-schedule', name: t('importCmd'), callback: () => new ImportModal(this, {}).open() });
+    this.addCommand({ id: 'export-ics', name: t('icsExportCmd'), callback: () => this.exportIcs() });
+    this.addCommand({ id: 'new-semester', name: t('semNewCmd'), callback: () => new SemesterModal(this).open() });
+    this.addCommand({ id: 'undo-last', name: t('undoCmd'), callback: () => this.runUndo() });
+
     const insert = (text) => (editor) => editor.replaceSelection(text);
     this.addCommand({ id: 'insert-timetable', name: t('insertBlockCmd'), editorCallback: insert('```class-timetable\n```\n') });
     this.addCommand({ id: 'insert-upcoming', name: t('insertUpcomingCmd'), editorCallback: insert('```class-timetable\nview: upcoming\n```\n') });
+    this.addCommand({ id: 'insert-assignments', name: t('insertAssignCmd'), editorCallback: insert('```class-timetable\nview: assignments\n```\n') });
+    this.addCommand({ id: 'insert-todo', name: t('insertTodoCmd'), editorCallback: insert('```class-timetable\nview: todo\n```\n') });
 
     this.addCommand({ id: 'create-sample', name: t('sampleCmd'), callback: () => this.createSample() });
     this.addCommand({
@@ -2275,6 +3111,7 @@ class ClassTimetablePlugin extends Plugin {
 
   async saveSettings() {
     LANG = I18N[this.settings.lang] ? this.settings.lang : 'en';
+    syncSemester(this.settings);
     this.applyLanguage();
     this.refreshAll();                  // 화면부터 바꾼다. 디스크 쓰기를 기다리지 않는다.
     await this.saveData(this.settings);
@@ -2308,12 +3145,20 @@ class ClassTimetablePlugin extends Plugin {
     this.app.workspace.revealLeaf(leaf);
   }
 
-  // 지난 일회성 일정은 그릴 때마다 조용히 걷어낸다. (화면 갱신은 부르는 쪽에서 이미 한다)
+  // 지난 일회성 일정과, 끝낸 지 오래된 할 일은 그릴 때마다 조용히 걷어낸다. (화면 갱신은 부르는 쪽에서 이미 한다)
   prunePlans() {
     const list = this.settings.plans || [];
     const next = list.filter((p) => !planExpired(p));
-    if (next.length === list.length) return false;
+    const todos = this.settings.todos || [];
+    const today = today0();
+    const keep = todos.filter((td) => {
+      if (!td || !td.done) return true;
+      const at = parseYmd(td.doneAt);
+      return !at || dayDiff(today, at) <= DONE_KEEP_DAYS;
+    });
+    if (next.length === list.length && keep.length === todos.length) return false;
     this.settings.plans = next;
+    this.settings.todos = keep;
     this.saveData(this.settings);
     return true;
   }
@@ -2324,6 +3169,8 @@ class ClassTimetablePlugin extends Plugin {
       if (leaf.view instanceof TimetableView) leaf.view.render();
     }
     for (const embed of this.embeds || []) embed.render();
+    this.paintStatusBar();
+    if (this.ui) this.ui.anim = '';      // 움직임은 한 번 그릴 때만 쓴다. 1분마다 다시 그릴 때는 가만히.
   }
 
   refreshAll() {
@@ -2586,6 +3433,7 @@ class ClassTimetablePlugin extends Plugin {
           name: fm.title ? String(fm.title).trim() : (isFolderNote ? parent.name : base),
           baseName: isFolderNote ? parent.name : base,
           titleRaw: fm.title ? String(fm.title).trim() : '',
+          short: fm.short ? String(fm.short).trim() : '',   // 좁은 칸에서 쓸 짧은 이름
           subtitle: fm.subtitle != null ? String(fm.subtitle).trim() : null,
           isFolderNote,
           folder: parent,
@@ -2603,6 +3451,7 @@ class ClassTimetablePlugin extends Plugin {
           cancelled: normCancelled(fm.cancelled != null ? fm.cancelled : fm.canceled),
           dueRaw: listOf(fm.due),
           examRaw: listOf(fm.exam != null ? fm.exam : fm.exams),
+          todoRaw: listOf(fm.todo != null ? fm.todo : fm.todos),
         });
       }
     }
@@ -2797,6 +3646,388 @@ class ClassTimetablePlugin extends Plugin {
       });
     } catch (e) { failNotice('errSaveCourse', {}, e); }
     this.refreshAll();
+    if (!was) {
+      this.offerUndo(t('cancelledNotice', { name: course.name, date: dateLabel(date) }), async () => {
+        const c = this.courseByKey(course.key);
+        if (c && isCancelled(c, slot, day)) await this.toggleCancelled(c, slot, date);
+      });
+    }
+  }
+
+  /* ── 할 일 ──
+   *
+   * 세 군데에서 읽는다.
+   *   설정의 todos        →  수업에 묶이지 않은 할 일. 파일을 만들지 않는다.
+   *   수업 노트의 todo:   →  그 수업의 할 일. 노트와 함께 기기 사이를 오간다.
+   *   수업 폴더의 - [ ]   →  필기하다 적어 둔 체크박스. 안 끝낸 것만 보여 준다.
+   */
+  collectTodos(courses) {
+    const out = [];
+    for (const td of this.settings.todos || []) {
+      if (!td || !td.text) continue;
+      out.push({ src: 'own', id: td.id, text: td.text, date: td.date || null, done: !!td.done, doneAt: td.doneAt || '', course: null });
+    }
+    for (const c of courses) {
+      c.todoRaw.forEach((raw, index) => {
+        const td = parseTodo(raw);
+        if (td && td.text) out.push({ src: 'fm', index, raw, text: td.text, date: td.date, done: td.done, course: c, file: c.file });
+      });
+      if (this.settings.noteTasks !== false) for (const task of this.noteTasksOf(c)) out.push(task);
+    }
+    return out;
+  }
+
+  async addTodo(entry) {
+    const text = String(entry.text || '').replace(/\s+/g, ' ').trim();
+    if (!text) return;
+    const course = entry.courseKey ? this.courseByKey(entry.courseKey) : null;
+    if (course && course.file) {
+      const line = formatTodo({ date: entry.date || null, text, done: false });
+      await this.writeTodoList(course, (list) => list.concat(line));
+      return;
+    }
+    this.settings.todos.push({
+      id: 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+      text, date: entry.date || '', done: false, doneAt: '',
+    });
+    await this.saveSettings();
+  }
+
+  // 수업 노트의 todo: 를 고쳐 쓴다. 화면부터 바꾸고, 그다음 파일에 쓴다.
+  async writeTodoList(course, edit) {
+    this.markPending(course.file.path, { todo: edit(course.todoRaw.slice()) });
+    try {
+      await this.app.fileManager.processFrontMatter(course.file, (fm) => {
+        const name = fm.todo == null && fm.todos != null ? 'todos' : 'todo';
+        const list = edit(listOf(fm[name]).slice());
+        if (list.length) fm[name] = list; else delete fm[name];
+      });
+    } catch (e) { failNotice('errSaveCourse', {}, e); }
+    this.refreshAll();
+  }
+
+  // 목록에서 그 줄을 찾는다. 사이에 다른 기기가 줄을 더했어도 같은 글이면 찾아간다.
+  editFmTodo(item, fn) {
+    return this.writeTodoList(item.course, (list) => {
+      let i = item.index;
+      if (String(list[i]) !== String(item.raw)) i = list.findIndex((x) => String(x) === String(item.raw));
+      return i === -1 ? list : fn(list, i);
+    });
+  }
+
+  async setTodoDone(item, done) {
+    if (item.src === 'task') return this.toggleNoteTask(item, done);
+    if (item.src === 'fm') return this.editFmTodo(item, (list, i) => { list[i] = markDeadlineLine(String(list[i]), done); return list; });
+    const td = (this.settings.todos || []).find((x) => x.id === item.id);
+    if (!td) return;
+    td.done = done;
+    td.doneAt = done ? ymd(new Date()) : '';
+    await this.saveSettings();
+  }
+
+  async updateTodo(item, patch) {
+    if (item.src === 'fm') {
+      return this.editFmTodo(item, (list, i) => {
+        const td = parseTodo(list[i]) || { date: null, text: '', done: false };
+        if (patch.text != null) td.text = patch.text;
+        if (patch.date !== undefined) td.date = patch.date || null;
+        list[i] = formatTodo(td);
+        return list;
+      });
+    }
+    const td = (this.settings.todos || []).find((x) => x.id === item.id);
+    if (!td) return;
+    if (patch.text != null) td.text = patch.text;
+    if (patch.date !== undefined) td.date = patch.date || '';
+    await this.saveSettings();
+  }
+
+  async removeTodo(item) {
+    if (item.src === 'fm') {
+      const course = item.course, raw = String(item.raw), index = item.index;
+      await this.editFmTodo(item, (list, i) => { list.splice(i, 1); return list; });
+      this.offerUndo(t('todoRemoved', { name: item.text }), () => {
+        const c = this.courseByKey(course.key);
+        if (c) return this.writeTodoList(c, (list) => { list.splice(Math.min(index, list.length), 0, raw); return list; });
+      });
+      return;
+    }
+    const list = this.settings.todos || [];
+    const i = list.findIndex((x) => x.id === item.id);
+    if (i === -1) return;
+    const [gone] = list.splice(i, 1);
+    await this.saveSettings();
+    this.offerUndo(t('todoRemoved', { name: item.text }), async () => {
+      this.settings.todos.splice(Math.min(i, this.settings.todos.length), 0, gone);
+      await this.saveSettings();
+    });
+  }
+
+  // 끝낸 할 일을 한 번에 치운다. 수업 노트의 ✓ 줄도 지운다 — 그래서 먼저 묻는다.
+  async clearDoneTodos(courseKey) {
+    const res = this.getCourses();
+    if (!courseKey) {
+      this.settings.todos = (this.settings.todos || []).filter((td) => !td.done);
+      await this.saveSettings();
+    }
+    for (const c of res.courses) {
+      if (courseKey && c.key !== courseKey) continue;
+      if (!c.todoRaw.some((raw) => { const td = parseTodo(raw); return td && td.done; })) continue;
+      await this.writeTodoList(c, (list) => list.filter((raw) => { const td = parseTodo(raw); return !(td && td.done); }));
+    }
+  }
+
+  // 할 일을 그 수업의 마감으로 올린다. 날짜가 없으면 오늘로 잡는다.
+  async promoteTodo(item) {
+    if (!item.course) return;
+    await this.addDeadline(item.course, 'due', { date: item.date || ymd(new Date()), time: null, end: null, title: item.text });
+    if (item.src === 'fm') await this.editFmTodo(item, (list, i) => { list.splice(i, 1); return list; });
+  }
+
+  /* ── 노트 안 체크박스 ──
+   *
+   * 읽을 노트는 그 수업의 것만: 폴더노트 수업이면 그 수업의 폴더들, 그냥 노트 수업이면 그 노트와
+   * (따로 정했다면) 노트 폴더. 남과 나눠 쓰는 폴더의 다른 노트는 건드리지 않는다.
+   * metadataCache 는 체크박스의 위치만 알고 글은 모른다. 글은 파일을 읽어 기억해 두고, 파일이 바뀌면 다시 읽는다.
+   */
+  courseNoteFiles(course) {
+    const seen = new Map();
+    const add = (f) => { if (f instanceof TFile && /\.md$/i.test(f.name) && !seen.has(f.path)) seen.set(f.path, f); };
+    if (course.file) add(course.file);
+    const folders = [];
+    if (course.isFolderNote) for (const s of course.spaces || []) folders.push(s);
+    if (course.notesPath) {
+      const f = this.app.vault.getAbstractFileByPath(course.notesPath);
+      if (f instanceof TFolder) folders.push(f);
+    }
+    for (const folder of folders) {
+      if (!folder || folder.path === '/') continue;
+      for (const f of this.markdownFiles(folder)) { add(f); if (seen.size > 600) break; }
+    }
+    return [...seen.values()];
+  }
+
+  noteTasksOf(course) {
+    const out = [];
+    for (const file of this.courseNoteFiles(course)) {
+      const cache = this.app.metadataCache.getFileCache(file);
+      const items = cache && cache.listItems;
+      if (!items || !items.some((li) => li.task != null)) continue;
+      const mtime = (file.stat && file.stat.mtime) || 0;
+      const known = this.taskCache.get(file.path);
+      if (!known || known.mtime !== mtime) this.queueTaskRead(file);
+      if (!known) continue;
+      for (const task of known.tasks) {
+        if (task.done) continue;
+        out.push({ src: 'task', key: file.path + '#' + task.line, file, line: task.line, text: task.text, date: task.date, done: false, course });
+      }
+    }
+    return out;
+  }
+
+  queueTaskRead(file) {
+    this.taskQueue.set(file.path, file);
+    if (this.taskTimer) return;
+    this.taskTimer = window.setTimeout(async () => {
+      this.taskTimer = 0;
+      const batch = [...this.taskQueue.values()];
+      this.taskQueue.clear();
+      let changed = false;
+      for (const f of batch) {
+        let text = '';
+        try { text = await (this.app.vault.cachedRead ? this.app.vault.cachedRead(f) : this.app.vault.read(f)); } catch (e) { continue; }
+        const tasks = [];
+        text.split('\n').forEach((line, i) => {
+          const task = parseTaskLine(line);
+          if (task) tasks.push(Object.assign({ line: i }, task));
+        });
+        const before = this.taskCache.get(f.path);
+        this.taskCache.set(f.path, { mtime: (f.stat && f.stat.mtime) || 0, tasks });
+        if (!before || JSON.stringify(before.tasks) !== JSON.stringify(tasks)) changed = true;
+      }
+      if (changed) this.refreshAll();
+    }, 60);
+  }
+
+  async toggleNoteTask(item, done) {
+    const known = this.taskCache.get(item.file.path);
+    const hit = known && known.tasks.find((x) => x.line === item.line);
+    if (hit) hit.done = done;             // 화면부터
+    this.refreshAll();
+    const edit = (data) => {
+      const lines = data.split('\n');
+      const line = lines[item.line];
+      if (line != null && TASK_LINE.test(line)) lines[item.line] = line.replace(TASK_LINE, (m, a, b, c, d) => a + (done ? 'x' : ' ') + c + d);
+      return lines.join('\n');
+    };
+    try {
+      if (typeof this.app.vault.process === 'function') await this.app.vault.process(item.file, edit);
+      else await this.app.vault.modify(item.file, edit(await this.app.vault.read(item.file)));
+    } catch (e) { failNotice('errSaveCourse', {}, e); }
+  }
+
+  // 그 체크박스가 있는 줄로 노트를 연다
+  async openTaskLine(item, newTab) {
+    await this.openNote(item.file, newTab);
+    const view = this.app.workspace.getActiveViewOfType && obsidian.MarkdownView
+      ? this.app.workspace.getActiveViewOfType(obsidian.MarkdownView) : null;
+    if (view && view.editor && view.file && view.file.path === item.file.path) {
+      try { view.editor.setCursor({ line: item.line, ch: 0 }); view.editor.scrollIntoView({ from: { line: item.line, ch: 0 }, to: { line: item.line, ch: 0 } }, true); } catch (e) { /* 읽기 모드 */ }
+    }
+  }
+
+  /* ── 노트 기록 ──
+   *
+   * 수업이 열린 날마다 그 날의 필기 노트가 있는지. 노트 폴더 안에서 두 가지로 찾는다:
+   *   템플릿이 그 날짜로 만들 이름과 같은 노트, 또는 이름에 그 날짜가 든 노트(2026-10-05 · 1005).
+   * 남과 나눠 쓰는 폴더(그냥 노트 수업의 기본값)에서는 이름 속 날짜를 믿지 않고, 템플릿 이름만 본다.
+   */
+  noteIndex(course) {
+    const dates = new Set(), names = new Set();
+    const folder = this.notesFolder(course);
+    if (!folder) return { dates, names };
+    const shared = !course.isFolderNote && !course.notesPath;
+    const files = shared || folder.path === '/'
+      ? folder.children.filter((c) => c instanceof TFile && /\.md$/i.test(c.name))
+      : this.markdownFiles(folder).slice(0, 1500);
+    for (const f of files) {
+      const base = f.basename || f.name.replace(/\.md$/i, '');
+      names.add(base);
+      if (!shared) for (const d of datesInName(base)) dates.add(d);
+    }
+    return { dates, names };
+  }
+
+  noteNameFor(course, slot, date) {
+    const tpl = this.template(this.settings.defaultTemplate);
+    if (!tpl) return '';
+    const raw = applyTemplate(tpl.filename || '{{date:MMDD}} {{course}}', this.templateContext(course, slot, this.notesFolder(course), date));
+    return raw.replace(/[\\/:*?"<>|#^[\]]/g, '').trim().replace(/\.md$/i, '');
+  }
+
+  hasNoteOn(course, slot, date, index) {
+    return index.dates.has(ymd(date)) || index.names.has(this.noteNameFor(course, slot, date));
+  }
+
+  // 그 날의 필기 노트 파일. 없으면 null.
+  noteFileOn(course, slot, date) {
+    const folder = this.notesFolder(course);
+    if (!folder) return null;
+    const name = this.noteNameFor(course, slot, date);
+    const f = this.app.vault.getAbstractFileByPath(normalizePath((folder.path === '/' ? '' : folder.path + '/') + name + '.md'));
+    if (f instanceof TFile) return f;
+    const key = ymd(date);
+    for (const x of this.markdownFiles(folder).slice(0, 1500)) {
+      if (datesInName(x.basename || x.name).includes(key)) return x;
+    }
+    return null;
+  }
+
+  // 학기 시작일(없으면 8주 전)부터 오늘까지, 이 수업이 실제로 열린 날들. 오늘은 시작한 수업까지만.
+  sessionDates(course) {
+    const s = this.settings;
+    const today = today0(), now = nowMinutes();
+    let start = parseYmd(s.semesterStart) || addDays(mondayOf(today), -7 * 7);
+    if (dayDiff(today, start) > 26 * 7) start = addDays(today, -26 * 7);
+    const out = [];
+    for (let d = start; dayDiff(today, d) >= 0; d = addDays(d, 1)) {
+      if (holidayOf(s, d)) continue;
+      const wd = (d.getDay() + 6) % 7;
+      for (const slot of course.slots) {
+        if (slot.day !== wd || !slotRuns(s, slot, d) || isCancelled(course, slot, ymd(d))) continue;
+        if (dayDiff(d, today) === 0 && slot.start > now) continue;
+        out.push({ date: d, slot });
+      }
+    }
+    return out;
+  }
+
+  /* ── 학기 ── */
+  async switchSemester(id) {
+    if (id === this.settings.semesterId) return;
+    if (loadSemester(this.settings, id)) await this.saveSettings();
+  }
+
+  // 새 학기를 연다. 지금 학기의 수업(semester: 가 비어 있는 것)에는 지금 학기 이름을 적어 보관한다.
+  async startSemester(o) {
+    const s = this.settings;
+    if (o.archive && o.oldName) {
+      s.currentSemester = o.oldName;
+      for (const c of this.getCourses().courses) {
+        if (c.semester || !c.file) continue;
+        this.markPending(c.file.path, { semester: o.oldName });
+        try {
+          await this.app.fileManager.processFrontMatter(c.file, (fm) => { if (!fm.semester) fm.semester = o.oldName; });
+        } catch (e) { failNotice('errSaveCourse', {}, e); }
+      }
+    }
+    syncSemester(s);
+    const entry = { id: 's' + Date.now().toString(36), name: o.name, start: o.start || '', end: o.end || '', holidays: '' };
+    s.semesters.push(entry);
+    loadSemester(s, entry.id);
+    await this.saveSettings();
+  }
+
+  async deleteSemester(id) {
+    const s = this.settings;
+    if (id === s.semesterId || s.semesters.length < 2) return;
+    s.semesters = s.semesters.filter((x) => x.id !== id);
+    await this.saveSettings();
+  }
+
+  /* ── 가져오기 ──
+   * 이름이 같은 수업이 이미 있으면 그 수업에 빠진 시간만 더한다. 없으면 수업 폴더와 폴더노트,
+   * 그 안에 강의 노트 폴더를 만든다 — 처음 쓰는 사람이 폴더 구조를 몰라도 책장과 오늘 노트가 바로 된다.
+   */
+  importBase() {
+    const root = this.roots().find((r) => r.folder && r.folder.path !== '/');
+    return root ? root.folder.path : t('importFolder');
+  }
+
+  async importCourses(list, base) {
+    const existing = this.getCourses().courses;
+    let made = 0, merged = 0;
+    // 새 수업에는 아직 아무도 안 쓰는 색을 적어 둔다. 자동 색에 맡기면 수업이 늘 때 있던 수업들의 색이 밀린다.
+    const used = new Set(existing.map((c) => String(c.color).toLowerCase()));
+    const freeColor = (name) => {
+      for (let k = 0, i = paletteIndex(name); k < PALETTE.length; k++, i = (i + 1) % PALETTE.length) {
+        if (!used.has(PALETTE[i])) { used.add(PALETTE[i]); return PALETTE[i]; }
+      }
+      return '';
+    };
+    for (const item of list) {
+      if (!item.name || !item.slots.length) continue;
+      const hit = existing.find((c) => c.name.toLowerCase() === item.name.toLowerCase());
+      try {
+        if (hit) {
+          const slots = hit.slots.slice();
+          for (const sl of item.slots) if (!slots.some((x) => formatSlot(x) === formatSlot(sl))) slots.push(sl);
+          await this.saveCourse({ file: hit.file }, slots);
+          merged++;
+          continue;
+        }
+        const folderPath = normalizePath((base ? base + '/' : '') + this.safeName(item.name));
+        const lectures = await this.ensureFolder(folderPath + '/' + t('sampleLectures'));
+        await this.saveCourse({ folderPath }, item.slots, { title: '', subtitle: '', color: freeColor(item.name), notes: lectures.path });
+        made++;
+      } catch (e) { failNotice('errSaveCourse', {}, e); }
+    }
+    new Notice(t('importDone', { n: made, m: merged }));
+    this.refreshAll();
+  }
+
+  /* ── .ics 로 내보내기 ── 볼트 안에 파일로 남긴다. 캘린더 앱의 "가져오기"로 넣는다. */
+  async exportIcs() {
+    const text = buildIcs(this);
+    if (!text) { new Notice(t('exportEmpty')); return; }
+    try {
+      const name = (this.settings.currentSemester || t('timetable')) + ' ' + formatDate(new Date(), 'YYYY-MM-DD') + '.ics';
+      const path = await this.freeAttachmentPath(this.safeName(name) || 'timetable.ics');
+      await this.app.vault.create(path, text);
+      new Notice(t('icsSaved', { path }), 9000);
+    } catch (e) {
+      failNotice('icsFail', {}, e);
+    }
   }
 
   courseByKey(key) {
@@ -2848,8 +4079,15 @@ class ClassTimetablePlugin extends Plugin {
   }
 
   async deletePlan(id) {
+    const gone = (this.settings.plans || []).find((p) => p.id === id);
     this.settings.plans = (this.settings.plans || []).filter((p) => p.id !== id);
     await this.saveSettings();
+    if (gone) {
+      this.offerUndo(t('planRemoved', { name: gone.title }), async () => {
+        this.settings.plans.push(gone);
+        await this.saveSettings();
+      });
+    }
   }
 
   /* ── 책장 다루기: 만들고, 이름 바꾸고, 버린다 ── */
@@ -3134,12 +4372,21 @@ class ClassTimetablePlugin extends Plugin {
       }
     }
 
+    // 끌어서 옮긴 것은 확인 없이 바로 쓴다. 대신 되돌릴 길을 남긴다.
+    const before = course.slots.map((s) => ({ day: s.day, start: s.start, end: s.end, location: s.location, parity: s.parity }));
+    const file = course.file;
+    const save = async () => {
+      await this.saveCourse({ file }, slots);
+      this.offerUndo(t('movedClass', { name: course.name, v: dayLabel(slots[idx].day) + ' ' + hhmm(slots[idx].start) }),
+        () => this.saveCourse({ file }, before));
+    };
+
     const hits = this.findConflicts([slots[idx]], course.file.path);
-    if (!hits.length) { await this.saveCourse({ file: course.file }, slots); return; }
+    if (!hits.length) { await save(); return; }
 
     new ConflictModal(this, {
       hits,
-      onSave: () => this.saveCourse({ file: course.file }, slots),
+      onSave: save,
       onEdit: () => new CourseEditModal(this, { course: Object.assign({}, course, { slots }) }).open(),
     }).open();
     this.refreshAll();
@@ -3218,6 +4465,7 @@ class ClassTimetablePlugin extends Plugin {
       patch.title = extra.title || '';
       patch.subtitle = extra.subtitle == null ? '' : extra.subtitle;
       patch.color = extra.color || '';
+      if (extra.short != null) patch.short = extra.short;
     }
     this.markPending(file.path, patch);
 
@@ -3231,6 +4479,8 @@ class ClassTimetablePlugin extends Plugin {
         if (extra.subtitle != null && extra.subtitle !== '') fm.subtitle = extra.subtitle;
         else if (extra.subtitle === '') delete fm.subtitle;
         if (extra.color) fm.color = extra.color; else delete fm.color;
+        if (extra.short != null) { if (extra.short) fm.short = extra.short; else delete fm.short; }
+        if (extra.notes && !fm.notes) fm.notes = extra.notes;
       }
     });
 
@@ -3248,7 +4498,39 @@ class ClassTimetablePlugin extends Plugin {
 
 /* ────────────────────────────── 시간표 ────────────────────────────── */
 
+/* ── 다시 그려도 손에 쥔 것은 그대로 ──
+ * 시간표는 1분마다, 그리고 노트가 바뀔 때마다 처음부터 다시 그린다. 그 사이에 할 일을 치던 글자,
+ * 내려 보던 목록의 위치가 사라지면 안 된다. 그리기 전에 들어 두었다가 그린 뒤에 돌려놓는다.
+ * 할 일의 글을 그 자리에서 고치는 중이면 아예 다시 그리지 않는다 (끝나면 스스로 다시 그린다).
+ */
+const KEEP_SCROLL = ['ctt-scroll', 'ctt-agenda-body', 'ctt-todo-scroll'];
+
+function keepState(el, draw) {
+  const active = document.activeElement;
+  if (active && el.contains(active) && active.classList.contains('ctt-trow-edit')) return;
+  const scrolls = KEEP_SCROLL.map((c) => { const x = el.querySelector('.' + c); return x ? x.scrollTop : 0; });
+  const inputs = [...el.querySelectorAll('input.ctt-tadd-input')].map((i) => ({
+    value: i.value, focused: i === active, s: i.selectionStart, e: i.selectionEnd,
+  }));
+  draw();
+  KEEP_SCROLL.forEach((c, k) => { const x = el.querySelector('.' + c); if (x && scrolls[k]) x.scrollTop = scrolls[k]; });
+  const now = [...el.querySelectorAll('input.ctt-tadd-input')];
+  inputs.forEach((st, k) => {
+    const i = now[k];
+    if (!i) return;
+    if (st.value && !i.value) { i.value = st.value; i.closest('.ctt-tadd') && i.closest('.ctt-tadd').addClass('is-open'); }
+    if (st.focused && document.activeElement !== i) {
+      i.focus();
+      try { i.setSelectionRange(st.s, st.e); } catch (e) { /* 없음 */ }
+    }
+  });
+}
+
 function renderTimetable(plugin, containerEl, opts) {
+  keepState(containerEl, () => renderTimetableNow(plugin, containerEl, opts));
+}
+
+function renderTimetableNow(plugin, containerEl, opts) {
   opts = opts || {};
   const embed = !!opts.embed;                     // 노트 안 코드블록. 보기 전용이다.
   const mode = embed ? 'view' : (plugin.mode || 'view');
@@ -3271,9 +4553,13 @@ function renderTimetable(plugin, containerEl, opts) {
   const ti = todayIndex();
   const now = nowMinutes();
 
+  // 사이드바는 탭으로 나뉜다: 오늘(하루 일정) · 주간(격자) · 할 일. 노트 안 블록은 view: 가 정한다.
+  const tab = embed ? (opts.viewMode === 'today' ? 'today' : 'week') : (settings.tab || 'week');
+  const anim = embed ? '' : ((plugin.ui && plugin.ui.anim) || '');
+
   // 상단 바의 "지금"은 늘 진짜 이번 주를 본다. 격자는 보고 있는 주를 그린다.
-  const todayOnly = (opts.viewMode || settings.viewMode) === 'today';
-  const offset = todayOnly ? 0 : (nav.weekOffset || 0);
+  const todayOnly = false;
+  const offset = tab === 'week' ? (nav.weekOffset || 0) : 0;
   const thisMonday = mondayOf(new Date());
   const thisWeek = buildWeek(settings, courses, plans, thisMonday);
   const week = offset ? buildWeek(settings, courses, plans, addDays(thisMonday, offset * 7)) : thisWeek;
@@ -3306,34 +4592,28 @@ function renderTimetable(plugin, containerEl, opts) {
   }
 
   if (!embed) {
-    // 주간/오늘 — 아이콘이 붙어야 글자 하나짜리 라벨이 아니라 누르는 것으로 보인다
-    const modeBtn = bar.createEl('button', { cls: 'ctt-mode' });
-    icon(modeBtn.createSpan({ cls: 'ctt-mode-icon' }), todayOnly ? 'calendar-check' : 'calendar-days', '');
-    modeBtn.createSpan({ text: todayOnly ? t('modeToday') : t('modeWeek') });
-    modeBtn.setAttr('title', todayOnly ? t('toWeek') : t('toToday'));
-    modeBtn.setAttr('aria-label', todayOnly ? t('toWeek') : t('toToday'));
-    modeBtn.onclick = async () => {
-      settings.viewMode = todayOnly ? 'week' : 'today';
-      await plugin.saveSettings();
+    // 플러스 — 무엇이든 더하는 곳은 하나다: 수업 · 한 번에 등록 · 할 일 · 시험과 마감 · 일정.
+    // 일정을 끌어 그리는 중이면 같은 버튼이 "끝내기"가 된다.
+    const addBtn = bar.createEl('button', { cls: 'ctt-add' });
+    if (mode === 'plan') addBtn.addClass('is-active');
+    addBtn.setAttr('title', mode === 'plan' ? t('planOff') : t('addMenu'));
+    addBtn.setAttr('aria-label', mode === 'plan' ? t('planOff') : t('addMenu'));
+    icon(addBtn, mode === 'plan' ? 'check' : 'plus', '+');
+    addBtn.onclick = (e) => {
+      if (mode === 'plan') { plugin.setMode('plan'); return; }
+      addMenu(plugin).showAtMouseEvent(e);
     };
 
-    // 연필 — 시간표는 이 버튼을 켜야만 고칠 수 있다
-    const editBtn = bar.createEl('button', { cls: 'ctt-iconbtn' });
-    if (mode === 'edit') editBtn.addClass('is-active');
-    editBtn.setAttr('title', mode === 'edit' ? t('editOff') : t('editOn'));
-    editBtn.setAttr('aria-label', mode === 'edit' ? t('editOff') : t('editOn'));
-    editBtn.setAttr('aria-pressed', mode === 'edit' ? 'true' : 'false');
-    icon(editBtn, 'pencil', '✎');
-    editBtn.onclick = () => plugin.setMode('edit');
-
-    // 플러스 — 파일 없는 일정
-    const planBtn = bar.createEl('button', { cls: 'ctt-add' });
-    if (mode === 'plan') planBtn.addClass('is-active');
-    planBtn.setAttr('title', mode === 'plan' ? t('planOff') : t('planOn'));
-    planBtn.setAttr('aria-label', mode === 'plan' ? t('planOff') : t('planOn'));
-    planBtn.setAttr('aria-pressed', mode === 'plan' ? 'true' : 'false');
-    icon(planBtn, 'plus', '+');
-    planBtn.onclick = () => plugin.setMode('plan');
+    // 연필 — 시간표는 이 버튼을 켜야만 고칠 수 있다. 격자가 있는 주간 탭에서만.
+    if (tab === 'week') {
+      const editBtn = bar.createEl('button', { cls: 'ctt-iconbtn' });
+      if (mode === 'edit') editBtn.addClass('is-active');
+      editBtn.setAttr('title', mode === 'edit' ? t('editOff') : t('editOn'));
+      editBtn.setAttr('aria-label', mode === 'edit' ? t('editOff') : t('editOn'));
+      editBtn.setAttr('aria-pressed', mode === 'edit' ? 'true' : 'false');
+      icon(editBtn, mode === 'edit' ? 'check' : 'pencil', '✎');
+      editBtn.onclick = () => plugin.setMode('edit');
+    }
 
     // 톱니 — 화면을 정하는 것들. 맨 오른쪽에 둔다.
     const gear = bar.createEl('button', { cls: 'ctt-iconbtn' });
@@ -3341,6 +4621,8 @@ function renderTimetable(plugin, containerEl, opts) {
     gear.setAttr('aria-label', t('prefs'));
     icon(gear, 'settings', '⚙');
     gear.onclick = () => new PrefsModal(plugin).open();
+
+    renderTabs(plugin, containerEl, tab, todoBadge(plugin, res, courses), anim === 'tab');
   }
 
   /* ── 알림 한 줄 ── */
@@ -3356,29 +4638,41 @@ function renderTimetable(plugin, containerEl, opts) {
 
   // 아무것도 없으면 빈 격자 대신 무엇을 하면 되는지를 보여 준다.
   // 편집·일정 모드에서는 격자가 있어야 끌어서 만들 수 있으므로 그대로 그린다.
+  // 할 일은 수업이 없어도 쓸 수 있다
+  if (tab === 'todo') {
+    renderTodoPanel(plugin, containerEl, { anim: !!anim, ctx: 'side' });
+    return;
+  }
+
   if (!courses.length && !plans.length && mode === 'view' && !res.error) {
     if (embed) containerEl.createDiv({ cls: 'ctt-notice', text: t('noCourses') });
     else renderEmpty(plugin, containerEl);
     return;
   }
 
-  /* ── 다가오는 시험·마감 ── */
+  if (tab === 'today') {
+    renderAgenda(plugin, containerEl, { embed, state: embed ? nav : plugin.ui, rerender, anim: !!anim, res, plans });
+    return;
+  }
+
+  /* ── 다가오는 시험·마감 ──
+   * 사이드바에서는 가장 급한 한 줄만. 나머지는 할 일 탭에 모여 있다 — 격자 자리를 빼앗지 않는다. */
   if (mode === 'view' && opts.upcoming !== false) {
     const horizon = upcomingHorizon(settings);
     if (horizon > 0) {
-      renderUpcoming(plugin, containerEl, plugin.upcomingDeadlines(deadlines, horizon), {
-        limit: UPCOMING_ROWS,
-        open: !!nav.upcomingOpen,
-        onToggle: () => { nav.upcomingOpen = !nav.upcomingOpen; rerender(); },
-      });
+      const list = plugin.upcomingDeadlines(deadlines, horizon);
+      renderUpcoming(plugin, containerEl, list, embed
+        ? { limit: UPCOMING_ROWS, open: !!nav.upcomingOpen, onToggle: () => { nav.upcomingOpen = !nav.upcomingOpen; rerender(); } }
+        : { limit: 1, onMore: () => plugin.setTab('todo') });
     }
   }
 
   /* ── 주 넘기기 ── */
-  if (!todayOnly) {
+  {
     const go = (delta) => {
       nav.weekOffset = delta === 0 ? 0 : offset + delta;
       nav.navAt = Date.now();
+      if (plugin.ui && !embed) plugin.ui.anim = delta === 0 ? 'week-back' : (delta > 0 ? 'week-next' : 'week-prev');
       rerender();
     };
     const wb = containerEl.createDiv({ cls: 'ctt-weekbar' });
@@ -3423,8 +4717,8 @@ function renderTimetable(plugin, containerEl, opts) {
   /* ── 요일 · 시간 범위 ──
    * 보고 있는 주에 "보통의 한 주"를 겹쳐서 잰다. 격주 수업이나 일회성 일정 때문에
    * 주를 넘길 때마다 격자 크기가 달라지면 눈이 자리를 잃는다. */
-  const span = todayOnly ? byDay : buildItems(courses, plans).map((list, d) => list.concat(byDay[d]));
-  const days = todayOnly ? [ti] : weekDays(span);
+  const span = buildItems(courses, plans).map((list, d) => list.concat(byDay[d]));
+  const days = weekDays(span);
   const { startHour, endHour } = hourRange(plugin, span, days);
 
   const colW = ((containerEl.clientWidth || 320) - 24) / days.length;
@@ -3437,6 +4731,9 @@ function renderTimetable(plugin, containerEl, opts) {
 
   const cols = 'var(--ctt-gutter) repeat(' + days.length + ', minmax(0, 1fr))';
   const scroll = containerEl.createDiv({ cls: 'ctt-scroll' });
+  // 주를 넘기면 격자가 그 방향으로 살짝 밀려 들어온다. 탭을 바꾸면 그냥 떠오른다.
+  if (anim === 'week-next' || anim === 'week-prev' || anim === 'week-back') scroll.addClass('is-' + anim);
+  else if (anim === 'tab') scroll.addClass('is-enter');
 
   const head = scroll.createDiv({ cls: 'ctt-head' });
   head.style.gridTemplateColumns = cols;
@@ -3444,13 +4741,9 @@ function renderTimetable(plugin, containerEl, opts) {
   for (const d of days) {
     const h = head.createDiv({ cls: 'ctt-dayhead' });
     const pill = h.createSpan({ cls: 'ctt-daypill' });
-    if (todayOnly) {
-      pill.setText(todayHeadLabel(week.dates[d], d));
-    } else {
-      // 주를 넘겨 다닐 수 있으니 요일 옆에 날짜를 작게 붙인다
-      pill.createSpan({ text: dayLabel(d) });
-      pill.createSpan({ cls: 'ctt-daynum', text: String(week.dates[d].getDate()) });
-    }
+    // 주를 넘겨 다닐 수 있으니 요일 옆에 날짜를 작게 붙인다
+    pill.createSpan({ text: dayLabel(d) });
+    pill.createSpan({ cls: 'ctt-daynum', text: String(week.dates[d].getDate()) });
     if (!offset && d === ti) h.addClass('is-today');
     if (week.holidays[d]) h.addClass('is-holiday');
   }
@@ -3502,8 +4795,21 @@ function renderTimetable(plugin, containerEl, opts) {
   }
 
   const colEls = [];
+  // 지난 수업에 그 날의 필기 노트가 있는지 — 수업마다 한 번만 폴더를 훑는다
+  const noteIdx = new Map();
+  const today = today0();
+  // 아직 오지 않은 날·시각이면 참. 이미 지났거나 시작한 수업에만 노트 표시를 단다.
+  const ahead = (date, slot) => { const dd = dayDiff(date, today); return dd !== 0 ? dd > 0 : slot.start > now; };
+  const termStart = parseYmd(settings.semesterStart);
+  const attend = (course, slot, date) => {
+    if (!date || ahead(date, slot)) return null;
+    if (termStart && dayDiff(date, termStart) < 0) return null;   // 학기 전의 주는 셀 것이 없다
+    if (!noteIdx.has(course.key)) noteIdx.set(course.key, plugin.noteIndex(course));
+    return plugin.hasNoteOn(course, slot, date, noteIdx.get(course.key));
+  };
+
   // 다른 주를 볼 때는 "오늘"도 "지금"도 없다 (ti 가 어느 요일과도 안 맞게 둔다)
-  const geo = { originMin, pxPerMin, colEls, density, hourH, ti: offset ? -1 : ti, now, mode, week, embed };
+  const geo = { originMin, pxPerMin, colEls, density, hourH, colW, ti: offset ? -1 : ti, now, mode, week, embed, attend };
 
   // 오늘 칸 밖으로도 지금 시각을 흐리게 이어 준다. 다른 요일의 같은 시각과 견주어 보기 쉽다.
   const nowInRange = !offset && days.includes(ti) && now >= originMin && now <= endHour * 60;
@@ -3514,7 +4820,21 @@ function renderTimetable(plugin, containerEl, opts) {
   for (const d of days) {
     const col = body.createDiv({ cls: 'ctt-col' });
     colEls.push({ day: d, el: col });
-    if (!offset && d === ti && !todayOnly) col.addClass('is-today');
+    if (!offset && d === ti) col.addClass('is-today');
+
+    // 공강 — 칸이 넉넉할 때만, 수업 사이의 빈 시간에 길이를 흐리게 적는다
+    if (colW >= 84 && mode === 'view') {
+      const busy = byDay[d].filter((it) => !it.cancelled).map((it) => it.slot).sort((a, b) => a.start - b.start);
+      let end = -1;
+      for (const sl of busy) {
+        if (end >= 0 && sl.start - end >= 60 && (sl.start - end) * pxPerMin >= 18) {
+          const gap = col.createDiv({ cls: 'ctt-gap', text: humanGap(sl.start - end) });
+          gap.style.top = (end - originMin) * pxPerMin + 'px';
+          gap.style.height = (sl.start - end) * pxPerMin + 'px';
+        }
+        end = Math.max(end, sl.end);
+      }
+    }
 
     for (let h = startHour + 1; h < endHour; h++) {
       col.createDiv({ cls: 'ctt-hline' }).style.top = (h - startHour) * hourH + 'px';
@@ -3600,8 +4920,34 @@ function renderUpcoming(plugin, parent, list, o) {
   const today = today0();
   const box = parent.createDiv({ cls: 'ctt-upcoming' });
   const limit = o.limit || list.length;
+  // 사이드바: 가장 급한 줄 하나와, 나머지가 모인 할 일 탭으로 가는 "+N"
+  if (o.onMore) {
+    box.addClass('is-single');
+    const rows1 = list.slice(0, limit);
+    renderUpcomingRows(plugin, box, rows1, today);
+    if (list.length > limit) {
+      const more = box.createEl('button', { cls: 'ctt-up-more is-pill', text: '+' + (list.length - limit) });
+      more.setAttr('title', t('seeAllTodo'));
+      more.setAttr('aria-label', t('seeAllTodo'));
+      more.onclick = (e) => { e.preventDefault(); e.stopPropagation(); o.onMore(); };
+    }
+    return box;
+  }
   const folded = list.length > limit + 1 && !o.open;
   const rows = folded ? list.slice(0, limit) : list;
+  renderUpcomingRows(plugin, box, rows, today);
+
+  if (list.length > limit + 1 && o.onToggle) {
+    const more = box.createEl('button', {
+      cls: 'ctt-up-more',
+      text: folded ? t('moreItems', { n: list.length - limit }) : t('showLess'),
+    });
+    more.onclick = (e) => { e.preventDefault(); e.stopPropagation(); o.onToggle(); };
+  }
+  return box;
+}
+
+function renderUpcomingRows(plugin, box, rows, today) {
 
   for (const dl of rows) {
     const gap = dayDiff(parseYmd(dl.date), today);
@@ -3613,15 +4959,6 @@ function renderUpcoming(plugin, parent, list, o) {
     row.createSpan({ cls: 'ctt-up-meta', text: dl.course.name + ' · ' + deadlineWhen(dl) });
     bindDeadline(plugin, row, dl);
   }
-
-  if (list.length > limit + 1 && o.onToggle) {
-    const more = box.createEl('button', {
-      cls: 'ctt-up-more',
-      text: folded ? t('moreItems', { n: list.length - limit }) : t('showLess'),
-    });
-    more.onclick = (e) => { e.preventDefault(); e.stopPropagation(); o.onToggle(); };
-  }
-  return box;
 }
 
 // 처음 켠 사람이 보는 화면. 할 수 있는 일 두 가지와, 규칙 한 줄.
@@ -3645,7 +4982,13 @@ function renderEmpty(plugin, containerEl) {
   card.createDiv({ cls: 'ctt-empty-body', text: t('emptyBody') });
 
   const actions = card.createDiv({ cls: 'ctt-empty-actions' });
-  const add = actions.createEl('button', { cls: 'mod-cta ctt-empty-btn' });
+  // 이미 다른 곳(포털 · 엑셀 · 캘린더)에 시간표가 있는 사람이 대부분이다. 다시 치게 하지 않는 길을 맨 앞에.
+  const paste = actions.createEl('button', { cls: 'mod-cta ctt-empty-btn' });
+  icon(paste.createSpan({ cls: 'ctt-empty-btn-icon' }), 'clipboard-paste', '');
+  paste.createSpan({ text: t('emptyImport') });
+  paste.onclick = () => new ImportModal(plugin, {}).open();
+
+  const add = actions.createEl('button', { cls: 'ctt-empty-btn' });
   icon(add.createSpan({ cls: 'ctt-empty-btn-icon' }), 'plus', '');
   add.createSpan({ text: t('emptyAdd') });
   add.onclick = () => new CourseEditModal(plugin, {}).open();
@@ -3655,7 +4998,11 @@ function renderEmpty(plugin, containerEl) {
   sample.createSpan({ text: t('emptySample') });
   sample.onclick = () => plugin.createSample();
 
-  card.createEl('pre', { cls: 'ctt-empty-code', text: t('emptyCode') });
+  // 손으로 적고 싶은 사람을 위한 규칙 한 줄은 접어 둔다. 처음 보는 사람이 frontmatter 부터 읽지 않게.
+  const more = card.createEl('details', { cls: 'ctt-empty-more' });
+  more.createEl('summary', { text: t('emptyHowTitle') });
+  more.createEl('p', { text: t('emptyHowBody') });
+  more.createEl('pre', { cls: 'ctt-empty-code', text: t('emptyCode') });
 
   // 처음 쓰다 막힌 사람이 말할 곳. 여기서 떠나는 사람의 이유가 가장 듣기 어렵다.
   feedbackLink(card.createDiv({ cls: 'ctt-empty-feedback' }), t('emptyFeedback'), FEEDBACK_IDEA_URL);
@@ -3668,6 +5015,689 @@ function feedbackLink(parent, text, url) {
   a.setAttr('target', '_blank');
   a.setAttr('rel', 'noopener');
   return a;
+}
+
+/* ────────────────────────────── 탭 ────────────────────────────── */
+
+const TABS = ['today', 'week', 'todo'];
+
+// 세 칸이 같은 폭이라, 바탕 알약은 칸 번호만큼 옮기면 된다. 탭을 바꾼 그 한 번만 미끄러진다.
+function renderTabs(plugin, parent, tab, badge, animate) {
+  const wrap = parent.createDiv({ cls: 'ctt-tabs' });
+  wrap.setAttr('role', 'tablist');
+  const pill = wrap.createDiv({ cls: 'ctt-tabs-pill' });
+  const idx = Math.max(0, TABS.indexOf(tab));
+  const labels = { today: t('tabToday'), week: t('tabWeek'), todo: t('tabTodo') };
+  const icons = { today: 'sun', week: 'calendar-days', todo: 'list-checks' };
+  for (const id of TABS) {
+    const b = wrap.createEl('button', { cls: 'ctt-tab' + (id === tab ? ' is-active' : '') });
+    b.setAttr('role', 'tab');
+    b.setAttr('aria-selected', id === tab ? 'true' : 'false');
+    icon(b.createSpan({ cls: 'ctt-tab-icon' }), icons[id], '');
+    b.createSpan({ cls: 'ctt-tab-label', text: labels[id] });
+    if (id === 'todo' && badge) {
+      const n = b.createSpan({ cls: 'ctt-tab-badge', text: badge > 99 ? '99+' : String(badge) });
+      n.setAttr('aria-label', t('badgeHint', { n: badge }));
+    }
+    b.onclick = () => plugin.setTab(id);
+  }
+  const prev = plugin.ui ? TABS.indexOf(plugin.ui.lastTab) : -1;
+  if (animate && prev >= 0 && prev !== idx) {
+    pill.style.setProperty('--i', String(prev));
+    void pill.offsetWidth;              // 옛 자리에서 한 번 그려야 새 자리로 미끄러진다
+    pill.addClass('is-moving');
+  }
+  pill.style.setProperty('--i', String(idx));
+  if (plugin.ui) plugin.ui.lastTab = tab;
+}
+
+// 할 일 탭의 숫자: 오늘까지 해야 하는데 아직 안 한 것 (지난 마감 · 오늘 마감 · 오늘 시험 · 날짜가 지난 할 일)
+function todoBadge(plugin, res) {
+  const today = today0();
+  let n = 0;
+  for (const dl of res.deadlines || []) {
+    if (dl.done) continue;
+    const d = parseYmd(dl.date);
+    if (!d) continue;
+    const g = dayDiff(d, today);
+    if (dl.kind === 'due' ? (g <= 0 && g >= -OVERDUE_DAYS) : g === 0) n++;
+  }
+  for (const td of plugin.collectTodos(res.courses)) {
+    if (td.done || !td.date) continue;
+    const d = parseYmd(td.date);
+    if (d && dayDiff(d, today) <= 0) n++;
+  }
+  return n;
+}
+
+/* ────────────────────────────── 오늘 ──────────────────────────────
+ *
+ * 하루를 위에서 아래로 읽는다. 맨 위에 지금(또는 다음) 수업 카드, 그 아래 시간 순서의 줄,
+ * 수업 사이의 빈 시간은 공강으로, 맨 아래에 그 날의 마감과 할 일.
+ * 화살표로 다른 날을 본다.
+ */
+function renderAgenda(plugin, parent, o) {
+  const settings = plugin.settings;
+  const res = o.res || plugin.getCourses();
+  const state = o.state || {};
+  const offset = state.dayOffset || 0;
+  const today = today0();
+  const date = addDays(today, offset);
+  const isToday = offset === 0;
+  const now = nowMinutes();
+  const week = buildWeek(settings, res.courses, o.plans || plugin.plans(), mondayOf(date));
+  const wd = (date.getDay() + 6) % 7;
+  const items = week.byDay[wd].slice().sort((a, b) => a.slot.start - b.slot.start || a.slot.end - b.slot.end);
+  const hol = week.holidays[wd];
+  const anim = !o.embed && plugin.ui ? plugin.ui.anim : '';
+
+  const go = (d) => {
+    state.dayOffset = d === 0 ? 0 : offset + d;
+    if (plugin.ui && !o.embed) plugin.ui.anim = d > 0 ? 'day-next' : (d < 0 ? 'day-prev' : 'day-back');
+    o.rerender();
+  };
+
+  const wrap = parent.createDiv({ cls: 'ctt-agenda' });
+
+  /* 날짜 줄 */
+  const head = wrap.createDiv({ cls: 'ctt-dayrow' + (offset ? ' is-away' : '') });
+  const prev = head.createEl('button', { cls: 'ctt-weekbtn' });
+  prev.setAttr('aria-label', t('dayPrev'));
+  prev.setAttr('title', t('dayPrev'));
+  icon(prev, 'chevron-left', '‹');
+  prev.onclick = () => go(-1);
+  const rel = isToday ? t('dToday') : (offset === 1 ? t('dTomorrow') : (offset === -1 ? t('dYesterday') : ''));
+  const label = head.createEl('button', { cls: 'ctt-daylabel' });
+  label.createSpan({ cls: 'ctt-daylabel-date', text: todayHeadLabel(date, wd) });
+  if (rel) label.createSpan({ cls: 'ctt-daylabel-rel', text: rel });
+  const weekNo = weekNumber(settings.semesterStart, date, settings.semesterEnd);
+  if (weekNo) label.createSpan({ cls: 'ctt-daylabel-week', text: t('weekNo', { n: weekNo }) });
+  if (offset) { label.setAttr('title', t('backToday')); label.onclick = () => go(0); } else label.disabled = true;
+  const next = head.createEl('button', { cls: 'ctt-weekbtn' });
+  next.setAttr('aria-label', t('dayNext'));
+  next.setAttr('title', t('dayNext'));
+  icon(next, 'chevron-right', '›');
+  next.onclick = () => go(1);
+  if (offset) head.createEl('button', { cls: 'ctt-weekback', text: t('backToday') }).onclick = () => go(0);
+
+  const body = wrap.createDiv({ cls: 'ctt-agenda-body' });
+  if (anim) body.addClass('is-' + (anim === 'tab' ? 'enter' : anim));
+
+  // 좌우로 밀어 날을 바꾸는 손짓은 두지 않는다 — 휴대폰에서 시간표는 오른쪽 서랍 안에 있고,
+  // 옵시디언은 같은 손짓으로 서랍을 닫는다. 날짜 줄의 ‹ › 가 그 일을 한다 (휴대폰에서는 더 크게).
+
+  if (hol) {
+    const ban = body.createDiv({ cls: 'ctt-holiday-banner' });
+    icon(ban.createSpan({ cls: 'ctt-holiday-icon' }), 'calendar-off', '');
+    ban.createSpan({ text: hol.name || t('noClassDay') });
+  }
+  if (week.ended && !items.some((it) => it.kind === 'course')) {
+    const end = parseYmd(settings.semesterEnd);
+    body.createDiv({ cls: 'ctt-notice', text: t('semesterOver', { date: end ? ymd(end) : '' }) });
+  }
+
+  const running = (it) => !it.cancelled && now >= it.slot.start && now < it.slot.end;
+  const live = isToday ? items.find(running) : null;
+  const upnext = isToday && !live ? items.find((it) => !it.cancelled && it.slot.start > now) : null;
+  if (live || upnext) renderNowCard(plugin, body, live || upnext, !!live, now, date, !!anim);
+
+  // 그 날의 할 일 — 공강 줄에 개수를 붙이고, 맨 아래에 목록으로 둔다
+  const key = ymd(date);
+  const dueToday = (res.deadlines || []).filter((dl) => !dl.done && (dl.date === key
+    || (isToday && dl.kind === 'due' && dayDiff(parseYmd(dl.date), today) < 0 && dayDiff(parseYmd(dl.date), today) >= -OVERDUE_DAYS)));
+  const todosToday = plugin.collectTodos(res.courses).filter((td) => {
+    if (td.done || !td.date) return false;
+    const g = dayDiff(parseYmd(td.date), date);
+    return isToday ? g <= 0 : g === 0;
+  });
+  const chores = dueToday.length + todosToday.length;
+
+  const list = body.createDiv({ cls: 'ctt-agenda-list' });
+  let prevEnd = null, i = 0;
+  for (const it of items) {
+    if (prevEnd != null && !it.cancelled && it.slot.start - prevEnd >= GAP_MIN) {
+      renderAgendaGap(plugin, list, it.slot.start - prevEnd, chores, i++);
+    }
+    renderAgendaRow(plugin, list, it, { date, isToday, now, i: i++, isLive: it === live });
+    if (!it.cancelled) prevEnd = Math.max(prevEnd == null ? 0 : prevEnd, it.slot.end);
+  }
+
+  if (!items.length) {
+    const empty = list.createDiv({ cls: 'ctt-agenda-empty' });
+    icon(empty.createDiv({ cls: 'ctt-agenda-empty-icon' }), hol ? 'calendar-off' : 'coffee', '');
+    empty.createDiv({ cls: 'ctt-agenda-empty-title', text: hol ? (hol.name || t('noClassDay')) : (isToday ? t('dayEmpty') : t('dayEmptyOn')) });
+    const after = nextAfter(plugin, res.courses, date);
+    if (after) empty.createDiv({ cls: 'ctt-agenda-empty-sub', text: t('nextIs', { when: after }) });
+  } else if (isToday && !items.some((it) => !it.cancelled && it.slot.end > now)) {
+    const done = list.createDiv({ cls: 'ctt-agenda-done' });
+    icon(done.createSpan({ cls: 'ctt-agenda-done-icon' }), 'check-circle', '✓');
+    done.createSpan({ text: t('dayDone') });
+  }
+
+  /* 이 날의 마감 · 할 일 */
+  const sec = body.createDiv({ cls: 'ctt-agenda-todo' });
+  const sh = sec.createDiv({ cls: 'ctt-tsec-head' });
+  sh.createSpan({ cls: 'ctt-tsec-title', text: isToday ? t('agendaTodo') : t('agendaTodoOn') });
+  if (chores) sh.createSpan({ cls: 'ctt-tsec-count', text: String(chores) });
+  const rows = sec.createDiv({ cls: 'ctt-tlist' });
+  let j = 0;
+  for (const dl of dueToday) renderDeadlineRow(plugin, rows, dl, { i: j++ });
+  for (const td of todosToday) renderTodoRow(plugin, rows, td, { i: j++ });
+  if (!o.embed) renderTodoInput(plugin, sec, { ctx: 'agenda', date: key, courses: res.courses, compact: true });
+}
+
+// 지금 수업(또는 곧 시작할 수업) 카드. 남은 시간 막대와, 수업 중에 제일 먼저 찾는 두 버튼.
+function renderNowCard(plugin, parent, it, live, now, date, animate) {
+  const isPlan = it.kind === 'plan';
+  const color = isPlan ? (it.plan.color || PLAN_COLOR) : it.course.color;
+  const card = parent.createDiv({ cls: 'ctt-nowcard' + (live ? ' is-live' : ' is-next') + (animate ? ' is-enter' : '') });
+  card.style.setProperty('--ctt-color', color);
+
+  const top = card.createDiv({ cls: 'ctt-nowcard-top' });
+  const tag = top.createSpan({ cls: 'ctt-nowcard-tag', text: live ? t('nowTag') : t('nextTag') });
+  if (live) tag.addClass('is-live');
+  top.createSpan({ cls: 'ctt-nowcard-time', text: hhmm(it.slot.start) + ' – ' + hhmm(it.slot.end) });
+
+  card.createDiv({ cls: 'ctt-nowcard-name', text: isPlan ? it.plan.title : it.course.name });
+  const sub = isPlan ? String(it.plan.note || '').split(/\r?\n/)[0]
+    : [it.slot.location, it.course.subtitle ? String(it.course.subtitle).split(/\r?\n/)[0] : ''].filter((x, k, a) => x && a.indexOf(x) === k).join(' · ');
+  if (sub) card.createDiv({ cls: 'ctt-nowcard-sub', text: sub });
+
+  const meter = card.createDiv({ cls: 'ctt-nowcard-meter' });
+  if (live) {
+    const p = Math.max(0, Math.min(1, (now - it.slot.start) / (it.slot.end - it.slot.start)));
+    const bar = meter.createDiv({ cls: 'ctt-progress' });
+    bar.createDiv({ cls: 'ctt-progress-fill' }).style.setProperty('--p', String(p));
+    meter.createDiv({ cls: 'ctt-nowcard-left', text: t('nowLeft', { v: humanGap(it.slot.end - now) }) });
+  } else {
+    meter.createDiv({ cls: 'ctt-nowcard-left', text: t('startsIn', { v: humanGap(it.slot.start - now) }) });
+  }
+
+  if (!isPlan) {
+    const course = it.course;
+    const actions = card.createDiv({ cls: 'ctt-nowcard-actions' });
+    const existing = plugin.noteFileOn(course, it.slot, date);
+    const note = actions.createEl('button', { cls: 'ctt-pill is-primary' });
+    icon(note.createSpan({ cls: 'ctt-pill-icon' }), existing ? 'file-text' : 'file-plus', '');
+    note.createSpan({ text: existing ? t('noteOpen') : t('todayNoteShort') });
+    note.onclick = (e) => {
+      e.stopPropagation();
+      if (existing) plugin.openNote(existing, e.ctrlKey || e.metaKey);
+      else plugin.createFromTemplate(course, it.slot, undefined, date);
+    };
+    const shelf = actions.createEl('button', { cls: 'ctt-pill' });
+    icon(shelf.createSpan({ cls: 'ctt-pill-icon' }), 'library', '');
+    shelf.createSpan({ text: t('openShelf') });
+    shelf.onclick = (e) => { e.stopPropagation(); plugin.openCourseView(course, e.ctrlKey || e.metaKey); };
+    card.onclick = (e) => plugin.openCourseView(course, e.ctrlKey || e.metaKey);
+    card.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      courseMenu(plugin, course, it.slot, date, it.cancelled, it.holiday).showAtMouseEvent(e);
+    });
+  } else {
+    card.onclick = () => new PlanEditModal(plugin, { plan: it.plan }).open();
+  }
+}
+
+function renderAgendaGap(plugin, list, mins, chores, i) {
+  const gap = list.createDiv({ cls: 'ctt-agap' });
+  gap.style.setProperty('--i', String(Math.min(i, 12)));
+  gap.createSpan({ cls: 'ctt-agap-line' });
+  gap.createSpan({ cls: 'ctt-agap-text', text: t('gapFree', { v: humanGap(mins) }) });
+  if (chores) {
+    const a = gap.createEl('button', { cls: 'ctt-agap-link', text: t('gapChores', { n: chores }) });
+    a.onclick = () => plugin.setTab('todo');
+  }
+}
+
+function renderAgendaRow(plugin, list, it, o) {
+  const isPlan = it.kind === 'plan';
+  const color = isPlan ? (it.plan.color || PLAN_COLOR) : it.course.color;
+  const row = list.createDiv({ cls: 'ctt-arow' + (isPlan ? ' is-plan' : '') });
+  row.style.setProperty('--ctt-color', color);
+  row.style.setProperty('--i', String(Math.min(o.i, 12)));
+  const today = today0();
+  const past = !it.cancelled && (dayDiff(o.date, today) < 0 || (o.isToday && o.now >= it.slot.end));
+  const started = dayDiff(o.date, today) < 0 || (o.isToday && o.now >= it.slot.start);
+  if (it.cancelled) row.addClass('is-cancelled');
+  else if (o.isLive) row.addClass('is-live');
+  else if (past) row.addClass('is-past');
+
+  const time = row.createDiv({ cls: 'ctt-arow-time' });
+  time.createDiv({ cls: 'ctt-arow-start', text: hhmm(it.slot.start) });
+  time.createDiv({ cls: 'ctt-arow-end', text: hhmm(it.slot.end) });
+
+  const card = row.createDiv({ cls: 'ctt-arow-card' });
+  const main = card.createDiv({ cls: 'ctt-arow-main' });
+  main.createDiv({ cls: 'ctt-arow-name', text: isPlan ? it.plan.title : it.course.name });
+  const sub = it.holiday ? (it.holiday.name || t('noClassDay'))
+    : it.cancelled ? t('cancelled')
+      : isPlan ? String(it.plan.note || '').split(/\r?\n/)[0]
+        : [it.slot.location, it.course.subtitle ? String(it.course.subtitle).split(/\r?\n/)[0] : ''].filter((x, k, a) => x && a.indexOf(x) === k).join(' · ');
+  if (sub) main.createDiv({ cls: 'ctt-arow-sub', text: sub });
+
+  // 지났거나 진행 중인 수업: 그 날 노트가 있으면 열고, 없으면 바로 만든다
+  if (!isPlan && !it.cancelled && started) {
+    const file = plugin.noteFileOn(it.course, it.slot, o.date);
+    const btn = card.createEl('button', { cls: 'ctt-arow-note' + (file ? ' is-has' : '') });
+    icon(btn.createSpan({ cls: 'ctt-pill-icon' }), file ? 'file-text' : 'file-plus', '');
+    btn.createSpan({ text: file ? t('noteShort') : t('noteAdd') });
+    btn.setAttr('title', file ? file.path : t('todayNoteHint', { name: it.course.name }));
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      if (file) plugin.openNote(file, e.ctrlKey || e.metaKey);
+      else plugin.createFromTemplate(it.course, it.slot, undefined, o.date);
+    };
+  }
+
+  card.onclick = (e) => {
+    if (isPlan) new PlanEditModal(plugin, { plan: it.plan }).open();
+    else plugin.openCourseView(it.course, e.ctrlKey || e.metaKey);
+  };
+  card.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (isPlan) { new PlanEditModal(plugin, { plan: it.plan }).open(); return; }
+    courseMenu(plugin, it.course, it.slot, o.date, it.cancelled, it.holiday).showAtMouseEvent(e);
+  });
+}
+
+// 그 날 뒤로 가장 가까운 수업: "목 09:00 선형대수"
+function nextAfter(plugin, courses, date) {
+  const s = plugin.settings;
+  for (let d = 1; d <= 14; d++) {
+    const day = addDays(date, d);
+    if (holidayOf(s, day)) continue;
+    const wd = (day.getDay() + 6) % 7;
+    let best = null;
+    for (const c of courses) {
+      for (const slot of c.slots) {
+        if (slot.day !== wd || !slotRuns(s, slot, day) || isCancelled(c, slot, ymd(day))) continue;
+        if (!best || slot.start < best.slot.start) best = { c, slot };
+      }
+    }
+    if (best) return (d === 1 ? t('dTomorrow') : dateLabel(day)) + ' ' + hhmm(best.slot.start) + ' · ' + best.c.name;
+  }
+  return '';
+}
+
+/* ────────────────────────────── 할 일 ──────────────────────────────
+ *
+ * 맨 위의 입력줄에 치고 Enter. 수업과 날짜는 고르고 싶을 때만 (입력줄을 누르면 펼쳐진다).
+ * 목록은 언제 해야 하는지로 나눈다: 지난 것 · 오늘 · 다가오는 것 · 언제든 · 노트 속 체크박스 · 끝낸 것.
+ * 시험과 마감도 같은 목록에 함께 선다 — "할 일"을 두 군데서 찾지 않게.
+ */
+function renderTodoPanel(plugin, parent, o) {
+  o = o || {};
+  const res = plugin.getCourses();
+  const today = today0();
+  const mine = (x) => !o.course || (x.course && x.course.key === o.course.key);
+  const all = plugin.collectTodos(res.courses).filter(mine);
+  const dls = o.noDeadlines ? [] : (res.deadlines || []).filter(mine);
+  const upcoming = plugin.upcomingDeadlines(dls, o.course ? Infinity : (upcomingHorizon(plugin.settings) || 14));
+
+  const wrap = parent.createDiv({ cls: 'ctt-todo' + (o.ctx ? ' is-' + o.ctx : '') + (o.anim ? ' is-enter' : '') });
+  const inner = o.ctx === 'side' ? wrap.createDiv({ cls: 'ctt-todo-scroll' }) : wrap;
+  renderTodoInput(plugin, inner, { ctx: o.ctx || 'side', course: o.course, courses: res.courses });
+
+  const gapOf = (d) => dayDiff(parseYmd(d), today);
+  const open = all.filter((td) => !td.done);
+  const dated = open.filter((td) => td.date && parseYmd(td.date));
+  const byWhen = (a, b) => String(a.date).localeCompare(String(b.date))
+    || ((a.time == null ? 1440 : a.time) - (b.time == null ? 1440 : b.time));
+
+  const late = upcoming.filter((dl) => gapOf(dl.date) < 0).concat(dated.filter((td) => gapOf(td.date) < 0)).sort(byWhen);
+  const now = upcoming.filter((dl) => gapOf(dl.date) === 0).concat(dated.filter((td) => gapOf(td.date) === 0)).sort(byWhen);
+  const soon = upcoming.filter((dl) => gapOf(dl.date) > 0).concat(dated.filter((td) => gapOf(td.date) > 0)).sort(byWhen);
+  const anytime = open.filter((td) => (!td.date || !parseYmd(td.date)) && td.src !== 'task');
+  const tasks = open.filter((td) => (!td.date || !parseYmd(td.date)) && td.src === 'task');
+  const done = all.filter((td) => td.done && td.src !== 'task');
+
+  let i = 0;
+  const section = (title, list, cls) => {
+    if (!list.length) return;
+    const sec = inner.createDiv({ cls: 'ctt-tsec' + (cls ? ' ' + cls : '') });
+    const h = sec.createDiv({ cls: 'ctt-tsec-head' });
+    h.createSpan({ cls: 'ctt-tsec-title', text: title });
+    h.createSpan({ cls: 'ctt-tsec-count', text: String(list.length) });
+    const rows = sec.createDiv({ cls: 'ctt-tlist' });
+    for (const x of list) {
+      if (x.src) renderTodoRow(plugin, rows, x, { i: i++, hideCourse: !!o.course });
+      else renderDeadlineRow(plugin, rows, x, { i: i++, hideCourse: !!o.course });
+    }
+  };
+  section(t('secLate'), late, 'is-late');
+  section(t('secToday'), now, 'is-today');
+  section(t('secSoon'), soon);
+  section(t('secAnytime'), anytime);
+
+  // 노트 속 체크박스 — 수업마다 묶고, 몇 개만 보인다
+  if (tasks.length) {
+    const sec = inner.createDiv({ cls: 'ctt-tsec is-tasks' });
+    const h = sec.createDiv({ cls: 'ctt-tsec-head' });
+    h.createSpan({ cls: 'ctt-tsec-title', text: t('secTasks') });
+    h.createSpan({ cls: 'ctt-tsec-count', text: String(tasks.length) });
+    h.setAttr('title', t('secTasksHint'));
+    const groups = new Map();
+    for (const td of tasks) {
+      if (!groups.has(td.course.key)) groups.set(td.course.key, { course: td.course, list: [] });
+      groups.get(td.course.key).list.push(td);
+    }
+    for (const g of groups.values()) {
+      const box = sec.createDiv({ cls: 'ctt-tgroup' });
+      box.style.setProperty('--ctt-color', g.course.color);
+      if (!o.course) box.createDiv({ cls: 'ctt-tgroup-head', text: g.course.name });
+      const rows = box.createDiv({ cls: 'ctt-tlist' });
+      const openAll = plugin.ui && plugin.ui.tasksOpen[g.course.key];
+      const shown = openAll || g.list.length <= 6 ? g.list : g.list.slice(0, 5);
+      for (const td of shown) renderTodoRow(plugin, rows, td, { i: i++, hideCourse: true });
+      if (shown.length < g.list.length) {
+        const more = box.createEl('button', { cls: 'ctt-tmore', text: t('moreItems', { n: g.list.length - shown.length }) });
+        more.onclick = () => { plugin.ui.tasksOpen[g.course.key] = true; plugin.refreshAll(); };
+      }
+    }
+  }
+
+  if (!late.length && !now.length && !soon.length && !anytime.length && !tasks.length) {
+    const empty = inner.createDiv({ cls: 'ctt-todo-empty' });
+    icon(empty.createDiv({ cls: 'ctt-todo-empty-icon' }), 'check-circle', '✓');
+    empty.createDiv({ cls: 'ctt-todo-empty-title', text: t('todoEmpty') });
+    empty.createDiv({ cls: 'ctt-todo-empty-sub', text: o.course ? t('todoEmptyCourse') : t('todoEmptySub') });
+  }
+
+  // 끝낸 것 — 접혀 있다. 펼치면 되돌릴 수 있고, 한 번에 치울 수도 있다.
+  if (done.length) {
+    const sec = inner.createDiv({ cls: 'ctt-tsec is-done' });
+    const h = sec.createDiv({ cls: 'ctt-tsec-head is-toggle' });
+    const opened = plugin.ui && plugin.ui.doneOpen;
+    icon(h.createSpan({ cls: 'ctt-tsec-chev' + (opened ? ' is-open' : '') }), 'chevron-right', '›');
+    h.createSpan({ cls: 'ctt-tsec-title', text: t('secDone') });
+    h.createSpan({ cls: 'ctt-tsec-count', text: String(done.length) });
+    h.onclick = () => { plugin.ui.doneOpen = !plugin.ui.doneOpen; plugin.refreshAll(); };
+    const clear = h.createEl('button', { cls: 'ctt-tsec-action', text: t('clearDone') });
+    clear.onclick = (e) => {
+      e.stopPropagation();
+      new ConfirmModal(plugin.app, {
+        title: t('clearDone'),
+        body: t('clearDoneBody', { n: done.length }),
+        cta: t('clearDone'),
+        onConfirm: () => plugin.clearDoneTodos(o.course ? o.course.key : ''),
+      }).open();
+    };
+    if (opened) {
+      const rows = sec.createDiv({ cls: 'ctt-tlist' });
+      for (const td of done) renderTodoRow(plugin, rows, td, { hideCourse: !!o.course });
+    }
+  }
+}
+
+// 할 일 입력줄. 수업·날짜 고르개는 누르거나 치기 시작하면 펼쳐진다.
+// 더하고 나면 화면이 다시 그려지므로, 고른 수업·날짜와 입력 중이던 자리를 ui.draft 에 맡겨 둔다.
+function renderTodoInput(plugin, parent, o) {
+  const ui = plugin.ui || {};
+  const ctx = o.ctx || 'side';
+  const draft = ui.draft && ui.draft.ctx === ctx ? ui.draft : null;
+  const state = {
+    courseKey: o.course ? o.course.key : (draft ? draft.courseKey : ''),
+    date: o.date != null ? o.date : (draft ? draft.date : ''),
+  };
+  // 고른 수업·날짜는 바로 맡겨 둔다. 그 사이에 화면이 다시 그려져도(1분 갱신, 노트 변경) 고른 것이 남는다.
+  const remember = () => {
+    const prev = ui.draft && ui.draft.ctx === ctx ? ui.draft : { ctx };
+    ui.draft = Object.assign({}, prev, { ctx, courseKey: state.courseKey, date: o.date != null ? '' : state.date });
+  };
+
+  const box = parent.createDiv({ cls: 'ctt-tadd' + (o.compact ? ' is-compact' : '') });
+  const line = box.createDiv({ cls: 'ctt-tadd-line' });
+  icon(line.createSpan({ cls: 'ctt-tadd-icon' }), 'plus', '+');
+  const input = line.createEl('input', { type: 'text', cls: 'ctt-tadd-input' });
+  input.placeholder = o.compact ? t('todoAddPhDay') : t('todoAddPh');
+  input.setAttr('aria-label', t('todoAddTitle'));
+  const go = line.createEl('button', { cls: 'ctt-tadd-go', text: t('todoAddBtn') });
+
+  const opts = box.createDiv({ cls: 'ctt-tadd-opts' });
+  if (!o.course && (o.courses || []).length) {
+    const sel = opts.createEl('select', { cls: 'ctt-tadd-course dropdown' });
+    const none = sel.createEl('option', { text: t('todoGeneral') });
+    none.value = '';
+    for (const c of o.courses) {
+      const op = sel.createEl('option', { text: c.name });
+      op.value = c.key;
+    }
+    sel.value = state.courseKey && o.courses.some((c) => c.key === state.courseKey) ? state.courseKey : '';
+    state.courseKey = sel.value;
+    sel.onchange = () => { state.courseKey = sel.value; remember(); };
+  }
+
+  if (o.date == null) {
+    const today = ymd(new Date()), tomorrow = ymd(addDays(new Date(), 1));
+    const chips = opts.createDiv({ cls: 'ctt-tadd-dates' });
+    const custom = chips.createEl('input', { type: 'date', cls: 'ctt-tadd-date' });
+    const paint = () => {
+      chips.querySelectorAll('.ctt-tchip').forEach((c) => c.toggleClass('is-on', c.dataset.v === state.date
+        || (c.dataset.v === 'custom' && state.date && state.date !== today && state.date !== tomorrow)));
+      custom.value = state.date && state.date !== today && state.date !== tomorrow ? state.date : '';
+    };
+    for (const [v, text] of [['', t('todoNoDate')], [today, t('dToday')], [tomorrow, t('dTomorrow')]]) {
+      const c = chips.createEl('button', { cls: 'ctt-tchip', text });
+      c.dataset.v = v;
+      c.onmousedown = (e) => e.preventDefault();     // 입력줄의 커서를 빼앗지 않는다
+      c.onclick = () => { state.date = v; remember(); paint(); input.focus(); };
+    }
+    chips.appendChild(custom);
+    custom.onchange = () => { state.date = parseYmd(custom.value) ? custom.value : ''; remember(); paint(); };
+    paint();
+  }
+
+  const open = () => box.addClass('is-open');
+  input.addEventListener('focus', open);
+  input.addEventListener('input', open);
+  box.addEventListener('focusout', () => window.setTimeout(() => {
+    if (!box.contains(document.activeElement) && !input.value.trim()) box.removeClass('is-open');
+  }, 160));
+
+  const submit = async () => {
+    const text = input.value.trim();
+    if (!text) { input.focus(); return; }
+    // 더한 뒤에는 수업은 그대로 두고(이어서 같은 수업의 할 일을 적기 쉽게), 날짜는 비운다 — 다음 할 일에 모르게 붙지 않게
+    const date = state.date || '';
+    ui.draft = { ctx, courseKey: state.courseKey, date: '', focus: true };
+    input.value = '';
+    await plugin.addTodo({ text, date, courseKey: state.courseKey });
+  };
+  onKeys(input, {
+    Enter: submit,
+    Escape: () => { input.value = ''; input.blur(); },
+  });
+  go.onmousedown = (e) => e.preventDefault();
+  go.onclick = submit;
+
+  if (draft && draft.focus) {
+    draft.focus = false;
+    open();
+    window.setTimeout(() => input.focus(), 0);
+  }
+  return box;
+}
+
+// 둥근 체크 칸. 체크 표시는 선으로 그려서, 켤 때 그어지듯 나타난다.
+function checkBox(parent, on, label) {
+  const b = parent.createEl('button', { cls: 'ctt-check' + (on ? ' is-on' : '') });
+  b.setAttr('role', 'checkbox');
+  b.setAttr('aria-checked', on ? 'true' : 'false');
+  if (label) b.setAttr('aria-label', label);
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('class', 'ctt-check-svg');
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', 'M4 8.4 6.8 11 12 5.4');
+  svg.appendChild(path);
+  b.appendChild(svg);
+  return b;
+}
+
+// 체크하면 먼저 그어지고 흐려진 뒤에 저장한다. 손이 한 일의 결과를 눈으로 본 다음에 목록이 바뀐다.
+function animateCheck(row, box, on, commit) {
+  if (row.classList.contains('is-checking')) return;
+  row.classList.add('is-checking');
+  box.classList.toggle('is-on', on);
+  box.setAttribute('aria-checked', on ? 'true' : 'false');
+  row.classList.toggle('is-done', on);
+  let reduce = false;
+  try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* 없음 */ }
+  window.setTimeout(commit, reduce ? 0 : 450);
+}
+
+function renderTodoRow(plugin, list, item, o) {
+  o = o || {};
+  const today = today0();
+  const row = list.createDiv({ cls: 'ctt-trow' + (item.done ? ' is-done' : '') + (item.src === 'task' ? ' is-task' : '') });
+  if (o.i != null) row.style.setProperty('--i', String(Math.min(o.i, 14)));
+  if (item.course) row.style.setProperty('--ctt-color', item.course.color);
+
+  const box = checkBox(row, item.done, item.text);
+  box.onclick = (e) => {
+    e.stopPropagation();
+    animateCheck(row, box, !item.done, () => plugin.setTodoDone(item, !item.done));
+  };
+
+  const main = row.createDiv({ cls: 'ctt-trow-main' });
+  const text = main.createDiv({ cls: 'ctt-trow-text', text: item.text });
+  const meta = [];
+  if (item.course && !o.hideCourse) meta.push(item.course.name);
+  if (item.src === 'task') meta.push(item.file.basename || item.file.name.replace(/\.md$/i, ''));
+  if (meta.length) {
+    const m = main.createDiv({ cls: 'ctt-trow-meta' });
+    if (item.course && !o.hideCourse) m.createSpan({ cls: 'ctt-trow-dot' });
+    m.createSpan({ text: meta.join(' · ') });
+  }
+  if (item.date && !item.done && parseYmd(item.date)) {
+    const g = dayDiff(parseYmd(item.date), today);
+    row.createSpan({ cls: 'ctt-trow-when' + (g < 0 ? ' is-late' : (g === 0 ? ' is-today' : '')), text: dueLabel(g) });
+  }
+
+  const more = row.createEl('button', { cls: 'ctt-trow-more' });
+  more.setAttr('aria-label', t('moreMenu'));
+  icon(more, 'more-horizontal', '⋯');
+  more.onclick = (e) => { e.stopPropagation(); todoMenu(plugin, item, row).showAtMouseEvent(e); };
+  row.addEventListener('contextmenu', (e) => { e.preventDefault(); todoMenu(plugin, item, row).showAtMouseEvent(e); });
+
+  // 노트 속 체크박스는 그 줄로 간다. 내 할 일은 그 자리에서 글을 고친다.
+  text.onclick = (e) => {
+    if (item.src === 'task') { plugin.openTaskLine(item, e.ctrlKey || e.metaKey); return; }
+    if (!item.done) editTodoInline(plugin, item, text);
+  };
+}
+
+function editTodoInline(plugin, item, textEl) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'ctt-trow-edit';
+  input.value = item.text;
+  textEl.replaceWith(input);
+  input.focus();
+  input.select();
+  let done = false;
+  const finish = async (save) => {
+    if (done) return;
+    done = true;
+    input.classList.remove('ctt-trow-edit');   // 이제 다시 그려도 된다 (keepState 가 이 칸을 보고 기다린다)
+    const v = input.value.replace(/\s+/g, ' ').trim();
+    if (save && v && v !== item.text) await plugin.updateTodo(item, { text: v });
+    else plugin.refreshAll();
+  };
+  onKeys(input, { Enter: () => finish(true), Escape: () => finish(false) });
+  input.addEventListener('blur', () => finish(true));
+}
+
+function todoMenu(plugin, item, row) {
+  const menu = new Menu();
+  if (item.src === 'task') {
+    menu.addItem((i) => i.setTitle(t('openTaskNote')).setIcon('file-text').onClick(() => plugin.openTaskLine(item, false)));
+    return menu;
+  }
+  const text = row && row.querySelector('.ctt-trow-text');
+  if (text && !item.done) menu.addItem((i) => i.setTitle(t('rename')).setIcon('pencil').onClick(() => editTodoInline(plugin, item, text)));
+  subMenu(menu, t('todoDate'), 'calendar', (m) => {
+    const set = (v) => plugin.updateTodo(item, { date: v });
+    m.addItem((i) => i.setTitle(t('dToday')).onClick(() => set(ymd(new Date()))));
+    m.addItem((i) => i.setTitle(t('dTomorrow')).onClick(() => set(ymd(addDays(new Date(), 1)))));
+    m.addItem((i) => i.setTitle(t('todoPickDate')).onClick(() => new DatePickModal(plugin, {
+      title: t('todoDate'), value: item.date || ymd(new Date()), onPick: set,
+    }).open()));
+    if (item.date) m.addItem((i) => i.setTitle(t('todoNoDate')).onClick(() => set('')));
+  });
+  if (item.src === 'fm') {
+    menu.addItem((i) => i.setTitle(t('openCourseNote')).setIcon('file-text').onClick(() => plugin.openNote(item.file, false)));
+    menu.addItem((i) => i.setTitle(t('promoteTodo')).setIcon('flag').onClick(() => plugin.promoteTodo(item)));
+  }
+  menu.addSeparator();
+  menu.addItem((i) => i.setTitle(t('del')).setIcon('trash').onClick(() => plugin.removeTodo(item)));
+  return menu;
+}
+
+// 시험·마감 한 줄. 마감(과 과제 노트)은 체크로 끝내고, 수업 노트에 적은 시험은 날이 지나면 저절로 빠진다.
+function renderDeadlineRow(plugin, list, dl, o) {
+  o = o || {};
+  const today = today0();
+  const d = parseYmd(dl.date);
+  const gap = d ? dayDiff(d, today) : 0;
+  const row = list.createDiv({ cls: 'ctt-trow is-deadline' + (dl.kind === 'exam' ? ' is-exam' : '') + (dl.done ? ' is-done' : '') });
+  if (o.i != null) row.style.setProperty('--i', String(Math.min(o.i, 14)));
+  row.style.setProperty('--ctt-color', dl.course.color);
+
+  if (dl.kind === 'due' || !dl.own) {
+    const box = checkBox(row, dl.done, dl.title);
+    box.addEventListener('pointerdown', (e) => e.stopPropagation());
+    box.onclick = (e) => {
+      e.stopPropagation();
+      animateCheck(row, box, !dl.done, () => plugin.setDeadlineDone(dl, !dl.done));
+    };
+  } else {
+    const badge = row.createSpan({ cls: 'ctt-trow-flag' });
+    icon(badge, 'flag', '!');
+  }
+
+  const main = row.createDiv({ cls: 'ctt-trow-main' });
+  const title = main.createDiv({ cls: 'ctt-trow-text' });
+  title.createSpan({ cls: 'ctt-trow-kind', text: t(dl.kind === 'exam' ? 'examKind' : 'dueKind') });
+  title.createSpan({ text: dl.title });
+  const meta = main.createDiv({ cls: 'ctt-trow-meta' });
+  if (!o.hideCourse) { meta.createSpan({ cls: 'ctt-trow-dot' }); meta.createSpan({ text: dl.course.name }); }
+  const when = o.full ? deadlineWhen(dl) : (dl.time != null ? hhmm(dl.time) + (dl.end != null ? '–' + hhmm(dl.end) : '') : '');
+  if (when) meta.createSpan({ text: (o.hideCourse ? '' : ' · ') + when });
+  if (!dl.done && d) row.createSpan({ cls: 'ctt-trow-when' + (gap < 0 ? ' is-late' : (gap === 0 ? ' is-today' : '')), text: dueLabel(gap) });
+  row.createSpan({ cls: 'ctt-trow-gap' });   // 할 일 줄의 ⋯ 자리만큼 — 오른쪽 날짜가 한 줄로 선다
+  bindDeadline(plugin, row, dl);
+}
+
+/* ── view: assignments — 학기 전체의 시험·마감을 수업별로, 얼마나 끝냈는지와 함께 ── */
+function renderAssignments(plugin, host, o) {
+  const res = plugin.getCourses();
+  const want = String(o.course || '').trim().toLowerCase();
+  const courses = want ? res.courses.filter((c) => c.name.toLowerCase() === want || c.baseName.toLowerCase() === want) : res.courses;
+  const wrap = host.createDiv({ cls: 'ctt-assign' });
+  let any = false;
+  for (const c of courses) {
+    const list = (res.deadlines || []).filter((dl) => dl.course.key === c.key);
+    if (!list.length) continue;
+    any = true;
+    const group = wrap.createDiv({ cls: 'ctt-assign-group' });
+    group.style.setProperty('--ctt-color', c.color);
+    const head = group.createDiv({ cls: 'ctt-assign-head' });
+    head.createSpan({ cls: 'ctt-assign-dot' });
+    head.createSpan({ cls: 'ctt-assign-name', text: c.name });
+    const dues = list.filter((dl) => dl.kind === 'due' || !dl.own);
+    const doneN = dues.filter((dl) => dl.done).length;
+    if (dues.length) {
+      head.createSpan({ cls: 'ctt-assign-count', text: t('assignProgress', { n: doneN, m: dues.length }) });
+      const bar = group.createDiv({ cls: 'ctt-progress is-thin' });
+      bar.createDiv({ cls: 'ctt-progress-fill' }).style.setProperty('--p', String(dues.length ? doneN / dues.length : 0));
+    }
+    const rows = group.createDiv({ cls: 'ctt-tlist' });
+    list.forEach((dl, i) => renderDeadlineRow(plugin, rows, dl, { hideCourse: true, full: true, i }));
+  }
+  if (!any) wrap.createDiv({ cls: 'ctt-notice', text: t('noAssignments') });
 }
 
 // 오늘 이미 끝난 것은 흐리게, 지금 진행 중인 것은 또렷하게. 지나간 만큼은 색으로 채운다.
@@ -3723,6 +5753,27 @@ function icon(el, name, fallback) {
     try { setIcon(el, name); if (el.childElementCount) return; } catch (e) { /* 아이콘 없음 */ }
   }
   el.setText(fallback);
+}
+
+// 노트 안(라이브 프리뷰)에서는 편집기가 Enter·Esc 의 keydown 을 먼저 가로채 입력칸까지 오지 않는다.
+// keyup 은 온다. keydown 을 받았으면 keyup 은 넘기고, 못 받았을 때만 keyup 으로 처리한다 — 두 번 일어나지 않게.
+function onKeys(input, handlers) {
+  let got = '';
+  input.addEventListener('keydown', (e) => {
+    const fn = handlers[e.key];
+    if (!fn || e.isComposing) return;
+    got = e.key;
+    e.preventDefault();
+    fn(e);
+  });
+  input.addEventListener('keyup', (e) => {
+    const fn = handlers[e.key];
+    if (!fn) return;
+    if (got === e.key) { got = ''; return; }
+    if (e.isComposing) return;
+    e.preventDefault();
+    fn(e);
+  });
 }
 
 // 한 줄 입력칸에서 Enter 는 저장이다. 여러 줄 칸(textarea)에는 걸지 않는다.
@@ -3787,32 +5838,22 @@ function paintNext(bar, dayItems, now, ti) {
     return;
   }
 
-  // 오늘 뭔가 있었고 남은 것이 없다 → 하루 마무리 인사
-  if (todays.length && !todays.some((it) => it.slot.start > now)) {
-    const h = Math.floor(now / 60);
-    let key = 'byeAfternoon';
-    if (h >= 22) key = 'byeLate';
-    else if (h >= 20) key = 'byeNight';
-    else if (h >= 18) key = 'byeEvening';
-
-    const el = bar.createDiv({ cls: 'ctt-next is-bye' });
-    el.setText(t(key));
-    el.setAttr('title', t(key));
-    return;
-  }
-
-  // 아니면 가장 빠른 다음 것까지 — 수업이든 일정이든, 오늘 없으면 다음 날들을 본다
+  // 아니면 가장 빠른 다음 것까지 — 수업이든 일정이든, 오늘 없으면 다음 날들을 본다.
+  // 오늘 것이 다 끝났으면 "몇 시간 뒤" 대신 "내일 09:00" 처럼 언제인지를 말한다 — 밤에 15시간을 셀 필요는 없다.
   let best = null;
   for (let d = 0; d < 8 && !best; d++) {
     const day = (ti + d) % 7;
     const items = dayItems(d).filter((it) => (d === 0 ? it.slot.start > now : true));
-    if (items.length) best = { item: items[0], gap: d * 1440 + items[0].slot.start - now, day };
+    if (items.length) best = { item: items[0], gap: d * 1440 + items[0].slot.start - now, day, d };
   }
   if (!best) return;
 
-  const el = bar.createDiv({ cls: 'ctt-next' });
+  const el = bar.createDiv({ cls: 'ctt-next' + (best.d ? ' is-later' : '') });
   icon(el.createSpan({ cls: 'ctt-next-icon' }), 'clock', '◷');
-  el.createSpan({ text: t(isCourse(best.item) ? 'nextClassIn' : 'nextPlanIn', { v: humanGap(best.gap) }) });
+  const at = hhmm(best.item.slot.start);
+  el.createSpan({ text: best.d === 0
+    ? t(isCourse(best.item) ? 'nextClassIn' : 'nextPlanIn', { v: humanGap(best.gap) })
+    : (best.d === 1 ? t('nextTomorrow', { time: at }) : t('nextOnDay', { dow: dayLabel(best.day), time: at })) });
   el.setAttr('title', t('nextClassTomorrow', {
     dow: dayLabel(best.day),
     time: hhmm(best.item.slot.start),
@@ -3882,13 +5923,44 @@ function renderBlock(plugin, col, item, geo) {
     : item.cancelled
       ? t('cancelled')
       : ((course.subtitle != null && course.subtitle !== '') ? course.subtitle : slot.location);
-  const subCount = sub ? String(sub).split(/\r?\n/).length : 0;
-  const fit = fitBlockText(el, height, course.name, subCount, geo);
+
+  // 칸이 좁아 단어가 글자 단위로 쪼개질 것 같으면("Org/anic/Ch…") 짧은 이름으로 바꾼다.
+  // 아주 좁으면(겹친 수업이 나눠 쓴 칸) 짧은 이름 하나만 또렷하게.
+  const pad = geo.density === 'compact' ? 8 : 14;
+  const laneW = (geo.colW || 80) / item.lanes - 3 - pad;
+  const nameFont = geo.density === 'compact' ? 10 : 11;
+  const tiny = laneW < 30;
+  const label = course.short || (tiny ? autoShort(course.name) : fitWords(course.name, laneW, nameFont));
+  if (tiny) el.addClass('is-tiny');
+
+  const subCount = sub && !tiny ? String(sub).split(/\r?\n/).length : 0;
+  const fit = fitBlockText(el, height, label, subCount, geo);
   if (fit.nameLines) {
-    el.style.setProperty('--ctt-name-lines', String(fit.nameLines));
-    el.createDiv({ cls: 'ctt-block-name', text: course.name });
+    el.style.setProperty('--ctt-name-lines', String(tiny ? 2 : fit.nameLines));
+    const nameEl = el.createDiv({ cls: 'ctt-block-name', text: label });
+    // 글자 폭 어림은 글꼴마다 빗나간다(모바일 글꼴은 더 넓다). 그려 본 뒤에도 단어가 칸을 넘치면 더 줄인다.
+    // 한중일 이름은 글자 사이에서 끊겨도 읽히므로, 넘칠 때만 글자 단위 줄바꿈을 허락한다.
+    if (!tiny && nameEl.scrollWidth > nameEl.clientWidth + 1) {
+      if (/[⺀-鿿가-힯]/.test(nameEl.textContent)) nameEl.style.wordBreak = 'break-all';
+      else if (!course.short) {
+        let w = laneW;
+        for (let k = 0; k < 6 && nameEl.scrollWidth > nameEl.clientWidth + 1; k++) {
+          w *= 0.85;
+          nameEl.setText(fitWords(course.name, w, nameFont));
+        }
+      }
+    }
   }
   if (fit.subLines) addSubLines(el, sub, fit.subLines);
+
+  // 지났거나 진행 중인 수업에 필기 노트가 있는지: ● 있음 · ○ 없음
+  if (!item.cancelled && geo.attend && geo.density === 'full' && height >= 26 && !tiny) {
+    const has = geo.attend(course, slot, item.date);
+    if (has != null) {
+      const dot = el.createSpan({ cls: 'ctt-att' + (has ? ' is-on' : '') });
+      dot.setAttr('aria-hidden', 'true');
+    }
+  }
 
   const tip = [course.name, dayLabel(slot.day) + ' ' + hhmm(slot.start) + '~' + hhmm(slot.end)
     + (slot.parity ? ' · ' + parityLabel(slot.parity) : '')];
@@ -3951,7 +6023,8 @@ function courseMenu(plugin, course, slot, date, cancelled, holiday) {
       .onClick(() => plugin.addShortcut(course)));
   };
 
-  // 순서는 손이 가는 빈도대로: 노트 쓰기 → 자료 보기 → 바로가기 → 노트 규칙 → 수업 자체 고치기.
+  // 순서는 손이 가는 빈도대로: 노트 쓰기 → 자료 보기 → 이 날의 일 → 수업 고치기 → 나머지는 "더 보기" 안에.
+  // 처음 쓰는 사람이 열었을 때 한눈에 들어오는 길이여야 한다.
 
   // 첫 줄은 기본 템플릿의 필기 노트. 이름이 약속하는 날짜와 만들어지는 노트의 날짜가 같아야 한다:
   // 오늘 수업이면 "오늘의", 다른 날의 칸이면 그 날짜를 적는다.
@@ -3960,11 +6033,6 @@ function courseMenu(plugin, course, slot, date, cancelled, holiday) {
   if (preferred) {
     menu.addItem((i) => i.setTitle(isToday ? t('newNoteCreate') : t('newNoteFor', { date: dateLabel(when) })).setIcon('file-plus')
       .onClick(() => plugin.createFromTemplate(course, slot, preferred.id, when)));
-  }
-  for (const tpl of templates) {
-    if (preferred && tpl.id === preferred.id) continue;
-    menu.addItem((i) => i.setTitle(t('newNote', { name: tpl.name })).setIcon('file-plus')
-      .onClick(() => plugin.createFromTemplate(course, slot, tpl.id, when)));
   }
   menu.addItem((i) => i.setTitle(t('openShelf')).setIcon('library')
     .onClick(() => plugin.openCourseView(course, false)));
@@ -3981,37 +6049,78 @@ function courseMenu(plugin, course, slot, date, cancelled, holiday) {
   }
   menu.addItem((i) => i.setTitle(t('addDeadline')).setIcon('flag')
     .onClick(() => new DeadlineModal(plugin, { course, date: ymd(when) }).open()));
-  menu.addSeparator();
-
-  // 마우스를 올리면 옆으로 펼쳐지는 창. 안 되는 버전에서는 평평하게 편다.
-  let nested = false;
-  menu.addItem((i) => {
-    i.setTitle(t('shortcuts')).setIcon('link');
-    if (typeof i.setSubmenu === 'function') {
-      try { fillShortcuts(i.setSubmenu()); nested = true; } catch (e) { nested = false; }
-    }
-    if (!nested) i.onClick(() => new ShortcutModal(plugin, course).open());
-  });
-
-  menu.addSeparator();
-  menu.addItem((i) => i.setTitle(t('newNoteLocation')).setIcon('folder-input')
-    .onClick(() => plugin.assignNotesFolder(course)));
-  menu.addItem((i) => i.setTitle(t('editTemplates')).setIcon('files')
-    .onClick(() => new TemplateModal(plugin).open()));
+  menu.addItem((i) => i.setTitle(t('todoAddFor')).setIcon('list-checks')
+    .onClick(() => new TodoModal(plugin, { courseKey: course.key }).open()));
 
   menu.addSeparator();
   menu.addItem((i) => i.setTitle(t('editTime')).setIcon('pencil')
     .onClick(() => new CourseEditModal(plugin, { course }).open()));
-  menu.addItem((i) => i.setTitle(t('revealExplorer')).setIcon('folder')
-    .onClick(() => plugin.revealInExplorer(course.folder)));
-  menu.addItem((i) => i.setTitle(t('removeFromTable')).setIcon('minus-circle')
-    .onClick(() => new ConfirmModal(plugin.app, {
-      title: t('removeFromTable'),
-      body: t('removeBody', { name: course.name }),
-      cta: t('removeCta'),
-      onConfirm: () => plugin.removeFromTimetable(course),
-    }).open()));
 
+  // 자주 안 쓰는 것은 한 칸 안으로
+  subMenu(menu, t('moreMenu'), 'more-horizontal', (m) => {
+    for (const tpl of templates) {
+      if (preferred && tpl.id === preferred.id) continue;
+      m.addItem((i) => i.setTitle(t('newNote', { name: tpl.name })).setIcon('file-plus')
+        .onClick(() => plugin.createFromTemplate(course, slot, tpl.id, when)));
+    }
+    if (shortcuts.length) {
+      subMenu(m, t('shortcuts'), 'link', fillShortcuts);
+    } else {
+      m.addItem((i) => i.setTitle(t('shortcutAdd')).setIcon('link')
+        .onClick(() => plugin.addShortcut(course)));
+    }
+    m.addSeparator();
+    m.addItem((i) => i.setTitle(t('newNoteLocation')).setIcon('folder-input')
+      .onClick(() => plugin.assignNotesFolder(course)));
+    m.addItem((i) => i.setTitle(t('editTemplates')).setIcon('files')
+      .onClick(() => new TemplateModal(plugin).open()));
+    m.addItem((i) => i.setTitle(t('revealExplorer')).setIcon('folder')
+      .onClick(() => plugin.revealInExplorer(course.folder)));
+    m.addSeparator();
+    m.addItem((i) => i.setTitle(t('removeFromTable')).setIcon('minus-circle')
+      .onClick(() => new ConfirmModal(plugin.app, {
+        title: t('removeFromTable'),
+        body: t('removeBody', { name: course.name }),
+        cta: t('removeCta'),
+        onConfirm: () => plugin.removeFromTimetable(course),
+      }).open()));
+  });
+
+  return menu;
+}
+
+// 마우스를 올리면 옆으로 펼쳐지는 칸. 펼칠 수 없는 버전이면 제목 줄 아래에 평평하게 늘어놓는다.
+function subMenu(menu, title, iconName, fill) {
+  let nested = false;
+  menu.addItem((i) => {
+    i.setTitle(title).setIcon(iconName);
+    if (typeof i.setSubmenu === 'function') {
+      try { fill(i.setSubmenu()); nested = true; } catch (e) { nested = false; }
+    }
+    if (!nested) i.setDisabled(true);
+  });
+  if (!nested) fill(menu);
+}
+
+// 플러스 버튼의 메뉴 — 무엇이든 더하는 곳
+function addMenu(plugin) {
+  const menu = new Menu();
+  menu.addItem((i) => i.setTitle(t('addCourse')).setIcon('book-open')
+    .onClick(() => new CourseEditModal(plugin, {}).open()));
+  menu.addItem((i) => i.setTitle(t('importMenu')).setIcon('clipboard-paste')
+    .onClick(() => new ImportModal(plugin, {}).open()));
+  menu.addSeparator();
+  menu.addItem((i) => i.setTitle(t('todoAddTitle')).setIcon('list-checks')
+    .onClick(() => new TodoModal(plugin, {}).open()));
+  menu.addItem((i) => i.setTitle(t('addDeadline')).setIcon('flag')
+    .onClick(() => new DeadlineModal(plugin, {}).open()));
+  menu.addItem((i) => i.setTitle(t('addPlan')).setIcon('calendar-plus')
+    .onClick(() => new PlanEditModal(plugin, {}).open()));
+  menu.addItem((i) => i.setTitle(t('planDrawMenu')).setIcon('mouse-pointer-click')
+    .onClick(() => {
+      if (plugin.settings.tab !== 'week') plugin.setTab('week');
+      plugin.setMode('plan');
+    }));
   return menu;
 }
 
@@ -4030,19 +6139,32 @@ function renderPlanBlock(plugin, col, item, geo) {
   el.style.setProperty('--ctt-color', plan.color || PLAN_COLOR);
   markTiming(el, item.slot, geo);
 
-  const noteCount = plan.note ? String(plan.note).split(/\r?\n/).length : 0;
+  const laneW = (geo.colW || 80) / item.lanes - 3 - (geo.density === 'compact' ? 8 : 14);
+  const tiny = laneW < 30;
+  if (tiny) el.addClass('is-tiny');
+  const noteCount = plan.note && !tiny ? String(plan.note).split(/\r?\n/).length : 0;
   const fit = fitBlockText(el, height, plan.title, noteCount, geo);
   if (fit.nameLines) {
     const name = el.createDiv({ cls: 'ctt-block-name' });
     // 일회성이면 언제 사라지는지 이름 옆에 흐리게.
     // 좁아지면 이름이 먼저 줄어든다 — 날짜가 여기서는 새로운 정보다.
-    if (plan.once && plan.date) {
+    if (tiny) {
+      el.style.setProperty('--ctt-name-lines', '2');
+      name.setText(autoShort(plan.title));
+    } else if (plan.once && plan.date) {
       name.addClass('has-once');
       name.createSpan({ cls: 'ctt-block-title', text: plan.title });
       name.createSpan({ cls: 'ctt-block-once', text: shortDate(plan.date) });
     } else {
       el.style.setProperty('--ctt-name-lines', String(fit.nameLines));
       name.setText(plan.title);
+      if (name.scrollWidth > name.clientWidth + 1) {
+        if (/[⺀-鿿가-힯]/.test(plan.title)) name.style.wordBreak = 'break-all';
+        else {
+          let w = laneW;
+          for (let k = 0; k < 6 && name.scrollWidth > name.clientWidth + 1; k++) { w *= 0.85; name.setText(fitWords(plan.title, w, geo.density === 'compact' ? 10 : 11)); }
+        }
+      }
     }
   }
   if (fit.subLines) addSubLines(el, plan.note, fit.subLines);
@@ -4074,13 +6196,9 @@ function renderPlanBlock(plugin, col, item, geo) {
     const menu = new Menu();
     menu.addItem((i) => i.setTitle(t('editPlan')).setIcon('pencil')
       .onClick(() => new PlanEditModal(plugin, { plan }).open()));
+    // 지우면 알림에서 바로 되돌릴 수 있으므로 묻지 않는다
     menu.addItem((i) => i.setTitle(t('deletePlan')).setIcon('trash')
-      .onClick(() => new ConfirmModal(plugin.app, {
-        title: t('deletePlan'),
-        body: t('deletePlanBody', { name: plan.title }),
-        cta: t('del'),
-        onConfirm: () => plugin.deletePlan(plan.id),
-      }).open()));
+      .onClick(() => plugin.deletePlan(plan.id)));
     menu.showAtMouseEvent(e);
   });
 }
@@ -4159,7 +6277,11 @@ function attachBlockDrag(plugin, el, item, geo) {
         const next = { day: cur.day, start: cur.start, end: cur.end };
         // 일회성 일정은 보고 있는 주의 그 요일로 날짜도 같이 옮긴다
         if (item.plan.once && geo.week) next.date = ymd(geo.week.dates[cur.day]);
-        plugin.savePlan(Object.assign({}, item.plan, next));
+        const before = Object.assign({}, item.plan);
+        plugin.savePlan(Object.assign({}, item.plan, next)).then(() => {
+          plugin.offerUndo(t('movedClass', { name: item.plan.title, v: dayLabel(cur.day) + ' ' + hhmm(cur.start) }),
+            () => plugin.savePlan(before));
+        });
       } else {
         plugin.moveSlot(item.course, item.slot, cur);
       }
@@ -4461,6 +6583,66 @@ function drawTimetableImage(plugin) {
   return canvas;
 }
 
+/* ── .ics 한 장 ──
+ * 학기 시작일부터 종료일까지(없으면 이번 주부터 16주) 매주 반복하는 수업, 그리고 시험과 안 끝낸 마감.
+ */
+function buildIcs(plugin) {
+  const s = plugin.settings;
+  const res = plugin.getCourses();
+  if (!res.courses.length && !(res.deadlines || []).length) return '';
+  const from = parseYmd(s.semesterStart) || mondayOf(new Date());
+  const until = parseYmd(s.semesterEnd) || addDays(from, 7 * 16 - 1);
+  const stamp = icsStampNow();
+  const out = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Class Timetable//Obsidian//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    'X-WR-CALNAME:' + icsEscape(s.currentSemester || t('timetable')),
+  ];
+
+  for (const c of res.courses) {
+    c.slots.forEach((slot, i) => {
+      let d = addDays(from, (slot.day - (from.getDay() + 6) % 7 + 7) % 7);
+      if (slot.parity && weekParity(s, d) !== slot.parity) d = addDays(d, 7);
+      if (dayDiff(until, d) < 0) return;
+      const step = slot.parity ? 14 : 7;
+      const skip = [];
+      for (let x = d; dayDiff(until, x) >= 0; x = addDays(x, step)) {
+        if (holidayOf(s, x) || isCancelled(c, slot, ymd(x))) skip.push(icsLocal(x, slot.start));
+      }
+      out.push('BEGIN:VEVENT',
+        'UID:ctt-' + hashKey(c.key + '|' + i + '|' + formatSlot(slot)) + '@class-timetable',
+        'DTSTAMP:' + stamp,
+        'DTSTART:' + icsLocal(d, slot.start),
+        'DTEND:' + icsLocal(d, slot.end),
+        'RRULE:FREQ=WEEKLY;INTERVAL=' + (slot.parity ? 2 : 1) + ';UNTIL=' + icsLocal(until, 23 * 60 + 59));
+      if (skip.length) out.push('EXDATE:' + skip.join(','));
+      out.push('SUMMARY:' + icsEscape(c.name));
+      if (slot.location) out.push('LOCATION:' + icsEscape(slot.location));
+      if (c.subtitle) out.push('DESCRIPTION:' + icsEscape(c.subtitle));
+      out.push('END:VEVENT');
+    });
+  }
+
+  for (const dl of res.deadlines || []) {
+    if (dl.done) continue;
+    const d = parseYmd(dl.date);
+    if (!d) continue;
+    const kind = t(dl.kind === 'exam' ? 'examKind' : 'dueKind');
+    out.push('BEGIN:VEVENT',
+      'UID:ctt-' + hashKey(dl.kind + '|' + dl.course.key + '|' + dl.date + '|' + dl.title) + '@class-timetable',
+      'DTSTAMP:' + stamp);
+    if (dl.time != null) {
+      out.push('DTSTART:' + icsLocal(d, dl.time), 'DTEND:' + icsLocal(d, dl.end != null ? dl.end : Math.min(1439, dl.time + 60)));
+    } else {
+      out.push('DTSTART;VALUE=DATE:' + formatDate(d, 'YYYYMMDD'), 'DTEND;VALUE=DATE:' + formatDate(addDays(d, 1), 'YYYYMMDD'));
+    }
+    out.push('SUMMARY:' + icsEscape(kind + ' · ' + dl.title + ' (' + dl.course.name + ')'),
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEscape(dl.title), 'TRIGGER:-P1D', 'END:VALARM',
+      'END:VEVENT');
+  }
+  out.push('END:VCALENDAR');
+  return out.map(icsFold).join('\r\n') + '\r\n';
+}
+
 /* ────────────────────────────── 사이드바 뷰 ────────────────────────────── */
 
 class TimetableView extends ItemView {
@@ -4468,16 +6650,41 @@ class TimetableView extends ItemView {
   getViewType() { return VIEW_TYPE; }
   getDisplayText() { return t('timetable'); }
   getIcon() { return 'calendar-days'; }
-  async onOpen() { this.render(); }
-  async onClose() {}
-  onResize() { this.render(); }
-  render() { renderTimetable(this.plugin, this.contentEl); }
+  async onOpen() {
+    this.render();
+    // 휴대폰에서는 시간표가 닫힌 서랍 안에서(폭 0) 먼저 그려진다. 서랍이 열려 폭이 생기면 그 폭으로 다시 그린다 —
+    // 칸 폭으로 이름을 줄이므로, 폭을 모르고 그린 그림은 틀린 그림이다.
+    if (typeof ResizeObserver === 'function') {
+      this.observer = new ResizeObserver(() => {
+        const w = Math.round(this.contentEl.clientWidth);
+        if (w && w !== this.drawnW) this.render();
+      });
+      this.observer.observe(this.contentEl);
+    }
+  }
+
+  async onClose() { if (this.observer) this.observer.disconnect(); }
+
+  // 휴대폰에서 입력칸을 누르면 자판이 올라와 높이만 줄어든다. 그때 처음부터 다시 그리면
+  // 고르던 날짜·수업이 날아가고 누르던 칸이 사라진다 — 입력 중에 높이만 바뀐 것은 넘긴다.
+  onResize() {
+    const typing = this.contentEl.contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    if (typing && Math.round(this.contentEl.clientWidth) === this.drawnW) return;
+    this.render();
+  }
+
+  render() {
+    this.drawnW = Math.round(this.contentEl.clientWidth);
+    renderTimetable(this.plugin, this.contentEl);
+  }
 
   // 탭의 "더 보기" 메뉴에도 내보내기를 둔다. 옵시디언 사용자가 먼저 찾아보는 자리다.
   onPaneMenu(menu, source) {
     if (super.onPaneMenu) super.onPaneMenu(menu, source);
     menu.addItem((i) => i.setTitle(t('exportSave')).setIcon('image-down').onClick(() => this.plugin.exportImage('save')));
     menu.addItem((i) => i.setTitle(t('exportCopy')).setIcon('copy').onClick(() => this.plugin.exportImage('copy')));
+    menu.addItem((i) => i.setTitle(t('icsExport')).setIcon('calendar-plus').onClick(() => this.plugin.exportIcs()));
+    menu.addItem((i) => i.setTitle(t('importMenu')).setIcon('clipboard-paste').onClick(() => new ImportModal(this.plugin, {}).open()));
   }
 }
 
@@ -4494,14 +6701,18 @@ class TimetableView extends ItemView {
  */
 
 function parseEmbedOptions(source) {
-  const opts = { view: 'week', height: 420, days: null, upcoming: true };
+  const opts = { view: 'week', height: 420, days: null, upcoming: true, course: '' };
   for (const line of String(source || '').split(/\r?\n/)) {
     const m = /^\s*([A-Za-z]+)\s*[:=]\s*(.*?)\s*$/.exec(line);
     if (!m) continue;
     const key = m[1].toLowerCase(), val = m[2].toLowerCase();
-    if (key === 'view' || key === 'mode') {
+    if (key === 'course' || key === 'class') {
+      opts.course = m[2].replace(/^\[\[|\]\]$/g, '').split('|')[0].split('/').pop().replace(/\.md$/i, '').trim();
+    } else if (key === 'view' || key === 'mode') {
       if (val === 'today' || val === 'day') opts.view = 'today';
       else if (val === 'upcoming' || val === 'deadlines') opts.view = 'upcoming';
+      else if (val === 'todo' || val === 'todos' || val === 'tasks') opts.view = 'todo';
+      else if (val === 'assignments' || val === 'semester' || val === 'all') opts.view = 'assignments';
       else opts.view = 'week';
     } else if (key === 'height') {
       const n = parseInt(val, 10);
@@ -4531,6 +6742,8 @@ class TimetableEmbed extends MarkdownRenderChild {
     this.host = this.containerEl.createDiv({ cls: 'ctt-embed' });
     // 편집 화면(라이브 프리뷰)에서 블록 안을 눌러도 코드가 펼쳐지지 않게 한다
     this.host.addEventListener('mousedown', (e) => e.stopPropagation());
+    // 할 일 칸에 치는 글자가 편집기로 새지 않게
+    this.host.addEventListener('keydown', (e) => e.stopPropagation());
     this.render();
 
     // 코드블록은 문서에 붙기 전에 그려진다. 폭을 알게 된 뒤, 그리고 폭이 바뀔 때 다시 그린다.
@@ -4555,16 +6768,9 @@ class TimetableEmbed extends MarkdownRenderChild {
     const o = this.options;
     const plugin = this.plugin;
 
-    if (o.view === 'upcoming') {
-      this.host.empty();
-      this.host.addClass('ctt-root');
-      this.host.addClass('is-embed');
-      this.host.addClass('is-list');
-      const days = o.days != null ? o.days : (upcomingHorizon(plugin.settings) || 14);
-      const list = plugin.upcomingDeadlines(plugin.getCourses().deadlines, days);
-      if (!renderUpcoming(plugin, this.host, list, {})) {
-        this.host.createDiv({ cls: 'ctt-notice', text: t('noUpcoming') });
-      }
+    // 목록으로 그리는 보기들: 높이는 내용만큼
+    if (o.view === 'upcoming' || o.view === 'todo' || o.view === 'assignments') {
+      keepState(this.host, () => this.renderList());
       return;
     }
 
@@ -4576,6 +6782,27 @@ class TimetableEmbed extends MarkdownRenderChild {
       state: this.state,
       rerender: () => this.render(),
     });
+  }
+
+  renderList() {
+    const o = this.options;
+    const plugin = this.plugin;
+    this.host.empty();
+    this.host.style.height = '';
+    this.host.addClass('ctt-root');
+    this.host.addClass('is-embed');
+    this.host.addClass('is-list');
+    this.host.setAttr('lang', LANG);
+    const res = plugin.getCourses();
+    const want = o.course.toLowerCase();
+    const course = want ? res.courses.find((c) => c.name.toLowerCase() === want || c.baseName.toLowerCase() === want) : null;
+    if (o.view === 'assignments') { renderAssignments(plugin, this.host, { course: o.course }); return; }
+    if (o.view === 'todo') { renderTodoPanel(plugin, this.host, { ctx: 'embed', course }); return; }
+    const days = o.days != null ? o.days : (upcomingHorizon(plugin.settings) || 14);
+    const list = plugin.upcomingDeadlines(res.deadlines, days).filter((dl) => !course || dl.course.key === course.key);
+    if (!renderUpcoming(plugin, this.host, list, {})) {
+      this.host.createDiv({ cls: 'ctt-notice', text: t('noUpcoming') });
+    }
   }
 }
 
@@ -4676,6 +6903,10 @@ class FolderView extends ItemView {
   }
 
   render() {
+    keepState(this.contentEl, () => this.renderNow());
+  }
+
+  renderNow() {
     const el = this.contentEl;
     el.empty();
     el.addClass('ctf-root');
@@ -4739,26 +6970,92 @@ class FolderView extends ItemView {
     const summary = scheduleSummary(course);
     if (summary) metaRow.createSpan({ cls: 'ctf-meta', text: summary });
 
-    // 이 수업의 시험·마감. 끝낸 것은 빼고, 안 끝낸 지난 마감부터 가까운 순으로. 맨 위에서만 보인다.
+    // 책장 맨 위에서는 화면을 둘로 나눈다: 왼쪽은 책장, 오른쪽은 이 수업의 노트 기록 · 시험과 마감 · 할 일.
+    // 좁으면 오른쪽 것이 책장 위로 올라온다.
+    let main = el;
     if (!this.rel) {
-      const today = today0();
-      const mine = this.plugin.upcomingDeadlines(this.plugin.getCourses().deadlines, Infinity)
-        .filter((dl) => dl.course.key === course.key);
-      const row = text.createDiv({ cls: 'ctf-dues' });
-      for (const dl of mine.slice(0, 6)) {
-        const gap = dayDiff(parseYmd(dl.date), today);
-        const chip = row.createEl('button', { cls: 'ctf-due' + (dl.kind === 'exam' ? ' is-exam' : '') + (gap < 0 ? ' is-late' : '') });
-        chip.createSpan({ cls: 'ctf-due-day', text: dueLabel(gap) });
-        chip.createSpan({ cls: 'ctf-due-title', text: dl.title });
-        bindDeadline(this.plugin, chip, dl);
+      const layout = el.createDiv({ cls: 'ctf-layout' });
+      main = layout.createDiv({ cls: 'ctf-main' });
+      this.renderAside(layout.createDiv({ cls: 'ctf-aside' }), course);
+    }
+    this.renderShelves(main, course, session);
+  }
+
+  // 이 수업 한 장: 노트를 몇 번 남겼는지, 해야 할 것들, 최근에 고친 노트
+  renderAside(aside, course) {
+    const plugin = this.plugin;
+    const res = plugin.getCourses();
+
+    /* 노트 기록 — 수업이 열린 날마다 점 하나. 채운 점은 그 날의 노트가 있다는 뜻. */
+    const sessions = plugin.sessionDates(course);
+    if (sessions.length) {
+      const idx = plugin.noteIndex(course);
+      const marks = sessions.map((s) => ({ s, has: plugin.hasNoteOn(course, s.slot, s.date, idx) }));
+      const have = marks.filter((m) => m.has).length;
+      const card = aside.createDiv({ cls: 'ctf-panel' });
+      const h = card.createDiv({ cls: 'ctf-panel-head' });
+      h.createSpan({ cls: 'ctf-panel-title', text: t('attendTitle') });
+      h.createSpan({ cls: 'ctf-panel-count', text: t('attendCount', { n: have, m: sessions.length }) });
+      const bar = card.createDiv({ cls: 'ctt-progress is-thin' });
+      bar.createDiv({ cls: 'ctt-progress-fill' }).style.setProperty('--p', String(have / sessions.length));
+      const dots = card.createDiv({ cls: 'ctf-dots' });
+      for (const m of marks.slice(-40)) {
+        const dot = dots.createEl('button', { cls: 'ctf-dot' + (m.has ? ' is-on' : '') });
+        const label = dateLabel(m.s.date) + ' ' + hhmm(m.s.slot.start) + ' · ' + (m.has ? t('noteShort') : t('noteMissing'));
+        dot.setAttr('title', label);
+        dot.setAttr('aria-label', label);
+        dot.onclick = async () => {
+          const file = m.has ? plugin.noteFileOn(course, m.s.slot, m.s.date) : null;
+          if (file) plugin.openNote(file, false);
+          else plugin.createFromTemplate(course, m.s.slot, undefined, m.s.date);
+        };
       }
-      if (mine.length > 6) row.createSpan({ cls: 'ctf-due-more', text: t('moreItems', { n: mine.length - 6 }) });
-      const add = row.createEl('button', { cls: 'ctf-due is-add', text: t('addDeadlineShort') });
-      add.onclick = () => new DeadlineModal(this.plugin, { course }).open();
-      const assign = row.createEl('button', { cls: 'ctf-due is-add', text: t('assignAdd') });
-      assign.onclick = () => new DeadlineModal(this.plugin, { course, kind: 'due', asNote: true }).open();
+      const missing = marks.filter((m) => !m.has).length;
+      if (missing) card.createDiv({ cls: 'ctf-panel-hint', text: t('attendHint', { n: missing }) });
     }
 
+    /* 시험·마감 */
+    const mine = (res.deadlines || []).filter((dl) => dl.course.key === course.key);
+    const open = plugin.upcomingDeadlines(mine, Infinity);
+    const dcard = aside.createDiv({ cls: 'ctf-panel' });
+    const dh = dcard.createDiv({ cls: 'ctf-panel-head' });
+    dh.createSpan({ cls: 'ctf-panel-title', text: t('upcomingShort') });
+    if (open.length) dh.createSpan({ cls: 'ctf-panel-count', text: String(open.length) });
+    if (open.length) {
+      const rows = dcard.createDiv({ cls: 'ctt-tlist' });
+      open.slice(0, 8).forEach((dl, i) => renderDeadlineRow(plugin, rows, dl, { hideCourse: true, full: true, i }));
+      if (open.length > 8) dcard.createDiv({ cls: 'ctf-panel-hint', text: t('moreItems', { n: open.length - 8 }) });
+    } else {
+      dcard.createDiv({ cls: 'ctf-panel-hint', text: t('noUpcoming') });
+    }
+    const dact = dcard.createDiv({ cls: 'ctf-panel-actions' });
+    dact.createEl('button', { cls: 'ctf-linkbtn', text: t('addDeadlineShort') }).onclick = () => new DeadlineModal(plugin, { course }).open();
+    dact.createEl('button', { cls: 'ctf-linkbtn', text: t('assignAdd') }).onclick = () => new DeadlineModal(plugin, { course, kind: 'due', asNote: true }).open();
+
+    /* 할 일 */
+    const tcard = aside.createDiv({ cls: 'ctf-panel is-todo' });
+    tcard.createDiv({ cls: 'ctf-panel-head' }).createSpan({ cls: 'ctf-panel-title', text: t('tabTodo') });
+    renderTodoPanel(plugin, tcard, { ctx: 'shelf', course, noDeadlines: true });
+
+    /* 최근 노트 */
+    const files = plugin.courseNoteFiles(course).filter((f) => f !== course.file)
+      .sort((a, b) => ((b.stat && b.stat.mtime) || 0) - ((a.stat && a.stat.mtime) || 0)).slice(0, 5);
+    if (files.length) {
+      const rcard = aside.createDiv({ cls: 'ctf-panel' });
+      rcard.createDiv({ cls: 'ctf-panel-head' }).createSpan({ cls: 'ctf-panel-title', text: t('recentNotes') });
+      const list = rcard.createDiv({ cls: 'ctf-recent' });
+      for (const f of files) {
+        const row = list.createDiv({ cls: 'ctf-recent-row' });
+        icon(row.createSpan({ cls: 'ctf-recent-icon' }), 'file-text', '·');
+        row.createSpan({ cls: 'ctf-recent-name', text: f.basename || f.name.replace(/\.md$/i, '') });
+        if (f.stat && f.stat.mtime) row.createSpan({ cls: 'ctf-recent-date', text: shortMD(new Date(f.stat.mtime)) });
+        row.setAttr('title', f.path);
+        row.onclick = (e) => plugin.openNote(f, e.ctrlKey || e.metaKey);
+      }
+    }
+  }
+
+  renderShelves(el, course, session) {
     const scs = this.plugin.shortcutsOf(course);
     if (scs.length) {
       const chips = el.createDiv({ cls: 'ctf-shortcuts' });
@@ -5414,6 +7711,7 @@ class CourseEditModal extends Modal {
     this.newNotePath = '';
     this.title = c ? (c.titleRaw || '') : '';
     this.subtitle = c && c.subtitle != null ? c.subtitle : '';
+    this.short = c ? (c.short || '') : '';
     this.color = c && c.hasColor ? c.color : ''; // 빈 값 = 자동
 
     if (c) {
@@ -5471,8 +7769,18 @@ class CourseEditModal extends Modal {
     const name = nameField.createEl('input', { type: 'text' });
     name.value = this.title;
     name.placeholder = t('displayNamePh');
-    name.oninput = () => { this.title = name.value; };
     saveOnEnter(name, () => this.trySave());
+
+    // 짧은 이름 — 겹친 수업처럼 칸이 좁을 때 대신 쓴다. 비우면 이름에서 만든다 (그 값을 흐리게 보여 준다).
+    const shortField = el.createDiv({ cls: 'ctt-field' });
+    shortField.createDiv({ cls: 'ctt-field-label', text: t('shortLabel') });
+    const short = shortField.createEl('input', { type: 'text', cls: 'ctt-short-input' });
+    short.value = this.short;
+    const autoPh = () => autoShort(this.title.trim() || this.targetLabel().split('/').pop().replace(/\.md$/i, '') || '');
+    short.placeholder = autoPh() || t('shortPh');
+    short.oninput = () => { this.short = short.value; };
+    saveOnEnter(short, () => this.trySave());
+    name.oninput = () => { this.title = name.value; short.placeholder = autoPh() || t('shortPh'); };
 
     // 보조 정보는 블록에서 줄바꿈 그대로 보이므로, 입력칸도 여러 줄이어야 한다.
     // 한 줄 input 은 줄바꿈을 조용히 지워 버린다.
@@ -5629,7 +7937,7 @@ class CourseEditModal extends Modal {
   }
 
   async commit(slots) {
-    const extra = { title: this.title.trim(), subtitle: this.subtitle.trim(), color: this.color };
+    const extra = { title: this.title.trim(), subtitle: this.subtitle.trim(), color: this.color, short: this.short.trim() };
     const target = this.file
       ? { file: this.file }
       : (this.newNotePath ? { newPath: this.newNotePath } : { folderPath: this.folderPath });
@@ -5790,6 +8098,320 @@ class DeadlineModal extends Modal {
   onClose() { this.contentEl.empty(); }
 }
 
+/* ── 할 일 하나 더하기 (명령 · 우클릭 · 플러스 메뉴) ── */
+
+class TodoModal extends Modal {
+  constructor(plugin, opts) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.opts = opts || {};
+    this.state = { text: '', courseKey: this.opts.courseKey || '', date: this.opts.date || '' };
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.addClass('ctt-modal');
+    contentEl.createEl('h3', { text: t('todoAddTitle') });
+    const courses = this.plugin.getCourses().courses;
+
+    const nameField = contentEl.createDiv({ cls: 'ctt-field' });
+    nameField.createDiv({ cls: 'ctt-field-label', text: t('todoWhat') });
+    const name = nameField.createEl('input', { type: 'text' });
+    name.placeholder = t('todoAddPh');
+    name.oninput = () => { this.state.text = name.value; };
+    saveOnEnter(name, () => this.trySave());
+
+    if (courses.length) {
+      const cf = contentEl.createDiv({ cls: 'ctt-field' });
+      cf.createDiv({ cls: 'ctt-field-label', text: t('course') });
+      const sel = cf.createEl('select', { cls: 'ctt-select' });
+      const none = sel.createEl('option', { text: t('todoGeneral') });
+      none.value = '';
+      for (const c of courses) { const o = sel.createEl('option', { text: c.name }); o.value = c.key; }
+      sel.value = courses.some((c) => c.key === this.state.courseKey) ? this.state.courseKey : '';
+      sel.onchange = () => { this.state.courseKey = sel.value; hint(); };
+      const h = cf.createDiv({ cls: 'ctt-field-hint' });
+      const hint = () => {
+        const c = courses.find((x) => x.key === this.state.courseKey);
+        h.setText(c ? t('todoHintCourse', { path: c.file.path }) : t('todoHintGeneral'));
+      };
+      hint();
+    }
+
+    const df = contentEl.createDiv({ cls: 'ctt-field' });
+    df.createDiv({ cls: 'ctt-field-label', text: t('todoDate') + ' · ' + t('optional') });
+    const date = df.createEl('input', { type: 'date', cls: 'ctt-date-input' });
+    date.value = this.state.date;
+    date.oninput = () => { this.state.date = date.value; };
+
+    const buttons = contentEl.createDiv({ cls: 'ctt-modal-buttons' });
+    buttons.createEl('button', { cls: 'mod-cta', text: t('todoAddBtn') }).onclick = () => this.trySave();
+    buttons.createEl('button', { text: t('cancel') }).onclick = () => this.close();
+    window.setTimeout(() => name.focus(), 0);
+  }
+
+  async trySave() {
+    if (!this.state.text.trim()) return;
+    this.close();
+    await this.plugin.addTodo({ text: this.state.text, courseKey: this.state.courseKey, date: parseYmd(this.state.date) ? this.state.date : '' });
+    new Notice(t('todoAdded'));
+  }
+
+  onClose() { this.contentEl.empty(); }
+}
+
+class DatePickModal extends Modal {
+  constructor(plugin, opts) { super(plugin.app); this.plugin = plugin; this.opts = opts; }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.addClass('ctt-modal');
+    contentEl.createEl('h3', { text: this.opts.title });
+    const input = contentEl.createDiv({ cls: 'ctt-field' }).createEl('input', { type: 'date', cls: 'ctt-date-input' });
+    input.value = this.opts.value || '';
+    const buttons = contentEl.createDiv({ cls: 'ctt-modal-buttons' });
+    buttons.createEl('button', { cls: 'mod-cta', text: t('save') }).onclick = () => {
+      if (!parseYmd(input.value)) return;
+      this.close();
+      this.opts.onPick(input.value);
+    };
+    buttons.createEl('button', { text: t('cancel') }).onclick = () => this.close();
+    window.setTimeout(() => input.focus(), 0);
+  }
+
+  onClose() { this.contentEl.empty(); }
+}
+
+/* ── 한 번에 등록: 붙여넣기 · .ics ──
+ *
+ * 무엇을 만들지 미리 보여 주고, 누르면 만든다. 읽지 못한 줄은 빨갛게 남겨 고칠 수 있게 한다.
+ */
+class ImportModal extends Modal {
+  constructor(plugin, opts) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.opts = opts || {};
+    this.mode = this.opts.mode || 'paste';
+    this.text = '';
+    this.parsed = { courses: [], errors: [], skipped: 0 };
+    this.fileName = '';
+    this.base = plugin.importBase();
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.addClass('ctt-modal');
+    contentEl.addClass('ctt-import');
+    if (this.modalEl) this.modalEl.style.width = 'min(560px, 94vw)';
+    contentEl.createEl('h3', { text: t('importTitle') });
+    contentEl.createEl('p', { text: t('importIntro') });
+
+    const seg = contentEl.createDiv({ cls: 'ctt-seg' });
+    this.segBtns = {};
+    for (const [id, label] of [['paste', t('importPaste')], ['ics', t('importIcs')]]) {
+      const b = seg.createEl('button', { cls: 'ctt-seg-btn', text: label });
+      b.onclick = () => { this.mode = id; this.draw(); };
+      this.segBtns[id] = b;
+    }
+    this.body = contentEl.createDiv({ cls: 'ctt-import-body' });
+    this.preview = contentEl.createDiv({ cls: 'ctt-import-preview' });
+
+    const dest = contentEl.createDiv({ cls: 'ctt-field' });
+    dest.createDiv({ cls: 'ctt-field-label', text: t('importWhere') });
+    this.destBtn = dest.createEl('button', { cls: 'ctt-folder-btn is-set' });
+    this.destBtn.onclick = () => new FolderPickModal(this.plugin, {
+      onPick: (p) => { this.base = normalizePath(p); this.paintDest(); },
+    }).open();
+    dest.createDiv({ cls: 'ctt-field-hint', text: t('importWhereHint') });
+    this.paintDest();
+
+    const buttons = contentEl.createDiv({ cls: 'ctt-modal-buttons' });
+    this.go = buttons.createEl('button', { cls: 'mod-cta' });
+    this.go.onclick = () => this.commit();
+    buttons.createEl('button', { text: t('cancel') }).onclick = () => this.close();
+    this.draw();
+  }
+
+  paintDest() { if (this.destBtn) this.destBtn.setText(this.base || t('wholeVault')); }
+
+  draw() {
+    for (const [id, b] of Object.entries(this.segBtns)) b.toggleClass('is-on', id === this.mode);
+    const el = this.body;
+    el.empty();
+    if (this.mode === 'paste') {
+      const ta = el.createEl('textarea', { cls: 'ctt-import-text' });
+      ta.rows = 7;
+      ta.placeholder = t('importPastePh');
+      ta.value = this.text;
+      ta.oninput = () => { this.text = ta.value; this.parsed = parseImportText(this.text); this.paintPreview(); };
+      el.createDiv({ cls: 'ctt-field-hint', text: t('importPasteHint') });
+      this.parsed = parseImportText(this.text);
+      window.setTimeout(() => ta.focus(), 0);
+    } else {
+      const pick = el.createDiv({ cls: 'ctt-import-file' });
+      const input = pick.createEl('input', { type: 'file' });
+      input.accept = '.ics,text/calendar';
+      input.style.display = 'none';
+      const btn = pick.createEl('button', { cls: 'ctt-pill is-primary' });
+      icon(btn.createSpan({ cls: 'ctt-pill-icon' }), 'upload', '');
+      btn.createSpan({ text: this.fileName || t('importPick') });
+      btn.onclick = () => input.click();
+      input.onchange = async () => {
+        const f = input.files && input.files[0];
+        if (!f) return;
+        try {
+          const text = await f.text();
+          this.fileName = f.name;
+          this.parsed = parseIcs(text, this.plugin.settings);
+        } catch (e) { failNotice('icsFail', {}, e); return; }
+        this.draw();
+      };
+      el.createDiv({ cls: 'ctt-field-hint', text: t('importIcsHint') });
+      if (!this.fileName) this.parsed = { courses: [], errors: [], skipped: 0 };
+    }
+    this.paintPreview();
+  }
+
+  paintPreview() {
+    const el = this.preview;
+    el.empty();
+    const { courses, errors, skipped } = this.parsed;
+    const existing = this.plugin.getCourses().courses;
+    if (courses.length) {
+      const list = el.createDiv({ cls: 'ctt-import-list' });
+      courses.forEach((c, i) => {
+        const row = list.createDiv({ cls: 'ctt-import-row' });
+        row.style.setProperty('--i', String(Math.min(i, 12)));
+        row.style.setProperty('--ctt-color', autoColor(c.name));
+        row.createSpan({ cls: 'ctt-import-dot' });
+        const main = row.createDiv({ cls: 'ctt-import-main' });
+        main.createDiv({ cls: 'ctt-import-name', text: c.name });
+        main.createDiv({ cls: 'ctt-import-when', text: scheduleSummary({ slots: c.slots }) });
+        if (existing.some((x) => x.name.toLowerCase() === c.name.toLowerCase())) {
+          row.createSpan({ cls: 'ctt-import-tag', text: t('importMerge') });
+        }
+      });
+    } else if (this.mode === 'paste' && !this.text.trim()) {
+      el.createDiv({ cls: 'ctt-import-empty', text: t('importEmptyPaste') });
+    }
+    for (const err of errors.slice(0, 5)) {
+      el.createDiv({ cls: 'ctt-import-err', text: t('importBadLine', { n: err.line, v: err.text }) });
+    }
+    if (errors.length > 5) el.createDiv({ cls: 'ctt-import-err', text: t('moreItems', { n: errors.length - 5 }) });
+    if (skipped) el.createDiv({ cls: 'ctt-field-hint', text: t('importSkipped', { n: skipped }) });
+
+    if (this.go) {
+      this.go.setText(courses.length ? t('importGo', { n: courses.length }) : t('importGoNone'));
+      this.go.disabled = !courses.length;
+    }
+  }
+
+  async commit() {
+    const list = this.parsed.courses;
+    if (!list.length) return;
+    this.close();
+    await this.plugin.importCourses(list, this.base);
+    if (this.plugin.settings.tab !== 'week') this.plugin.setTab('week');
+    this.plugin.activateView();
+  }
+
+  onClose() { this.contentEl.empty(); }
+}
+
+/* ── 새 학기 ──
+ * 지금 학기의 수업은 그 학기 이름을 달고 보관된다(노트는 그대로). 새 학기의 시간표는 비어서 시작하고,
+ * 설정에서 학기를 바꾸면 언제든 지난 학기를 다시 볼 수 있다.
+ */
+class SemesterModal extends Modal {
+  constructor(plugin) {
+    super(plugin.app);
+    this.plugin = plugin;
+    const s = plugin.settings;
+    const start = parseYmd(s.semesterStart) || new Date();
+    // 다음 학기: 앞 학기(1~6월)였으면 같은 해 가을, 뒤 학기였으면 다음 해 봄
+    const next = start.getMonth() < 6 ? new Date(start.getFullYear(), 8, 1) : new Date(start.getFullYear() + 1, 2, 1);
+    this.state = {
+      oldName: s.currentSemester || suggestSemesterName(start),
+      name: suggestSemesterName(next),
+      start: '', end: '',
+      archive: true,
+    };
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.addClass('ctt-modal');
+    contentEl.createEl('h3', { text: t('semNewTitle') });
+    contentEl.createEl('p', { text: t('semNewIntro') });
+    const s = this.plugin.settings;
+    const loose = this.plugin.getCourses().courses.filter((c) => !c.semester).length;
+
+    const field = (label, build, hintText) => {
+      const f = contentEl.createDiv({ cls: 'ctt-field' });
+      f.createDiv({ cls: 'ctt-field-label', text: label });
+      build(f);
+      if (hintText) f.createDiv({ cls: 'ctt-field-hint', text: hintText });
+      return f;
+    };
+
+    if (loose) {
+      const f = field(t('semArchive'), (f) => {
+        const row = f.createEl('label', { cls: 'ctt-check-row' });
+        const cb = row.createEl('input', { type: 'checkbox' });
+        cb.checked = this.state.archive;
+        row.createSpan({ text: t('semArchiveLabel', { n: loose }) });
+        cb.onchange = () => { this.state.archive = cb.checked; oldF.toggleClass('is-hidden', !cb.checked || !!s.currentSemester); };
+      });
+      f.addClass('ctt-sem-archive');
+    }
+    const oldF = field(t('semOldName'), (f) => {
+      const i = f.createEl('input', { type: 'text' });
+      i.value = this.state.oldName;
+      i.oninput = () => { this.state.oldName = i.value; };
+    }, t('semOldHint'));
+    if (!loose || s.currentSemester) oldF.addClass('is-hidden');
+
+    field(t('semNewName'), (f) => {
+      const i = f.createEl('input', { type: 'text' });
+      i.value = this.state.name;
+      i.oninput = () => { this.state.name = i.value; };
+      window.setTimeout(() => i.select(), 0);
+    });
+    field(t('semesterStart') + ' · ' + t('semesterEnd'), (f) => {
+      const row = f.createDiv({ cls: 'ctt-timerow' });
+      const a = row.createEl('input', { type: 'date', cls: 'ctt-date-input' });
+      row.createSpan({ cls: 'ctt-dash', text: '–' });
+      const b = row.createEl('input', { type: 'date', cls: 'ctt-date-input' });
+      a.oninput = () => { this.state.start = a.value; };
+      b.oninput = () => { this.state.end = b.value; };
+    }, t('semDatesHint'));
+
+    const buttons = contentEl.createDiv({ cls: 'ctt-modal-buttons' });
+    buttons.createEl('button', { cls: 'mod-cta', text: t('semNewGo') }).onclick = () => this.commit(loose);
+    buttons.createEl('button', { text: t('cancel') }).onclick = () => this.close();
+  }
+
+  async commit(loose) {
+    const name = this.state.name.trim();
+    if (!name) return;
+    const archive = !!loose && this.state.archive;
+    const oldName = (this.plugin.settings.currentSemester || this.state.oldName || '').trim();
+    if (archive && !oldName) return;
+    this.close();
+    await this.plugin.startSemester({
+      name,
+      oldName,
+      archive,
+      start: parseYmd(this.state.start) ? this.state.start : '',
+      end: parseYmd(this.state.end) ? this.state.end : '',
+    });
+    new Notice(t('semStarted', { name }));
+    this.plugin.activateView();
+  }
+
+  onClose() { this.contentEl.empty(); }
+}
+
 /* ── 환경설정: 화면에 관한 것만 여기서 정한다 ── */
 
 class PrefsModal extends Modal {
@@ -5872,6 +8494,34 @@ class PrefsModal extends Modal {
     upSel.onchange = async () => { s.upcomingDays = Number(upSel.value); await this.plugin.saveSettings(); };
     up.createDiv({ cls: 'ctt-field-hint', text: t('upcomingHint') });
 
+    /* 수업 시작 알림 */
+    const rem = el.createDiv({ cls: 'ctt-field' });
+    rem.createDiv({ cls: 'ctt-field-label', text: t('remindTitle') });
+    const remSel = rem.createEl('select', { cls: 'ctt-select' });
+    const remChoices = [0, 5, 10, 15];
+    const remNow = Number(s.remindMins) || 0;
+    if (!remChoices.includes(remNow)) remChoices.push(remNow);
+    for (const n of remChoices.sort((a, b) => a - b)) {
+      const o = remSel.createEl('option', { text: n ? t('remindN', { n }) : t('remindOff') });
+      o.value = String(n);
+    }
+    remSel.value = String(remNow);
+    remSel.onchange = async () => { s.remindMins = Number(remSel.value); await this.plugin.saveSettings(); };
+    rem.createDiv({ cls: 'ctt-field-hint', text: t('remindHint') });
+
+    /* 켜고 끄는 것들 */
+    const toggles = el.createDiv({ cls: 'ctt-field' });
+    toggles.createDiv({ cls: 'ctt-field-label', text: t('showTitle') });
+    const toggle = (label, on, set) => {
+      const row = toggles.createEl('label', { cls: 'ctt-check-row' });
+      const cb = row.createEl('input', { type: 'checkbox' });
+      cb.checked = on;
+      row.createSpan({ text: label });
+      cb.onchange = async () => { set(cb.checked); await this.plugin.saveSettings(); };
+    };
+    toggle(t('noteTasksToggle'), s.noteTasks !== false, (v) => { s.noteTasks = v; });
+    if (!Platform.isMobile) toggle(t('statusBarToggle'), s.statusBar !== false, (v) => { s.statusBar = v; });
+
     /* 공유 — 보이는 시간 범위가 그림에도 그대로 쓰이므로 그 바로 아래에 둔다 */
     const share = el.createDiv({ cls: 'ctt-field' });
     share.createDiv({ cls: 'ctt-field-label', text: t('share') });
@@ -5884,7 +8534,11 @@ class PrefsModal extends Modal {
     icon(copyBtn.createSpan({ cls: 'ctt-sharebtn-icon' }), 'copy', '');
     copyBtn.createSpan({ text: t('exportCopy') });
     copyBtn.onclick = () => { this.close(); this.plugin.exportImage('copy'); };
-    share.createDiv({ cls: 'ctt-field-hint', text: t('exportHint') });
+    const icsBtn = shareRow.createEl('button', { cls: 'ctt-sharebtn' });
+    icon(icsBtn.createSpan({ cls: 'ctt-sharebtn-icon' }), 'calendar-plus', '');
+    icsBtn.createSpan({ text: t('icsExport') });
+    icsBtn.onclick = () => { this.close(); this.plugin.exportIcs(); };
+    share.createDiv({ cls: 'ctt-field-hint', text: t('exportHint') + ' ' + t('icsHint') });
 
     const fb = el.createDiv({ cls: 'ctt-field ctt-feedback-row' });
     feedbackLink(fb, t('feedbackBug'), FEEDBACK_BUG_URL);
@@ -6028,12 +8682,20 @@ class TemplateModal extends Modal {
 class TimetableSettingTab extends PluginSettingTab {
   constructor(app, plugin) { super(app, plugin); this.plugin = plugin; }
 
+  // 설정은 처음 쓰는 사람이 위에서부터 읽어 내려가면 되는 순서로 둔다:
+  // 시작하기 → 학기 → 노트 → 알림과 표시 → (몰라도 되는) 고급 → 도움말 → 의견.
   display() {
     const { containerEl } = this;
     containerEl.empty();
+    containerEl.addClass('ctt-settings');
 
     const s = this.plugin.settings;
     const save = () => this.plugin.saveSettings();
+    const heading = (text, desc) => {
+      const h = containerEl.createDiv({ cls: 'ctt-setting-intro' });
+      h.createDiv({ cls: 'ctt-setting-title', text });
+      if (desc) h.createEl('p', { text: desc });
+    };
 
     new Setting(containerEl)
       .setName(t('language'))
@@ -6047,21 +8709,133 @@ class TimetableSettingTab extends PluginSettingTab {
         });
       });
 
-    // 시작하기: 시간표 열기와 예시 시간표. 예시가 있으면 같은 자리에서 지운다.
+    /* ── 시작하기 ── */
+    heading(t('gettingStarted'));
     new Setting(containerEl)
-      .setName(t('gettingStarted'))
+      .setName(t('importMenu'))
+      .setDesc(t('importSettingDesc'))
+      .addButton((b) => b.setButtonText(t('importPaste')).setCta().onClick(() => new ImportModal(this.plugin, {}).open()))
+      .addButton((b) => b.setButtonText(t('importIcs')).onClick(() => new ImportModal(this.plugin, { mode: 'ics' }).open()));
+
+    // 예시 시간표가 있으면 같은 자리에서 지운다
+    new Setting(containerEl)
+      .setName(t('sampleCmd'))
       .setDesc(t('gettingStartedDesc'))
       .addButton((b) => b.setButtonText(t('openTimetable')).onClick(() => this.plugin.activateView()))
       .addButton((b) => {
         if (this.plugin.sampleFolder()) {
           b.setButtonText(t('sampleRemoveCmd')).onClick(() => this.plugin.confirmRemoveSample(() => this.display()));
         } else {
-          b.setButtonText(t('sampleCmd')).setCta().onClick(async () => { await this.plugin.createSample(); this.display(); });
+          b.setButtonText(t('sampleCmd')).onClick(async () => { await this.plugin.createSample(); this.display(); });
         }
       });
 
-    const intro = containerEl.createDiv({ cls: 'ctt-setting-intro' });
-    intro.createEl('div', { cls: 'ctt-setting-title', text: t('rootsTitle') });
+    /* ── 학기 ── */
+    heading(t('semSection'), t('semSectionDesc'));
+    new Setting(containerEl)
+      .setName(t('semCurrent'))
+      .setDesc(t('semCurrentDesc'))
+      .addDropdown((d) => {
+        (s.semesters || []).forEach((x, i) => d.addOption(x.id, x.name || t('semUnnamed', { n: i + 1 })));
+        d.setValue(s.semesterId).onChange(async (v) => { await this.plugin.switchSemester(v); this.display(); });
+      })
+      .addButton((b) => b.setButtonText(t('semNewCmd')).onClick(() => {
+        const m = new SemesterModal(this.plugin);
+        const close = m.onClose.bind(m);
+        m.onClose = () => { close(); this.display(); };
+        m.open();
+      }));
+
+    const others = (s.semesters || []).filter((x) => x.id !== s.semesterId);
+    if (others.length) {
+      new Setting(containerEl)
+        .setName(t('semDelete'))
+        .setDesc(t('semDeleteDesc'))
+        .addDropdown((d) => {
+          d.addOption('', '—');
+          others.forEach((x) => d.addOption(x.id, x.name || '—'));
+          d.setValue('').onChange((v) => {
+            if (!v) return;
+            const x = others.find((o) => o.id === v);
+            new ConfirmModal(this.app, {
+              title: t('semDelete'),
+              body: t('semDeleteBody', { name: (x && x.name) || '—' }),
+              cta: t('del'),
+              onConfirm: async () => { await this.plugin.deleteSemester(v); this.display(); },
+            }).open();
+          });
+        });
+    }
+
+    new Setting(containerEl)
+      .setName(t('semName'))
+      .setDesc(t('semesterDesc'))
+      .addText((x) => x.setPlaceholder(t('all')).setValue(s.currentSemester)
+        .onChange((v) => { s.currentSemester = v; save(); }));
+
+    new Setting(containerEl)
+      .setName(t('semesterStart'))
+      .setDesc(t('semesterStartDesc'))
+      .addText((x) => x.setPlaceholder('YYYY-MM-DD').setValue(s.semesterStart)
+        .onChange((v) => { s.semesterStart = v.trim(); save(); }));
+
+    new Setting(containerEl)
+      .setName(t('semesterEnd'))
+      .setDesc(t('semesterEndDesc'))
+      .addText((x) => x.setPlaceholder('YYYY-MM-DD').setValue(s.semesterEnd || '')
+        .onChange((v) => { s.semesterEnd = v.trim(); save(); }));
+
+    new Setting(containerEl)
+      .setName(t('holidays'))
+      .setDesc(t('holidaysDesc'))
+      .setClass('ctt-setting-holidays')
+      .addTextArea((x) => {
+        x.inputEl.rows = 4;
+        x.setPlaceholder(t('holidaysPh')).setValue(s.holidays || '')
+          .onChange((v) => { s.holidays = v; save(); });
+      });
+
+    /* ── 노트 ── */
+    heading(t('notesSection'));
+    new Setting(containerEl)
+      .setName(t('templateSetting'))
+      .setDesc(t('templateSettingDesc'))
+      .addButton((b) => b.setButtonText(t('edit')).setCta().onClick(() => new TemplateModal(this.plugin).open()));
+
+    new Setting(containerEl)
+      .setName(t('noteTasksToggle'))
+      .setDesc(t('noteTasksDesc'))
+      .addToggle((x) => x.setValue(s.noteTasks !== false).onChange((v) => { s.noteTasks = v; save(); }));
+
+    /* ── 알림과 표시 ── */
+    heading(t('remindSection'));
+    new Setting(containerEl)
+      .setName(t('remindTitle'))
+      .setDesc(t('remindHint'))
+      .addDropdown((d) => {
+        const choices = [0, 5, 10, 15];
+        const cur = Number(s.remindMins) || 0;
+        if (!choices.includes(cur)) choices.push(cur);
+        for (const n of choices.sort((a, b) => a - b)) d.addOption(String(n), n ? t('remindN', { n }) : t('remindOff'));
+        d.setValue(String(cur)).onChange((v) => { s.remindMins = Number(v); save(); });
+      });
+
+    if (!Platform.isMobile) {
+      new Setting(containerEl)
+        .setName(t('statusBarToggle'))
+        .setDesc(t('statusBarDesc'))
+        .addToggle((x) => x.setValue(s.statusBar !== false).onChange((v) => { s.statusBar = v; save(); }));
+    }
+
+    new Setting(containerEl)
+      .setName(t('icsExport'))
+      .setDesc(t('icsHint'))
+      .addButton((b) => b.setButtonText(t('icsExportShort')).onClick(() => this.plugin.exportIcs()));
+
+    /* ── 고급: 몰라도 된다 ── */
+    heading(t('advancedSection'), t('advancedDesc'));
+    const intro = containerEl.createDiv({ cls: 'ctt-setting-intro is-sub' });
+    intro.createEl('div', { cls: 'ctt-setting-subtitle', text: t('rootsTitle') });
     intro.createEl('p', { text: t('rootsDesc') });
     intro.createEl('p', { text: t('rootsOrder') });
 
@@ -6117,48 +8891,18 @@ class TimetableSettingTab extends PluginSettingTab {
         .setValue(s.folderNotePattern)
         .onChange((v) => { s.folderNotePattern = v; save(); this.display(); }));
 
-    new Setting(containerEl)
-      .setName(t('semester'))
-      .setDesc(t('semesterDesc'))
-      .addText((x) => x.setPlaceholder(t('all')).setValue(s.currentSemester)
-        .onChange((v) => { s.currentSemester = v; save(); }));
-
-    new Setting(containerEl)
-      .setName(t('semesterStart'))
-      .setDesc(t('semesterStartDesc'))
-      .addText((x) => x.setPlaceholder('YYYY-MM-DD').setValue(s.semesterStart)
-        .onChange((v) => { s.semesterStart = v.trim(); save(); }));
-
-    new Setting(containerEl)
-      .setName(t('semesterEnd'))
-      .setDesc(t('semesterEndDesc'))
-      .addText((x) => x.setPlaceholder('YYYY-MM-DD').setValue(s.semesterEnd || '')
-        .onChange((v) => { s.semesterEnd = v.trim(); save(); }));
-
-    new Setting(containerEl)
-      .setName(t('holidays'))
-      .setDesc(t('holidaysDesc'))
-      .setClass('ctt-setting-holidays')
-      .addTextArea((x) => {
-        x.inputEl.rows = 4;
-        x.setPlaceholder(t('holidaysPh')).setValue(s.holidays || '')
-          .onChange((v) => { s.holidays = v; save(); });
-      });
-
-    new Setting(containerEl)
-      .setName(t('templateSetting'))
-      .setDesc(t('templateSettingDesc'))
-      .addButton((b) => b.setButtonText(t('edit')).setCta().onClick(() => new TemplateModal(this.plugin).open()));
-
-    const help = containerEl.createDiv({ cls: 'ctt-help' });
-    help.createDiv({ cls: 'ctt-help-title', text: t('helpTitle') });
+    /* ── 도움말: 손으로 적고 싶은 사람을 위해. 접어 둔다. ── */
+    const help = containerEl.createEl('details', { cls: 'ctt-help' });
+    help.createEl('summary', { cls: 'ctt-help-title', text: t('helpTitle') });
     help.createEl('pre', { text: t('helpExample').join('\n') });
     help.createEl('p', { cls: 'ctt-help-note', text: t('helpNote') });
 
-    const more = containerEl.createDiv({ cls: 'ctt-help' });
-    more.createDiv({ cls: 'ctt-help-title', text: t('helpMoreTitle') });
+    const more = containerEl.createEl('details', { cls: 'ctt-help' });
+    more.createEl('summary', { cls: 'ctt-help-title', text: t('helpMoreTitle') });
     more.createEl('pre', { text: t('helpMore').join('\n') });
     more.createEl('p', { cls: 'ctt-help-note', text: t('helpMoreNote') });
+    more.createEl('pre', { text: t('helpTodo').join('\n') });
+    more.createEl('p', { cls: 'ctt-help-note', text: t('helpTodoNote') });
 
     // 의견 보내기 — 맨 아래. 쓰다가 아쉬운 것이 생겼을 때 찾아오는 자리다.
     new Setting(containerEl)

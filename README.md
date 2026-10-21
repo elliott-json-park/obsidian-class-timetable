@@ -5,7 +5,7 @@ mobile.** And a way into the notes behind each class.
 
 Class times are stored in your notes' own frontmatter, not in plugin settings. Rename a folder, move a note, or edit the YAML by hand: the timetable follows. Nothing lives in a place Obsidian can't see.
 
-![A week of classes in the sidebar, mid-lecture with 25 minutes left. Clicking the class in progress opens its shelves — assignments, lectures, readings — and clicking lectures lists that course's notes](docs/shelves.gif)
+![The sidebar's three tabs: the week, today with the class in progress on a card, and the to-do list where a to-do is ticked off. Clicking the class in progress opens its shelves with the notes taken, deadlines and to-dos beside them](docs/shelves.gif)
 
 ### [▶ Try it in your browser — no install](https://elliott-json-park.github.io/obsidian-class-timetable/)
 
@@ -15,15 +15,31 @@ ships, not a mock-up of it. Nothing is uploaded and no network request is made.
 
 Or install **Class Timetable** from Settings → Community plugins.
 
+## What's new in 2.0
+
+<p>
+  <img src="docs/today.png" width="300" alt="The Today tab: Statistics in progress on a card with 25 minutes left, the day's classes in order with free periods between them, and what is due today">
+  <img src="docs/todo.png" width="300" alt="The To-do tab: an overdue deadline, today's to-do, what is coming up, anytime to-dos and checkboxes collected from lecture notes">
+</p>
+
+- **Three tabs: Today, Week and To-do.** Today reads your day from top to bottom, with the class in progress on a card (time left, today's note, its shelves) and free periods between classes. Use the arrows to look at another day.
+- **A to-do list in the sidebar.** Type and press Enter. A to-do can belong to a class (it's written to that note's `todo:`) or to nothing (it stays in the plugin's settings — no file is created). `- [ ]` checkboxes you write in lecture notes show up too, grouped by class, and ticking one here ticks it in the note.
+- **Paste your timetable.** Copy rows from your school portal, a spreadsheet or a note — `Statistics Mon,Wed 10:30-12:00 Room 301` — and every class is created at once, with a folder, a folder note and a lecture-notes folder. Or pick an `.ics` file exported from your calendar.
+- **Export to your phone's calendar.** One `.ics` file with the semester's classes (cancelled days left out) and every exam and open deadline, each with a reminder the day before.
+- **Semesters.** *Start a new semester…* keeps this term's classes where they are and starts the next one empty. Switch back any time.
+- **Notes taken.** On a class's shelves, one dot per class held this semester — filled when that day's note exists. Click an empty dot to write it.
+- **Readable in a narrow sidebar.** Names are never broken mid-word; long words are shortened (`Organic Chemist.`), and split columns show a short name. Set your own with `short:`.
+- **Small things:** the current class in the status bar, a reminder a few minutes before class, *Undo* after moving or cancelling a class, and a shorter right-click menu.
+
 ## What it does
 
 **A timetable in the sidebar.** Real clock times on the vertical axis, not period numbers. Overlapping classes split the column instead of hiding each other. The current time is marked, and the top bar counts down to the end of the class you're in — or to whatever comes next. When the day is done it says so instead of counting.
 
-<img src="docs/sidebar.png" width="420" alt="The timetable mid-lecture: the class in progress outlined, earlier classes today dimmed, and a countdown to the end of class">
+<img src="docs/sidebar.png" width="420" alt="The Week tab mid-lecture: the class in progress outlined, earlier classes today dimmed, long names shortened instead of broken, and a countdown to the end of class">
 
 **Click a class, get its shelves.** Obsidian can't "open a folder", so the plugin opens a view of one: the folders belonging to that class, laid out like a bookshelf. Square cards are folders, wide cards are files. Create, rename and delete them right there — names are typed in place, on the card itself.
 
-![The shelf view for one course, in class now — Today's note, its shelves and notes](docs/shelf.png)
+![The shelf view for one course, in class now — Today's note, its shelves and notes, and beside them the notes taken this semester, its deadlines, to-dos and recent notes](docs/shelf.png)
 
 **Start today's note in one step.** Right-click a class → *Open today's note*, press *Today's note* on its shelves, or bind a hotkey to *Create today's note for the current class*. The file name and body come from a template you define (`{{course}}`, `{{date:MMDD}}`, `{{dow}}`, `{{week}}` …). If today's note already exists, it opens instead of being overwritten. Right-click a class on another day and the menu names that day instead — *Open the note for 10/5 (Mon)* — and that is the date the note gets.
 
@@ -39,9 +55,7 @@ Or install **Class Timetable** from Settings → Community plugins.
 
 **Share your week as an image.** *Save as PNG* or *Copy image* from the gear, the view's ⋯ menu, or the command palette. The whole week is drawn at full size in your current theme — no cropping by a narrow sidebar, no scrolling — ready to send to a group chat. Saved images go to your attachments folder.
 
-**One day at a time, when you want it.** Switch between the whole week and today alone.
-
-![Today mode](docs/today.png)
+**One day at a time, when you want it.** The Today tab lists the day in order — the class in progress on a card with the time left, free periods between classes, and what is due that day.
 
 **Four languages.** English, 한국어, 中文, 日本語 — picked from Obsidian's own language on first run, switchable at runtime, no restart. What gets written to your files never changes with the language: weekdays are always stored as `월 화 수 목 금 토 일`, only the display is translated.
 
@@ -70,6 +84,8 @@ Everything else is optional:
 | `exam` | Exams, one per line: `2026-10-22 13:00-15:00 Midterm` |
 | `due` | Assignment deadlines, one per line: `2026-10-15 Problem set 1`. A `✓` at the end marks it done |
 | `cancelled` | Dates this class does not meet: `2026-10-05` |
+| `todo` | That class's to-dos, one per line: `2026-10-22 Make the slides`. A `✓` at the end marks it done |
+| `short` | Short name used when the column is too narrow for the full one |
 
 Times are read generously: `월`, `월요일`, `mon`, `m`, `月`, `一` all work, as do `9`, `9:00`, `09:00` and `0900`.
 
@@ -100,6 +116,42 @@ You rarely type any of this. *Edit class* has an every week / odd weeks / even w
 - **New assignment note** (on a course's shelves, in the command palette, or as a checkbox in *Add an exam or deadline…*) writes that note for you: named after the assignment, with `due:` and a `course:` link filled in. It goes into the course's assignments folder if it has one (`assignments`, `homework`, `과제`, `作业`, `課題` …), otherwise into the course folder. No folder is ever created for you.
 - **Upcoming** lists the next 14 days above the grid. The gear changes that to 7 or 30 days, or hides it.
 
+## To-do
+
+The **To-do** tab puts everything you have to do in one list, sorted by when: *Overdue · Today · Coming up · Anytime*, then the checkboxes from your notes, then what you've finished (folded, with *Clear done*).
+
+- **Your own to-dos.** Type in the box at the top and press Enter. Tap the box to pick a class and a date first — or leave both empty.
+  - With a class, it is written to that class note: `todo: [2026-10-22 Make the slides]`. It syncs with your notes.
+  - Without one, it lives in the plugin's `data.json` — no file is created. Finished ones clean themselves up after a week.
+- **Checkboxes in your notes.** Any `- [ ]` line in a note inside a class's folders is listed under that class. Click the text to jump to the line; tick it and the note's line becomes `- [x]`. A Tasks-style `📅 2026-10-22` date is read. Turn this off in Settings if you don't want it.
+- **Exams and deadlines** stand in the same list, so there is one place to look. The tab shows a red count of what is due by today.
+- Right-click (or `⋯`) a to-do to change its date, open its note, turn it into a deadline for that class, or delete it — deleting can be undone from the notice.
+
+The Today tab lists the day's to-dos under the classes, and a class's shelves list that class's to-dos beside its notes.
+
+## Bring in a timetable you already have
+
+*Plus → Add your whole timetable*, or the empty timetable's first button. Paste one class per line — the parser is forgiving:
+
+```
+Statistics Mon,Wed 10:30-12:00 Room 301
+Linear Algebra Tue 9:00-10:15 @ Hall B
+Psychology | Thu 13:00-15:00 | Room 101
+통계학 월수 10:30-12:00 301호
+```
+
+Days can be `Mon/Wed`, `Mon,Wed`, `월수` or `月水`; times `9-10:30` or `0900-1030`; columns separated by spaces, tabs (a spreadsheet copy) or `|`. A line with only a name followed by lines with only times works too. You see every class before anything is created, and lines that could not be read are shown in red. A class with the same name as an existing one only gets the new times.
+
+The `.ics` tab reads weekly repeating events from a calendar export; every-other-week events become odd/even weeks. Nothing is fetched — you pick a file.
+
+## Export to a calendar
+
+Gear → *Export to calendar (.ics)*, or the command. The file goes to your attachments folder: the semester's classes as weekly events from the semester start to its end (16 weeks if no end is set), with cancelled days and days without classes left out, plus every exam and unfinished deadline with a reminder the day before. Import it in Google Calendar, Apple Calendar or Outlook.
+
+## Semesters
+
+Settings → *Semester* keeps each semester's name, start, end and days without classes. *Start a new semester…* writes the current semester's name into `semester:` on its classes (nothing else changes, no note moves), then switches to the new one with an empty timetable. Pick a past semester from the list to look at it again.
+
 ## Days without classes
 
 Settings → *Days without classes*, one per line — a date or a range, with an optional name:
@@ -122,7 +174,8 @@ An empty block draws this week. It is the same timetable as the sidebar, read-on
 
 | Option | |
 |---|---|
-| `view: week` | The week (default). `today` for one day, `upcoming` for just the list of exams and deadlines |
+| `view: week` | The week (default). `today` for the day's agenda, `upcoming` for the exams and deadlines ahead, `todo` for the to-do list, `assignments` for every exam and deadline of the semester with how many are done |
+| `course: Statistics` | With `todo`, `upcoming` or `assignments`, only that class — handy inside a class note |
 | `height: 420` | Height of the block in pixels |
 | `days: 30` | With `view: upcoming`, how far ahead to look |
 | `upcoming: false` | Leave the list of exams and deadlines out of the week view |
@@ -137,7 +190,7 @@ The timetable opens in the right sidebar the first time the plugin is enabled. A
 
 **Your own week:**
 
-1. Press *Add a class*, or click the **pencil** to unlock editing and drag on an empty cell. Editing is locked by default so a stray click can't move your week.
+1. Press *Paste your timetable* and paste the rows you already have — or *Add a class*, or click the **pencil** to unlock editing and drag on an empty cell. Editing is locked by default so a stray click can't move your week.
 2. Pick the note or folder the class belongs to. The times are written into that note's frontmatter.
 3. Click a class block to open its shelves; right-click for today's note, shortcuts and settings.
 
@@ -148,6 +201,13 @@ In Settings you can point the plugin at one or more **course folders** so it onl
 | Command | |
 |---|---|
 | Timetable | Open the timetable in the sidebar |
+| Show today · Show to-do | Open the timetable on that tab |
+| Add a to-do | For a class or for nothing, with an optional date |
+| Add your whole timetable | Paste rows or pick an `.ics` file |
+| Export timetable as a calendar file | The semester's classes, exams and deadlines as `.ics` |
+| Start a new semester | Keep this term's classes, start the next one empty |
+| Undo the last change | Moving a class, cancelling a day, deleting a to-do or plan |
+| Insert all exams and deadlines of the semester · Insert to-do list | Write the code block at the cursor |
 | Create today's note for the current class | The class in progress — or the nearest one today — gets today's note from your template |
 | Open shelves of the current class | Same class, its shelves |
 | Add class · Add plan | Open the editor directly |
@@ -165,7 +225,7 @@ In Settings you can point the plugin at one or more **course folders** so it onl
 | Left click | Open the class's shelves (`Ctrl`/`Cmd` for a new tab) |
 | Right click | Menu — today's note, shelves, cancelling that day, exams and deadlines, shortcuts, then editing the class |
 | Pencil → drag | Move a class, or drag its edge to resize. 15-minute steps |
-| Plus → drag | Add a plan on the grid, with no file behind it |
+| Plus → *Draw a plan on the grid* → drag | Add a plan on the grid, with no file behind it |
 
 Finer times than 15 minutes are typed in by hand, on purpose — a shaky drag should not produce a class that starts at 11:47.
 
@@ -190,7 +250,9 @@ handled for touch and pen as well as the mouse.
 
 ## Notes on data
 
-Classes live in your notes — and so do their exams, deadlines and cancelled days. Plans and days without classes live in the plugin's `data.json`, since they have no file of their own — which also means they don't sync between devices the way your notes do.
+Classes live in your notes — and so do their exams, deadlines, to-dos and cancelled days. Plans, to-dos that belong to no class, saved semesters and days without classes live in the plugin's `data.json`, since they have no file of their own — which also means they don't sync between devices the way your notes do.
+
+The only edit the plugin makes to a note's body is ticking a `- [ ]` checkbox you ticked in the To-do tab: that one `[ ]` becomes `[x]`. Everything else is frontmatter.
 
 Nothing is ever deleted without asking. *Remove from timetable* clears only the `schedule:` field; the note and its folder stay.
 
@@ -247,6 +309,10 @@ cancelled:
 공휴일·시험 주간처럼 **모든 수업이 쉬는 날**은 설정의 **수업 없는 날**에 한 줄씩 적습니다(`2026-10-09 한글날`, `2026-10-20 ~ 2026-10-24 중간고사 주간`). 그 날의 수업은 한꺼번에 줄이 그어지고, 요일 위에 이름이 뜹니다. 수업 노트에는 아무것도 쓰지 않습니다.
 
 노트 안에 시간표를 넣으려면 `class-timetable` 코드블록을 씁니다. 빈 블록이면 이번 주가 나오고, `view: today` · `view: upcoming` · `height: 420` 같은 옵션을 한 줄씩 적을 수 있습니다.
+
+**2.0** — 사이드바가 **오늘 · 주간 · 할 일** 세 탭으로 나뉩니다. *오늘*은 하루를 위에서 아래로 읽고(지금 수업 카드 · 남은 시간 · 공강), *할 일*은 지난 마감 · 오늘 · 다가오는 것 · 언제든 · 노트 속 체크박스를 한 목록에 모읍니다. 칸에 적고 Enter 하면 끝이고, 수업을 고르면 그 수업 노트의 `todo:` 에, 고르지 않으면 설정에만 남습니다(파일을 만들지 않습니다). 강의 노트에 적은 `- [ ]` 도 여기 모이고, 여기서 체크하면 노트의 줄도 `[x]` 가 됩니다.
+
+포털 · 엑셀에 있는 시간표는 **＋ → 시간표 한 번에 등록**에 붙여넣으세요(`통계학 월수 10:30-12:00 301호`). 캘린더의 `.ics` 파일도 읽고, 반대로 학기 시간표와 시험 · 마감(하루 전 알림)을 `.ics` 로 내보내 휴대폰 캘린더에 넣을 수 있습니다. 학기가 바뀌면 설정의 **새 학기 시작…** — 지난 학기 수업은 그대로 보관되고 새 학기는 빈 시간표로 시작합니다. 책장에는 수업마다 **노트 기록**(수업이 열린 날마다 점 하나, 노트가 있으면 채운 점)이 보입니다.
 
 버그나 필요한 기능은 설정 맨 아래 **의견 보내기**로 알려 주세요.
 
