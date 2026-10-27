@@ -86,6 +86,8 @@ Everything else is optional:
 | `cancelled` | Dates this class does not meet: `2026-10-05` |
 | `todo` | That class's to-dos, one per line: `2026-10-22 Make the slides`. A `✓` at the end marks it done |
 | `short` | Short name used when the column is too narrow for the full one |
+| `template` | Note template for this class's *today's note* (its name from Settings → Note templates). Omit it for the default |
+| `from` · `until` | Dates this class runs, for a class that only meets part of the semester: `2026-09-01` |
 
 Times are read generously: `월`, `월요일`, `mon`, `m`, `月`, `一` all work, as do `9`, `9:00`, `09:00` and `0900`.
 
@@ -151,6 +153,10 @@ Gear → *Export to calendar (.ics)*, or the command. The file goes to your atta
 ## Semesters
 
 Settings → *Semester* keeps each semester's name, start, end and days without classes. *Start a new semester…* writes the current semester's name into `semester:` on its classes (nothing else changes, no note moves), then switches to the new one with an empty timetable. Pick a past semester from the list to look at it again.
+
+A class that only runs for half the semester stays in the same semester: give it its own dates under *Edit class* → *Runs* (`from:` · `until:`). It is drawn only on those dates, left out of the calendar export outside them, and two classes at the same hour in different halves do not count as overlapping.
+
+Lectures and practice sessions of one subject can be two class notes in the same folder, each with its own `notes:` folder and its own note template (*Edit class* → *Note template*).
 
 ## Days without classes
 
@@ -234,6 +240,8 @@ Dragging a class changes its weekly time, whichever week you are looking at. A o
 When a change would overlap another class or plan, a confirmation appears **before** anything is written, listing everything it collides with. An odd-week class and an even-week class at the same hour do not collide. Overlaps found while scanning (someone else's sync, hand-edited YAML) are only outlined in red — no dialog interrupts your typing.
 
 Mouse, touch and pen are all handled, so editing works the same on a tablet.
+
+Changing *Course note* under *Edit class* moves the class: its times, exams, deadlines, cancelled days and to-dos go to the new note or folder, and the old note stops being a class. A note or folder that already belongs to another class can't be picked.
 
 ## Install
 

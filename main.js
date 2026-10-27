@@ -1699,6 +1699,60 @@ const I18N_V40_FIX = {
 
 for (const code of Object.keys(I18N_V40_FIX)) Object.assign(I18N[code], I18N_V40_FIX[code]);
 
+/* v2.1 — 수업마다 템플릿 · 수업 기간 · 수업 옮기기 */
+const I18N_V21 = {
+  ko: {
+    courseTemplate: '노트 템플릿',
+    courseTemplateDefault: '기본 ({name})',
+    courseTemplateHint: '이 수업의 "오늘 노트"를 만들 때 쓸 템플릿. 강의와 실습처럼 수업마다 다르게 둘 수 있습니다.',
+    courseRange: '수업 기간',
+    courseRangeHint: '반 학기 수업처럼 학기 중 일부에만 열리면 적으세요. 비우면 학기 내내 열립니다.',
+    rangeFrom: '시작일',
+    rangeUntil: '종료일',
+    errDate: '{v} — 날짜를 읽지 못했습니다. YYYY-MM-DD 로 적어 주세요.',
+    courseMoved: '{name} — {path} 로 옮겼습니다.',
+    targetTaken: '{path} 는 이미 다른 수업입니다. 다른 노트나 폴더를 고르세요.',
+  },
+  en: {
+    courseTemplate: 'Note template',
+    courseTemplateDefault: 'Default ({name})',
+    courseTemplateHint: 'Used for this class\'s "today\'s note". Lectures and practice sessions can each have their own.',
+    courseRange: 'Runs',
+    courseRangeHint: 'For a class that only runs part of the semester, like a half-semester course. Leave empty for the whole semester.',
+    rangeFrom: 'From',
+    rangeUntil: 'Until',
+    errDate: '{v} — could not read the date. Write it as YYYY-MM-DD.',
+    courseMoved: '{name} — moved to {path}.',
+    targetTaken: '{path} is already another class. Pick a different note or folder.',
+  },
+  zh: {
+    courseTemplate: '笔记模板',
+    courseTemplateDefault: '默认（{name}）',
+    courseTemplateHint: '创建本课程"今天的笔记"时使用的模板。讲授课和练习课可以各用各的。',
+    courseRange: '上课期间',
+    courseRangeHint: '如果课程只在学期的一部分时间上（例如半学期课程），请填写。留空表示整个学期。',
+    rangeFrom: '开始',
+    rangeUntil: '结束',
+    errDate: '{v} — 无法识别日期。请写成 YYYY-MM-DD。',
+    courseMoved: '{name} — 已移到 {path}。',
+    targetTaken: '{path} 已经是另一门课程。请选择其他笔记或文件夹。',
+  },
+  ja: {
+    courseTemplate: 'ノートのテンプレート',
+    courseTemplateDefault: '既定（{name}）',
+    courseTemplateHint: 'この授業の「今日のノート」を作るときのテンプレート。講義と演習で分けられます。',
+    courseRange: '開講期間',
+    courseRangeHint: '半期の授業のように学期の一部だけ開かれる場合に入力します。空欄なら学期中ずっと。',
+    rangeFrom: '開始日',
+    rangeUntil: '終了日',
+    errDate: '{v} — 日付を読み取れませんでした。YYYY-MM-DD で入力してください。',
+    courseMoved: '{name} — {path} に移しました。',
+    targetTaken: '{path} はすでに別の授業です。別のノートかフォルダを選んでください。',
+  },
+};
+
+for (const code of Object.keys(I18N_V21)) Object.assign(I18N[code], I18N_V21[code]);
+
 
 
 
@@ -1984,7 +2038,7 @@ function nextSession(settings, course) {
     if (holidayOf(settings, date)) continue;
     const day = (date.getDay() + 6) % 7;
     for (const slot of course.slots) {
-      if (slot.day !== day || !slotRuns(settings, slot, date) || isCancelled(course, slot, ymd(date))) continue;
+      if (slot.day !== day || !slotRuns(settings, slot, date, course) || isCancelled(course, slot, ymd(date))) continue;
       if (d === 0 && now >= slot.start && now < slot.end) {
         return { slot, date, live: true, label: t('liveSession', { time: hhmm(slot.end) }) };
       }
@@ -2099,6 +2153,12 @@ function mondayOf(date) {
 function ymd(d) { return formatDate(d, 'YYYY-MM-DD'); }
 
 // 'YYYY-MM-DD' 를 그날 0시로. 없는 날짜(2월 30일)는 읽지 않는다.
+// 수업 기간 칸의 값: 읽을 수 있는 날짜면 YYYY-MM-DD 로 고쳐 적고, 비었으면 '' (키를 지운다)
+function ymdOrEmpty(raw) {
+  const d = parseYmd(raw);
+  return d ? ymd(d) : '';
+}
+
 function parseYmd(str) {
   const m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(String(str == null ? '' : str).trim());
   if (!m) return null;
@@ -2148,10 +2208,32 @@ function weekParity(settings, date) {
   return ((n % 2) + 2) % 2 === 1 ? 'odd' : 'even';
 }
 
-// 그 날짜에 이 시간이 실제로 열리는가: 학기가 끝났거나 격주가 아닌 주면 아니다
-function slotRuns(settings, slot, date) {
+// frontmatter 의 날짜. 옵시디언은 글자로 주지만, 다른 도구가 날짜 값으로 써 두었을 수도 있다.
+function fmDate(v) {
+  if (v instanceof Date && !isNaN(v)) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+  return parseYmd(v);
+}
+
+// 수업 기간(from: · until:) 안의 날인가. 반 학기 수업처럼 학기의 일부에만 열리는 수업.
+function courseOpenOn(course, date) {
+  if (!course) return true;
+  if (course.from && dayDiff(date, course.from) < 0) return false;
+  if (course.until && dayDiff(date, course.until) > 0) return false;
+  return true;
+}
+
+// 두 수업의 기간이 하루라도 겹치는가 (기간이 없으면 학기 내내)
+function rangesMeet(a, b) {
+  if (a.until && b.from && dayDiff(a.until, b.from) < 0) return false;
+  if (b.until && a.from && dayDiff(b.until, a.from) < 0) return false;
+  return true;
+}
+
+// 그 날짜에 이 시간이 실제로 열리는가: 학기가 끝났거나, 수업 기간 밖이거나, 격주가 아닌 주면 아니다
+function slotRuns(settings, slot, date, course) {
   const end = parseYmd(settings && settings.semesterEnd);
   if (end && dayDiff(date, end) > 0) return false;
+  if (!courseOpenOn(course, date)) return false;
   if (slot.parity && slot.parity !== weekParity(settings, date)) return false;
   return true;
 }
@@ -2759,6 +2841,7 @@ function buildWeek(settings, courses, plans, monday) {
       const date = dates[s.day];
       if (end && dayDiff(date, end) > 0) { ended = true; continue; }
       if (s.parity && s.parity !== weekParity(settings, date)) continue;
+      if (!courseOpenOn(c, date)) continue;   // 수업 기간 밖 — 학기가 끝난 것은 아니다
       const holiday = holidays[s.day];
       byDay[s.day].push({
         kind: 'course', course: c, slot: s, date,
@@ -3444,6 +3527,9 @@ class ClassTimetablePlugin extends Plugin {
           hasColor: !!fm.color,
           semester: fmSem,
           notesPath: fm.notes ? String(fm.notes).trim() : '',
+          template: fm.template ? String(fm.template).trim() : '',   // 이 수업의 노트 템플릿 (이름 또는 id)
+          from: fmDate(fm.from),     // 수업 기간 — 반 학기 수업
+          until: fmDate(fm.until),
           shortcuts: Array.isArray(fm.shortcuts)
             ? fm.shortcuts.map((x) => String(x).trim()).filter(Boolean)
             : (fm.shortcuts ? [String(fm.shortcuts).trim()] : []),
@@ -3899,7 +3985,7 @@ class ClassTimetablePlugin extends Plugin {
   }
 
   noteNameFor(course, slot, date) {
-    const tpl = this.template(this.settings.defaultTemplate);
+    const tpl = this.courseTemplate(course);
     if (!tpl) return '';
     const raw = applyTemplate(tpl.filename || '{{date:MMDD}} {{course}}', this.templateContext(course, slot, this.notesFolder(course), date));
     return raw.replace(/[\\/:*?"<>|#^[\]]/g, '').trim().replace(/\.md$/i, '');
@@ -3934,7 +4020,7 @@ class ClassTimetablePlugin extends Plugin {
       if (holidayOf(s, d)) continue;
       const wd = (d.getDay() + 6) % 7;
       for (const slot of course.slots) {
-        if (slot.day !== wd || !slotRuns(s, slot, d) || isCancelled(course, slot, ymd(d))) continue;
+        if (slot.day !== wd || !slotRuns(s, slot, d, course) || isCancelled(course, slot, ymd(d))) continue;
         if (dayDiff(d, today) === 0 && slot.start > now) continue;
         out.push({ date: d, slot });
       }
@@ -4035,10 +4121,11 @@ class ClassTimetablePlugin extends Plugin {
   }
 
   // 자기 자신은 노트 경로로 가린다. 한 폴더에 여러 수업 노트가 있어도 안 헷갈린다.
-  findConflicts(slots, exceptFilePath) {
+  findConflicts(slots, exceptFilePath, range) {
     const hits = [];
     for (const c of this.getCourses().courses) {
       if (c.file && c.file.path === exceptFilePath) continue;
+      if (range && !rangesMeet(range, c)) continue;
       for (const mine of slots) {
         for (const theirs of c.slots) {
           if (slotsOverlap(mine, theirs)) hits.push({ label: c.name, path: c.file.path, file: c.file, mine, theirs });
@@ -4234,6 +4321,14 @@ class ClassTimetablePlugin extends Plugin {
     return list.find((x) => x.id === id) || list.find((x) => x.id === this.settings.defaultTemplate) || list[0];
   }
 
+  // 이 수업의 템플릿: frontmatter 의 template: (이름이나 id) 가 가리키는 것, 없으면 기본 템플릿
+  courseTemplate(course) {
+    const want = course && course.template ? course.template.toLowerCase() : '';
+    const list = this.settings.templates || [];
+    const own = want && list.find((x) => x.id === course.template || String(x.name || '').trim().toLowerCase() === want);
+    return own || this.template(this.settings.defaultTemplate);
+  }
+
   // 날짜는 부르는 쪽이 정한다: "오늘 노트"면 오늘, 시간표에서 고른 칸이면 그 칸의 날짜.
   // 안 주면 옛 규칙대로 그 요일의 이번 주 날짜를 쓴다 (템플릿 미리보기).
   templateContext(course, slot, folder, when) {
@@ -4281,7 +4376,7 @@ class ClassTimetablePlugin extends Plugin {
     const folder = this.notesFolder(course);
     if (!folder) { new Notice(t('notesUnset')); return null; }
 
-    const tpl = this.template(templateId);
+    const tpl = templateId ? this.template(templateId) : this.courseTemplate(course);
     if (!tpl) return null;
 
     const ctx = this.templateContext(course, slot, folder, date);
@@ -4381,7 +4476,7 @@ class ClassTimetablePlugin extends Plugin {
         () => this.saveCourse({ file }, before));
     };
 
-    const hits = this.findConflicts([slots[idx]], course.file.path);
+    const hits = this.findConflicts([slots[idx]], course.file.path, course);
     if (!hits.length) { await save(); return; }
 
     new ConflictModal(this, {
@@ -4466,6 +4561,7 @@ class ClassTimetablePlugin extends Plugin {
       patch.subtitle = extra.subtitle == null ? '' : extra.subtitle;
       patch.color = extra.color || '';
       if (extra.short != null) patch.short = extra.short;
+      for (const k of ['template', 'from', 'until']) if (extra[k] != null) patch[k] = extra[k];
     }
     this.markPending(file.path, patch);
 
@@ -4481,11 +4577,35 @@ class ClassTimetablePlugin extends Plugin {
         if (extra.color) fm.color = extra.color; else delete fm.color;
         if (extra.short != null) { if (extra.short) fm.short = extra.short; else delete fm.short; }
         if (extra.notes && !fm.notes) fm.notes = extra.notes;
+        for (const k of ['template', 'from', 'until']) {
+          if (extra[k] == null) continue;
+          if (extra[k]) fm[k] = extra[k]; else delete fm[k];
+        }
       }
     });
 
     this.refreshAll();
     return file;
+  }
+
+  // 수업 편집 창에서 대상(폴더 · 노트)을 바꾸면 수업을 옮긴다. 새 노트에는 saveCourse 가 시간과 이름을 이미 썼고,
+  // 여기서는 시험 · 마감 · 휴강 · 할 일 같은 나머지를 따라 옮긴 뒤 옛 노트에서 수업 칸을 지운다.
+  // 옛 노트를 그대로 두면 같은 수업이 둘이 된다.
+  async moveCourse(fromFile, toFile) {
+    const CARRY = ['exam', 'exams', 'due', 'cancelled', 'canceled', 'todo', 'todos', 'shortcuts', 'notes', 'semester'];
+    const DROP = ['schedule', 'subtitle', 'color', 'short', 'template', 'from', 'until'];
+    const carried = {};
+    this.markPending(fromFile.path, { schedule: [] });
+    await this.app.fileManager.processFrontMatter(fromFile, (fm) => {
+      for (const k of CARRY) if (fm[k] != null) { carried[k] = fm[k]; delete fm[k]; }
+      for (const k of DROP) delete fm[k];
+    });
+    if (Object.keys(carried).length) {
+      await this.app.fileManager.processFrontMatter(toFile, (fm) => {
+        for (const k of Object.keys(carried)) if (fm[k] == null) fm[k] = carried[k];
+      });
+    }
+    this.refreshAll();
   }
 
   async removeFromTimetable(course) {
@@ -5311,7 +5431,7 @@ function nextAfter(plugin, courses, date) {
     let best = null;
     for (const c of courses) {
       for (const slot of c.slots) {
-        if (slot.day !== wd || !slotRuns(s, slot, day) || isCancelled(c, slot, ymd(day))) continue;
+        if (slot.day !== wd || !slotRuns(s, slot, day, c) || isCancelled(c, slot, ymd(day))) continue;
         if (!best || slot.start < best.slot.start) best = { c, slot };
       }
     }
@@ -6029,7 +6149,7 @@ function courseMenu(plugin, course, slot, date, cancelled, holiday) {
   // 첫 줄은 기본 템플릿의 필기 노트. 이름이 약속하는 날짜와 만들어지는 노트의 날짜가 같아야 한다:
   // 오늘 수업이면 "오늘의", 다른 날의 칸이면 그 날짜를 적는다.
   const templates = plugin.settings.templates || [];
-  const preferred = plugin.template(plugin.settings.defaultTemplate);
+  const preferred = plugin.courseTemplate(course);
   if (preferred) {
     menu.addItem((i) => i.setTitle(isToday ? t('newNoteCreate') : t('newNoteFor', { date: dateLabel(when) })).setIcon('file-plus')
       .onClick(() => plugin.createFromTemplate(course, slot, preferred.id, when)));
@@ -6428,7 +6548,8 @@ function wrapLines(ctx, text, width, maxLines) {
 }
 
 function drawTimetableImage(plugin) {
-  const courses = plugin.getCourses().courses;
+  const week = weekDates(mondayOf(new Date()));
+  const courses = plugin.getCourses().courses.filter((c) => week.some((d) => courseOpenOn(c, d)));
   const plans = plugin.plans();
   if (!courses.length && !plans.length) return null;
 
@@ -6599,7 +6720,10 @@ function buildIcs(plugin) {
   ];
 
   for (const c of res.courses) {
+    const cFrom = c.from && dayDiff(c.from, from) > 0 ? c.from : from;
+    const cUntil = c.until && dayDiff(until, c.until) > 0 ? c.until : until;
     c.slots.forEach((slot, i) => {
+      const from = cFrom, until = cUntil;
       let d = addDays(from, (slot.day - (from.getDay() + 6) % 7 + 7) % 7);
       if (slot.parity && weekParity(s, d) !== slot.parity) d = addDays(d, 7);
       if (dayDiff(until, d) < 0) return;
@@ -7707,6 +7831,10 @@ class CourseEditModal extends Modal {
 
     const c = this.opts.course;
     this.file = c ? c.file : null;
+    this.origFile = this.file;   // 대상을 바꾸면 수업을 이 노트에서 옮긴다 (이슈 #2)
+    this.template = c ? (c.template || '') : '';
+    this.from = c && c.from ? ymd(c.from) : '';
+    this.until = c && c.until ? ymd(c.until) : '';
     this.folderPath = '';
     this.newNotePath = '';
     this.title = c ? (c.titleRaw || '') : '';
@@ -7750,11 +7878,16 @@ class CourseEditModal extends Modal {
     pick.addClass(label ? 'is-set' : 'is-empty');
     pick.setText(label || t('pickTarget'));
     pick.onclick = () => {
-      const taken = new Set(this.plugin.getCourses().courses.map((c) => c.file.path));
-      if (this.file) taken.delete(this.file.path);
+      const courses = this.plugin.getCourses().courses;
+      const taken = new Set(courses.map((c) => c.file.path));
+      const own = this.origFile || this.file;
+      if (own) taken.delete(own.path);
+      for (const c of courses) if (c.isFolderNote && c.folder && c.file !== own) taken.add(c.folder.path);
       new TargetPickModal(this.plugin, {
         taken,
         onPick: (item) => {
+          const path = item.kind === 'file' ? item.file.path : item.kind === 'folder' ? item.folder.path : item.path;
+          if (taken.has(path)) { new Notice(t('targetTaken', { path })); return; }
           this.file = item.kind === 'file' ? item.file : null;
           this.folderPath = item.kind === 'folder' ? item.folder.path : '';
           this.newNotePath = item.kind === 'new' ? item.path : '';
@@ -7880,6 +8013,43 @@ class CourseEditModal extends Modal {
     parityHint = timeField.createDiv({ cls: 'ctt-field-hint' });
     paintParity();
 
+    // 수업 기간 — 반 학기 수업처럼 학기의 일부에만 열리는 수업
+    const rangeField = el.createDiv({ cls: 'ctt-field' });
+    rangeField.createDiv({ cls: 'ctt-field-label', text: t('courseRange') });
+    const rangeRow = rangeField.createDiv({ cls: 'ctt-timerow ctt-rangerow' });
+    for (const [key, label] of [['from', t('rangeFrom')], ['until', t('rangeUntil')]]) {
+      if (key === 'until') rangeRow.createSpan({ cls: 'ctt-dash', text: '–' });
+      const input = rangeRow.createEl('input', { type: 'text', cls: 'ctt-date-input' });
+      input.value = this[key];
+      input.placeholder = label;
+      input.setAttr('aria-label', label + ' (YYYY-MM-DD)');
+      input.oninput = () => { this[key] = input.value; };
+      saveOnEnter(input, () => this.trySave());
+    }
+    rangeField.createDiv({ cls: 'ctt-field-hint', text: t('courseRangeHint') });
+
+    // 노트 템플릿 — 템플릿이 둘 이상일 때만 고를 것이 있다
+    const tpls = this.plugin.settings.templates || [];
+    if (tpls.length > 1 || this.template) {
+      const tplField = el.createDiv({ cls: 'ctt-field' });
+      tplField.createDiv({ cls: 'ctt-field-label', text: t('courseTemplate') });
+      const sel = tplField.createEl('select', { cls: 'dropdown' });
+      const def = this.plugin.template(this.plugin.settings.defaultTemplate);
+      const none = sel.createEl('option', { text: t('courseTemplateDefault', { name: def ? def.name : '' }) });
+      none.value = '';
+      const want = this.template.toLowerCase();
+      let matched = !want;
+      for (const tpl of tpls) {
+        const o = sel.createEl('option', { text: tpl.name });
+        o.value = tpl.name;
+        if (want && (tpl.id === this.template || String(tpl.name).trim().toLowerCase() === want)) { o.selected = true; matched = true; }
+      }
+      // 손으로 적은 이름이 지금 템플릿 목록에 없으면, 지우지 않고 그대로 보여 준다
+      if (!matched) { const o = sel.createEl('option', { text: this.template }); o.value = this.template; o.selected = true; }
+      sel.onchange = () => { this.template = sel.value; };
+      tplField.createDiv({ cls: 'ctt-field-hint', text: t('courseTemplateHint') });
+    }
+
     const buttons = el.createDiv({ cls: 'ctt-modal-buttons' });
     // 일정 모달과 같은 자리에 같은 모양으로. 우클릭 메뉴에만 있으면 찾기 어렵다.
     if (this.opts.course) {
@@ -7925,7 +8095,16 @@ class CourseEditModal extends Modal {
       }
     }
 
-    const hits = this.plugin.findConflicts(slots, this.file ? this.file.path : '');
+    const range = {};
+    for (const key of ['from', 'until']) {
+      const raw = String(this[key] || '').trim();
+      if (raw && !parseYmd(raw)) { failNotice('errDate', { v: raw }); return; }
+      range[key] = parseYmd(raw);
+    }
+
+    // 편집 중에 대상을 바꿨으면 옛 노트의 시간은 옮겨 갈 것이니 겹침으로 세지 않는다
+    const own = this.origFile || this.file;
+    const hits = this.plugin.findConflicts(slots, own ? own.path : '', range);
     if (!hits.length) { this.commit(slots); return; }
 
     this.close();
@@ -7937,14 +8116,24 @@ class CourseEditModal extends Modal {
   }
 
   async commit(slots) {
-    const extra = { title: this.title.trim(), subtitle: this.subtitle.trim(), color: this.color, short: this.short.trim() };
+    const extra = {
+      title: this.title.trim(), subtitle: this.subtitle.trim(), color: this.color, short: this.short.trim(),
+      template: this.template.trim(), from: ymdOrEmpty(this.from), until: ymdOrEmpty(this.until),
+    };
+    // 다른 노트로 옮기면 이름이 새 폴더 · 노트 이름으로 바뀌어 버린다. 보이던 이름을 그대로 둔다.
+    if (this.origFile && this.file !== this.origFile && !extra.title) extra.title = this.opts.course.name;
     const target = this.file
       ? { file: this.file }
       : (this.newNotePath ? { newPath: this.newNotePath } : { folderPath: this.folderPath });
 
     const run = async () => {
       try {
-        await this.plugin.saveCourse(target, slots, extra);
+        const saved = await this.plugin.saveCourse(target, slots, extra);
+        const from = this.origFile;
+        if (from && saved && saved.path !== from.path) {
+          await this.plugin.moveCourse(from, saved);
+          new Notice(t('courseMoved', { name: extra.title || this.opts.course.name, path: saved.path }));
+        }
         this.close();
       } catch (e) { failNotice('errSaveCourse', {}, e); }
     };

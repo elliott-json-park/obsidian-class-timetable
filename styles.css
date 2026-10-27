@@ -2722,3 +2722,21 @@
 
 /* 블록 이름 — 두 줄이 되면 줄 길이를 고르게 ("선형대/수" 대신 "선형/대수") */
 .ctt-block-name, .ctt-arow-name, .ctt-nowcard-name { text-wrap: balance; }
+
+/* 수업 기간: 시작일 – 종료일 */
+.ctt-field .ctt-rangerow input.ctt-date-input { flex: 0 1 9em; text-align: center; }
+
+/* 태블릿(iPad): 옵시디언은 .is-tablet button:not(.clickable-icon) 에 양옆 20px 여백을 준다.
+ * 위의 규칙들보다 앞서서, 34px 짜리 + · 연필 · 톱니 · 주 넘기기 버튼 안에서 아이콘 자리가 0 이 됐다 (이슈 #3).
+ * 같은 앞섬으로 다시 적어 원래 여백으로 되돌린다. */
+.is-tablet :is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) :is(.ctt-add, .ctt-iconbtn, .ctt-weekbtn, .ctf-back, .ctf-dot, .ctt-swatch, .ctt-rowbtn) { padding: 0; }
+.is-tablet :is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) :is(.ctt-tab, .ctt-daylabel) { padding: 0 6px; }
+.is-tablet :is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) .ctt-weeklabel { padding: 0 5px; }
+.is-tablet :is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) .ctt-pill { padding: 0 11px; }
+.is-tablet :is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) .ctt-tadd-go { padding: 0 10px; }
+.is-tablet :is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) .ctf-linkbtn { padding: 4px 10px; }
+.is-tablet :is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) .ctt-folder-btn { padding: 4px 12px; }
+.is-tablet :is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) .ctt-addrow { padding: 3px 0; }
+.is-tablet :is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) .ctt-seg-btn { padding: 0 14px; }
+/* 그래도 칸이 좁으면 아이콘이 먼저 줄어들지 않게 */
+:is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) :is(.ctt-add, .ctt-iconbtn, .ctt-weekbtn) .svg-icon { flex-shrink: 0; }
