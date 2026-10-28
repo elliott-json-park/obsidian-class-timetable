@@ -2045,6 +2045,10 @@
 .ctt-root .ctt-arow-note:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
 .ctt-root .ctt-arow-note.is-has { color: var(--text-accent); }
 
+/* 노트 없이 체크한 수업 — 체크 칸은 노트 버튼 앞에 */
+.ctt-arow .ctt-arow-check { margin-right: 6px; }
+.ctt-arow.is-checked .ctt-arow-name { color: var(--text-muted); }
+
 /* 공강 줄 */
 .ctt-agap {
   display: flex;
@@ -2312,7 +2316,7 @@
 .ctt-todo.is-enter .ctt-tsec-head { animation: ctt-rise 340ms var(--ctt-ease) both; animation-delay: calc(var(--i, 0) * 26ms + 40ms); }
 
 /* 둥근 체크 칸 — 켜면 수업 색으로 차오르고 체크가 그어진다 */
-.ctt-trow .ctt-check {
+:is(.ctt-trow, .ctt-arow) .ctt-check {
   flex: 0 0 auto;
   position: relative;
   width: 18px;
@@ -2329,10 +2333,10 @@
   transition: background 180ms ease, box-shadow 180ms ease, transform 160ms var(--ctt-ease);
 }
 
-.ctt-trow .ctt-check:hover { background: color-mix(in srgb, var(--ctt-color, var(--interactive-accent)) 14%, transparent); }
-.ctt-trow .ctt-check:active { transform: scale(.84); }
+:is(.ctt-trow, .ctt-arow) .ctt-check:hover { background: color-mix(in srgb, var(--ctt-color, var(--interactive-accent)) 14%, transparent); }
+:is(.ctt-trow, .ctt-arow) .ctt-check:active { transform: scale(.84); }
 
-.ctt-trow .ctt-check.is-on {
+:is(.ctt-trow, .ctt-arow) .ctt-check.is-on {
   background: var(--ctt-color, var(--interactive-accent));
   box-shadow: none;
 }
@@ -2552,6 +2556,9 @@
 .ctf-root .ctf-dot.is-on { background: var(--ctf-color); box-shadow: none; }
 .ctf-root .ctf-dot:hover { transform: scale(1.3); }
 
+/* 노트 없이 체크한 날: 굵은 고리 — 노트가 있는 날(꽉 찬 점)과 구분된다 */
+.ctf-root .ctf-dot.is-checked { background: transparent; box-shadow: inset 0 0 0 3.5px var(--ctf-color); }
+
 .ctf-recent { display: flex; flex-direction: column; }
 
 .ctf-recent-row {
@@ -2689,13 +2696,13 @@
 /* 휴대폰: 손가락으로 누르는 것들은 44px 가까이 */
 .is-mobile .ctt-root .ctt-weekbtn { width: 34px; height: 34px; }
 .is-mobile .ctt-root .ctt-tab { height: 34px; }
-.is-mobile .ctt-trow .ctt-check { width: 22px; height: 22px; }
+.is-mobile :is(.ctt-trow, .ctt-arow) .ctt-check { width: 22px; height: 22px; }
 .is-mobile .ctt-trow .ctt-trow-more { width: 30px; height: 30px; }
 .is-mobile .ctt-tadd .ctt-tchip { height: 28px; padding: 0 12px; }
 .is-mobile .ctt-root .ctt-arow-note { height: 28px; padding: 0 10px; }
 
 /* 옵시디언 모바일은 버튼에 최소 폭을 준다 — 둥근 칸이 타원으로 늘어나지 않게 푼다 */
-.ctt-trow .ctt-check, .ctt-trow .ctt-trow-more, .ctt-root .ctt-weekbtn, .ctf-root .ctf-dot,
+:is(.ctt-trow, .ctt-arow) .ctt-check, .ctt-trow .ctt-trow-more, .ctt-root .ctt-weekbtn, .ctf-root .ctf-dot,
 :is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) .ctt-iconbtn,
 :is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) .ctt-add { min-width: 0; }
 .is-mobile :is(.ctt-root, .ctf-root) .ctt-iconbtn,

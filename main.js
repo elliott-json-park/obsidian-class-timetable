@@ -1398,7 +1398,7 @@ const I18N_V40 = {
     seeAllTodo: '할 일 탭에서 모두 보기', upcomingShort: '시험 · 마감', noAssignments: '아직 적힌 시험·마감이 없습니다',
     assignProgress: '{n}/{m} 끝냄',
     // 노트 기록
-    attendTitle: '노트 기록', attendCount: '{n} / {m}회', attendHint: '노트가 없는 수업 {n}회 — 점을 누르면 그 날의 노트를 만듭니다.',
+    attendTitle: '수업 기록', attendCount: '{n} / {m}회', attendHint: '아직 안 끝낸 수업 {n}회 — 점을 누르면 그 날의 노트를 만들고, 우클릭하면 노트 없이 체크합니다.',
     recentNotes: '최근 노트',
     // 짧은 이름
     shortLabel: '짧은 이름', shortPh: '좁은 칸에서 쓸 이름',
@@ -1477,7 +1477,7 @@ const I18N_V40 = {
     openTaskNote: 'Show in note', openCourseNote: 'Open class note', promoteTodo: 'Turn into a deadline for this class',
     seeAllTodo: 'See all in To-do', upcomingShort: 'Exams · deadlines', noAssignments: 'No exams or deadlines written yet',
     assignProgress: '{n}/{m} done',
-    attendTitle: 'Notes taken', attendCount: '{n} of {m}', attendHint: '{n} classes without a note — click a dot to write that day\'s note.',
+    attendTitle: 'Classes done', attendCount: '{n} of {m}', attendHint: '{n} classes not done yet — click a dot to write that day\'s note, or right-click it to tick it off without one.',
     recentNotes: 'Recent notes',
     shortLabel: 'Short name', shortPh: 'used when the column is narrow',
     emptyImport: 'Paste your timetable',
@@ -1550,7 +1550,7 @@ const I18N_V40 = {
     openTaskNote: '在笔记中查看', openCourseNote: '打开课程笔记', promoteTodo: '改为这门课的截止事项',
     seeAllTodo: '在待办中查看全部', upcomingShort: '考试 · 截止', noAssignments: '还没有记录考试或截止日期',
     assignProgress: '已完成 {n}/{m}',
-    attendTitle: '笔记记录', attendCount: '{n} / {m} 次', attendHint: '有 {n} 次课没有笔记 — 点击圆点即可创建那天的笔记。',
+    attendTitle: '上课记录', attendCount: '{n} / {m} 次', attendHint: '有 {n} 次课尚未完成 — 点击圆点创建那天的笔记，右键点击则不写笔记直接打勾。',
     recentNotes: '最近的笔记',
     shortLabel: '简称', shortPh: '栏位较窄时使用',
     emptyImport: '粘贴课程表开始',
@@ -1623,7 +1623,7 @@ const I18N_V40 = {
     openTaskNote: 'ノートで見る', openCourseNote: '授業ノートを開く', promoteTodo: 'この授業の締切にする',
     seeAllTodo: 'やることタブですべて見る', upcomingShort: '試験 · 締切', noAssignments: 'まだ試験・締切が書かれていません',
     assignProgress: '{n}/{m} 完了',
-    attendTitle: 'ノートの記録', attendCount: '{n} / {m} 回', attendHint: 'ノートのない授業が {n} 回 — 点を押すとその日のノートを作ります。',
+    attendTitle: '授業の記録', attendCount: '{n} / {m} 回', attendHint: 'まだ済んでいない授業が {n} 回 — 点を押すとその日のノートを作り、右クリックでノートなしでチェックします。',
     recentNotes: '最近のノート',
     shortLabel: '短い名前', shortPh: '狭い欄で使う名前',
     emptyImport: '時間割を貼り付けて始める',
@@ -1752,6 +1752,16 @@ const I18N_V21 = {
 };
 
 for (const code of Object.keys(I18N_V21)) Object.assign(I18N[code], I18N_V21[code]);
+
+// 2.2.0 — 노트 없이 수업 체크하기
+const I18N_V22 = {
+  ko: { checkClass: '{date} 수업 체크 (노트 없이)', uncheckClass: '{date} 체크 해제', checkedShort: '체크함' },
+  en: { checkClass: 'Tick off {date} (no note needed)', uncheckClass: 'Untick {date}', checkedShort: 'ticked' },
+  zh: { checkClass: '勾选 {date} 的课（不写笔记）', uncheckClass: '取消勾选 {date}', checkedShort: '已勾选' },
+  ja: { checkClass: '{date} の授業をチェック（ノートなし）', uncheckClass: '{date} のチェックを外す', checkedShort: 'チェック済み' },
+};
+
+for (const code of Object.keys(I18N_V22)) Object.assign(I18N[code], I18N_V22[code]);
 
 
 
@@ -2282,6 +2292,13 @@ function holidayOf(settings, date) {
 // cancelled: 에 그 날짜가 있으면 휴강. 하루에 두 번 있는 수업은 '날짜 시:분' 으로 하나만 가리킬 수 있다.
 function isCancelled(course, slot, dateStr) {
   const list = course.cancelled;
+  if (!list || !list.length) return false;
+  return list.includes(dateStr) || list.includes(dateStr + ' ' + hhmm(slot.start));
+}
+
+// checked: 에 그 날짜가 있으면 노트 없이 끝냈다고 체크한 수업 (출석 · 제출 같은 것). 적는 법은 cancelled: 와 같다.
+function isChecked(course, slot, dateStr) {
+  const list = course.checked;
   if (!list || !list.length) return false;
   return list.includes(dateStr) || list.includes(dateStr + ' ' + hhmm(slot.start));
 }
@@ -3535,6 +3552,8 @@ class ClassTimetablePlugin extends Plugin {
             : (fm.shortcuts ? [String(fm.shortcuts).trim()] : []),
           // 휴강한 날들. '2026-10-05' 또는 '2026-10-05 10:30'
           cancelled: normCancelled(fm.cancelled != null ? fm.cancelled : fm.canceled),
+          // 노트 없이 체크한 날들 — 형식은 cancelled 와 같다
+          checked: normCancelled(fm.checked),
           dueRaw: listOf(fm.due),
           examRaw: listOf(fm.exam != null ? fm.exam : fm.exams),
           todoRaw: listOf(fm.todo != null ? fm.todo : fm.todos),
@@ -3738,6 +3757,28 @@ class ClassTimetablePlugin extends Plugin {
         if (c && isCancelled(c, slot, day)) await this.toggleCancelled(c, slot, date);
       });
     }
+  }
+
+  // 그 날의 수업을 노트 없이 끝냈다고 체크하거나 되돌린다. 체크한 수업은 노트를 남긴 수업처럼 센다.
+  async toggleChecked(course, slot, date) {
+    if (!course || !course.file) return;
+    const day = ymd(date);
+    const exact = day + ' ' + hhmm(slot.start);
+    const twice = course.slots.filter((s) => s.day === slot.day).length > 1;
+    const was = isChecked(course, slot, day);
+    const next = (list) => {
+      const norm = normCancelled(list);
+      if (was) return norm.filter((x) => x !== day && x !== exact);
+      return norm.concat(twice ? exact : day).sort();
+    };
+    this.markPending(course.file.path, { checked: next(course.checked) });
+    try {
+      await this.app.fileManager.processFrontMatter(course.file, (fm) => {
+        const list = next(fm.checked);
+        if (list.length) fm.checked = list; else delete fm.checked;
+      });
+    } catch (e) { failNotice('errSaveCourse', {}, e); }
+    this.refreshAll();
   }
 
   /* ── 할 일 ──
@@ -3993,6 +4034,11 @@ class ClassTimetablePlugin extends Plugin {
 
   hasNoteOn(course, slot, date, index) {
     return index.dates.has(ymd(date)) || index.names.has(this.noteNameFor(course, slot, date));
+  }
+
+  // 그 날의 수업을 끝냈는가: 노트가 있거나, 노트 없이 체크했다
+  doneOn(course, slot, date, index) {
+    return isChecked(course, slot, ymd(date)) || this.hasNoteOn(course, slot, date, index);
   }
 
   // 그 날의 필기 노트 파일. 없으면 null.
@@ -4592,7 +4638,7 @@ class ClassTimetablePlugin extends Plugin {
   // 여기서는 시험 · 마감 · 휴강 · 할 일 같은 나머지를 따라 옮긴 뒤 옛 노트에서 수업 칸을 지운다.
   // 옛 노트를 그대로 두면 같은 수업이 둘이 된다.
   async moveCourse(fromFile, toFile) {
-    const CARRY = ['exam', 'exams', 'due', 'cancelled', 'canceled', 'todo', 'todos', 'shortcuts', 'notes', 'semester'];
+    const CARRY = ['exam', 'exams', 'due', 'cancelled', 'canceled', 'checked', 'todo', 'todos', 'shortcuts', 'notes', 'semester'];
     const DROP = ['schedule', 'subtitle', 'color', 'short', 'template', 'from', 'until'];
     const carried = {};
     this.markPending(fromFile.path, { schedule: [] });
@@ -4925,7 +4971,7 @@ function renderTimetableNow(plugin, containerEl, opts) {
     if (!date || ahead(date, slot)) return null;
     if (termStart && dayDiff(date, termStart) < 0) return null;   // 학기 전의 주는 셀 것이 없다
     if (!noteIdx.has(course.key)) noteIdx.set(course.key, plugin.noteIndex(course));
-    return plugin.hasNoteOn(course, slot, date, noteIdx.get(course.key));
+    return plugin.doneOn(course, slot, date, noteIdx.get(course.key));
   };
 
   // 다른 주를 볼 때는 "오늘"도 "지금"도 없다 (ti 가 어느 요일과도 안 맞게 둔다)
@@ -5396,8 +5442,19 @@ function renderAgendaRow(plugin, list, it, o) {
         : [it.slot.location, it.course.subtitle ? String(it.course.subtitle).split(/\r?\n/)[0] : ''].filter((x, k, a) => x && a.indexOf(x) === k).join(' · ');
   if (sub) main.createDiv({ cls: 'ctt-arow-sub', text: sub });
 
-  // 지났거나 진행 중인 수업: 그 날 노트가 있으면 열고, 없으면 바로 만든다
+  // 지났거나 진행 중인 수업: 노트 없이 끝냈다고 체크하고(출석 · 제출), 그 날 노트가 있으면 열고, 없으면 바로 만든다
   if (!isPlan && !it.cancelled && started) {
+    const checked = isChecked(it.course, it.slot, ymd(o.date));
+    if (checked) row.addClass('is-checked');
+    const tip = t(checked ? 'uncheckClass' : 'checkClass', { date: dateLabel(o.date) });
+    const box = checkBox(card, checked, tip);
+    box.addClass('ctt-arow-check');
+    box.setAttr('title', tip);
+    box.onclick = (e) => {
+      e.stopPropagation();
+      box.toggleClass('is-on', !checked);
+      plugin.toggleChecked(it.course, it.slot, o.date);
+    };
     const file = plugin.noteFileOn(it.course, it.slot, o.date);
     const btn = card.createEl('button', { cls: 'ctt-arow-note' + (file ? ' is-has' : '') });
     icon(btn.createSpan({ cls: 'ctt-pill-icon' }), file ? 'file-text' : 'file-plus', '');
@@ -6163,6 +6220,14 @@ function courseMenu(plugin, course, slot, date, cancelled, holiday) {
     menu.addItem((i) => i.setTitle(t('holidayMenu', { date: dateLabel(when) }) + (holiday.name ? ' · ' + holiday.name : ''))
       .setIcon('calendar-off').setDisabled(true));
   } else {
+    // 이미 시작한 수업은 노트 없이 끝냈다고 체크할 수 있다
+    const begun = dayDiff(when, new Date()) < 0 || (isToday && nowMinutes() >= slot.start);
+    if (!cancelled && begun) {
+      const checked = isChecked(course, slot, ymd(when));
+      menu.addItem((i) => i.setTitle(t(checked ? 'uncheckClass' : 'checkClass', { date: dateLabel(when) }))
+        .setIcon(checked ? 'rotate-ccw' : 'check-circle')
+        .onClick(() => plugin.toggleChecked(course, slot, when)));
+    }
     menu.addItem((i) => i.setTitle(t(cancelled ? 'uncancelClass' : 'cancelClass', { date: dateLabel(when) }))
       .setIcon(cancelled ? 'rotate-ccw' : 'calendar-x')
       .onClick(() => plugin.toggleCancelled(course, slot, when)));
@@ -7114,7 +7179,10 @@ class FolderView extends ItemView {
     const sessions = plugin.sessionDates(course);
     if (sessions.length) {
       const idx = plugin.noteIndex(course);
-      const marks = sessions.map((s) => ({ s, has: plugin.hasNoteOn(course, s.slot, s.date, idx) }));
+      const marks = sessions.map((s) => {
+        const checked = isChecked(course, s.slot, ymd(s.date));
+        return { s, checked, has: checked || plugin.hasNoteOn(course, s.slot, s.date, idx) };
+      });
       const have = marks.filter((m) => m.has).length;
       const card = aside.createDiv({ cls: 'ctf-panel' });
       const h = card.createDiv({ cls: 'ctf-panel-head' });
@@ -7124,8 +7192,8 @@ class FolderView extends ItemView {
       bar.createDiv({ cls: 'ctt-progress-fill' }).style.setProperty('--p', String(have / sessions.length));
       const dots = card.createDiv({ cls: 'ctf-dots' });
       for (const m of marks.slice(-40)) {
-        const dot = dots.createEl('button', { cls: 'ctf-dot' + (m.has ? ' is-on' : '') });
-        const label = dateLabel(m.s.date) + ' ' + hhmm(m.s.slot.start) + ' · ' + (m.has ? t('noteShort') : t('noteMissing'));
+        const dot = dots.createEl('button', { cls: 'ctf-dot' + (m.has ? ' is-on' : '') + (m.checked ? ' is-checked' : '') });
+        const label = dateLabel(m.s.date) + ' ' + hhmm(m.s.slot.start) + ' · ' + (m.checked ? t('checkedShort') : m.has ? t('noteShort') : t('noteMissing'));
         dot.setAttr('title', label);
         dot.setAttr('aria-label', label);
         dot.onclick = async () => {
@@ -7133,6 +7201,11 @@ class FolderView extends ItemView {
           if (file) plugin.openNote(file, false);
           else plugin.createFromTemplate(course, m.s.slot, undefined, m.s.date);
         };
+        // 우클릭: 노트 없이 끝냈다고 체크하거나 되돌린다
+        dot.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          plugin.toggleChecked(course, m.s.slot, m.s.date);
+        });
       }
       const missing = marks.filter((m) => !m.has).length;
       if (missing) card.createDiv({ cls: 'ctf-panel-hint', text: t('attendHint', { n: missing }) });

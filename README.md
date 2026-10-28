@@ -27,7 +27,7 @@ Or install **Class Timetable** from Settings → Community plugins.
 - **Paste your timetable.** Copy rows from your school portal, a spreadsheet or a note — `Statistics Mon,Wed 10:30-12:00 Room 301` — and every class is created at once, with a folder, a folder note and a lecture-notes folder. Or pick an `.ics` file exported from your calendar.
 - **Export to your phone's calendar.** One `.ics` file with the semester's classes (cancelled days left out) and every exam and open deadline, each with a reminder the day before.
 - **Semesters.** *Start a new semester…* keeps this term's classes where they are and starts the next one empty. Switch back any time.
-- **Notes taken.** On a class's shelves, one dot per class held this semester — filled when that day's note exists. Click an empty dot to write it.
+- **Classes done.** On a class's shelves, one dot per class held this semester — filled when that day's note exists, a ring when you ticked it off without a note (2.2). Click an empty dot to write the note, right-click it to tick it off.
 - **Readable in a narrow sidebar.** Names are never broken mid-word; long words are shortened (`Organic Chemist.`), and split columns show a short name. Set your own with `short:`.
 - **Small things:** the current class in the status bar, a reminder a few minutes before class, *Undo* after moving or cancelling a class, and a shorter right-click menu.
 
@@ -84,6 +84,7 @@ Everything else is optional:
 | `exam` | Exams, one per line: `2026-10-22 13:00-15:00 Midterm` |
 | `due` | Assignment deadlines, one per line: `2026-10-15 Problem set 1`. A `✓` at the end marks it done |
 | `cancelled` | Dates this class does not meet: `2026-10-05` |
+| `checked` | Classes you ticked off without a note (attendance, a submitted report): `2026-10-05` |
 | `todo` | That class's to-dos, one per line: `2026-10-22 Make the slides`. A `✓` at the end marks it done |
 | `short` | Short name used when the column is too narrow for the full one |
 | `template` | Note template for this class's *today's note* (its name from Settings → Note templates). Omit it for the default |
@@ -105,6 +106,8 @@ due:
   - 2026-10-15 Problem set 1
 cancelled:
   - 2026-10-05
+checked:
+  - 2026-10-12                     # ticked off without a note
 ---
 ```
 
@@ -116,6 +119,7 @@ You rarely type any of this. *Edit class* has an every week / odd weeks / even w
 - **Missed deadlines stay.** An unfinished deadline that has passed is listed first, in red, until you mark it done — for up to 30 days, so last term's leftovers do not pile up. Exams leave the list once their day is over.
 - **An assignment note can carry its own deadline.** A note with `due: 2026-10-15` in its frontmatter, anywhere inside a course's folder, shows up as that course's deadline under the note's name. If the course is a plain note rather than a folder note, name the course in the assignment: `course: Linear Algebra`.
 - **New assignment note** (on a course's shelves, in the command palette, or as a checkbox in *Add an exam or deadline…*) writes that note for you: named after the assignment, with `due:` and a `course:` link filled in. It goes into the course's assignments folder if it has one (`assignments`, `homework`, `과제`, `作业`, `課題` …), otherwise into the course folder. No folder is ever created for you.
+- **Tick off a class without a note.** Not every class needs a note — some only need you to fill in an attendance form, others a weekly report. Once a class has started, tick the round box on its row in the Today tab, right-click it → *Tick off*, or right-click its dot on the class's shelves. It's written to `checked:` and counts the same as a class with a note; leave it unticked until the report is in. Click again to untick.
 - **Upcoming** lists the next 14 days above the grid. The gear changes that to 7 or 30 days, or hides it.
 
 ## To-do
@@ -309,8 +313,12 @@ due:
   - 2026-10-15 과제 1
 cancelled:
   - 2026-10-05
+checked:
+  - 2026-10-12
 ---
 ```
+
+**노트가 필요 없는 수업**(출석 설문만 하는 수업, 주간 리포트를 내는 수업)은 노트 없이 체크할 수 있습니다. 시작한 수업이면 오늘 탭의 그 줄에 있는 동그라미를 누르거나, 우클릭 → **수업 체크 (노트 없이)**, 책장의 점을 우클릭하세요. `checked:` 에 날짜가 적히고 노트를 남긴 수업처럼 셉니다. 리포트를 낼 때까지는 비워 두면 됩니다.
 
 끝낸 마감은 우클릭 → **완료로 표시**를 누르면 줄 끝에 `✓`가 붙고(과제 노트라면 `done: true`), 다가오는 목록에서 빠진 채 그 날짜 칸에 줄 그은 채로 남습니다. **완료로 표시하지 않은 마감은 날짜가 지나도 사라지지 않고** "2일 지남"으로 목록 맨 위에 빨갛게 남습니다(최대 30일). 과제를 노트 한 장으로 관리하고 싶다면 수업 책장의 **＋ 과제 노트**나 **새 과제 노트** 명령을 쓰세요. 과제 이름으로 노트를 만들고 `due:` 와 `course:` 를 채워 줍니다. 수업 폴더 안에 `과제`·`assignments` 같은 폴더가 있으면 그 안에 만듭니다.
 
@@ -320,7 +328,7 @@ cancelled:
 
 **2.0** — 사이드바가 **오늘 · 주간 · 할 일** 세 탭으로 나뉩니다. *오늘*은 하루를 위에서 아래로 읽고(지금 수업 카드 · 남은 시간 · 공강), *할 일*은 지난 마감 · 오늘 · 다가오는 것 · 언제든 · 노트 속 체크박스를 한 목록에 모읍니다. 칸에 적고 Enter 하면 끝이고, 수업을 고르면 그 수업 노트의 `todo:` 에, 고르지 않으면 설정에만 남습니다(파일을 만들지 않습니다). 강의 노트에 적은 `- [ ]` 도 여기 모이고, 여기서 체크하면 노트의 줄도 `[x]` 가 됩니다.
 
-포털 · 엑셀에 있는 시간표는 **＋ → 시간표 한 번에 등록**에 붙여넣으세요(`통계학 월수 10:30-12:00 301호`). 캘린더의 `.ics` 파일도 읽고, 반대로 학기 시간표와 시험 · 마감(하루 전 알림)을 `.ics` 로 내보내 휴대폰 캘린더에 넣을 수 있습니다. 학기가 바뀌면 설정의 **새 학기 시작…** — 지난 학기 수업은 그대로 보관되고 새 학기는 빈 시간표로 시작합니다. 책장에는 수업마다 **노트 기록**(수업이 열린 날마다 점 하나, 노트가 있으면 채운 점)이 보입니다.
+포털 · 엑셀에 있는 시간표는 **＋ → 시간표 한 번에 등록**에 붙여넣으세요(`통계학 월수 10:30-12:00 301호`). 캘린더의 `.ics` 파일도 읽고, 반대로 학기 시간표와 시험 · 마감(하루 전 알림)을 `.ics` 로 내보내 휴대폰 캘린더에 넣을 수 있습니다. 학기가 바뀌면 설정의 **새 학기 시작…** — 지난 학기 수업은 그대로 보관되고 새 학기는 빈 시간표로 시작합니다. 책장에는 수업마다 **수업 기록**(수업이 열린 날마다 점 하나, 노트가 있으면 채운 점, 노트 없이 체크했으면 굵은 고리)이 보입니다.
 
 버그나 필요한 기능은 설정 맨 아래 **의견 보내기**로 알려 주세요.
 
