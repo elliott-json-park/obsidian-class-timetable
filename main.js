@@ -4752,9 +4752,12 @@ function renderTimetableNow(plugin, containerEl, opts) {
   } else if (mode === 'plan') {
     const hint = bar.createDiv({ cls: 'ctt-status is-edit', text: t('planHint') });
     hint.setAttr('title', t('planHint'));
-  } else {
+  } else if (embed) {
     paintStatus(bar.createDiv({ cls: 'ctt-status' }), dayItems(0), courses.length);
     paintNext(bar, dayItems, now, ti);
+  } else {
+    // 사이드바는 탭이 바의 왼쪽을 차지한다. 지금 수업은 오늘 탭 · 격자의 지금 선 · 상태 표시줄이 이미 말한다.
+    renderTabs(plugin, bar, tab, todoBadge(plugin, res, courses), anim === 'tab');
   }
 
   if (!embed) {
@@ -4787,8 +4790,6 @@ function renderTimetableNow(plugin, containerEl, opts) {
     gear.setAttr('aria-label', t('prefs'));
     icon(gear, 'settings', '⚙');
     gear.onclick = () => new PrefsModal(plugin).open();
-
-    renderTabs(plugin, containerEl, tab, todoBadge(plugin, res, courses), anim === 'tab');
   }
 
   /* ── 알림 한 줄 ── */
@@ -4822,14 +4823,13 @@ function renderTimetableNow(plugin, containerEl, opts) {
   }
 
   /* ── 다가오는 시험·마감 ──
-   * 사이드바에서는 가장 급한 한 줄만. 나머지는 할 일 탭에 모여 있다 — 격자 자리를 빼앗지 않는다. */
-  if (mode === 'view' && opts.upcoming !== false) {
+   * 노트 안 블록에만. 사이드바에서는 할 일 탭의 숫자와 요일 머리의 칩이 같은 것을 말한다 — 격자 자리를 빼앗지 않는다. */
+  if (embed && mode === 'view' && opts.upcoming !== false) {
     const horizon = upcomingHorizon(settings);
     if (horizon > 0) {
       const list = plugin.upcomingDeadlines(deadlines, horizon);
-      renderUpcoming(plugin, containerEl, list, embed
-        ? { limit: UPCOMING_ROWS, open: !!nav.upcomingOpen, onToggle: () => { nav.upcomingOpen = !nav.upcomingOpen; rerender(); } }
-        : { limit: 1, onMore: () => plugin.setTab('todo') });
+      renderUpcoming(plugin, containerEl, list,
+        { limit: UPCOMING_ROWS, open: !!nav.upcomingOpen, onToggle: () => { nav.upcomingOpen = !nav.upcomingOpen; rerender(); } });
     }
   }
 
@@ -4961,21 +4961,10 @@ function renderTimetableNow(plugin, containerEl, opts) {
   }
 
   const colEls = [];
-  // 지난 수업에 그 날의 필기 노트가 있는지 — 수업마다 한 번만 폴더를 훑는다
-  const noteIdx = new Map();
-  const today = today0();
-  // 아직 오지 않은 날·시각이면 참. 이미 지났거나 시작한 수업에만 노트 표시를 단다.
-  const ahead = (date, slot) => { const dd = dayDiff(date, today); return dd !== 0 ? dd > 0 : slot.start > now; };
-  const termStart = parseYmd(settings.semesterStart);
-  const attend = (course, slot, date) => {
-    if (!date || ahead(date, slot)) return null;
-    if (termStart && dayDiff(date, termStart) < 0) return null;   // 학기 전의 주는 셀 것이 없다
-    if (!noteIdx.has(course.key)) noteIdx.set(course.key, plugin.noteIndex(course));
-    return plugin.doneOn(course, slot, date, noteIdx.get(course.key));
-  };
+  // 노트 기록(어느 날 노트를 남겼는지)은 책장의 오른쪽 패널이 보여 준다. 격자에는 시간표만.
 
   // 다른 주를 볼 때는 "오늘"도 "지금"도 없다 (ti 가 어느 요일과도 안 맞게 둔다)
-  const geo = { originMin, pxPerMin, colEls, density, hourH, colW, ti: offset ? -1 : ti, now, mode, week, embed, attend };
+  const geo = { originMin, pxPerMin, colEls, density, hourH, colW, ti: offset ? -1 : ti, now, mode, week, embed };
 
   // 오늘 칸 밖으로도 지금 시각을 흐리게 이어 준다. 다른 요일의 같은 시각과 견주어 보기 쉽다.
   const nowInRange = !offset && days.includes(ti) && now >= originMin && now <= endHour * 60;
@@ -4987,20 +4976,6 @@ function renderTimetableNow(plugin, containerEl, opts) {
     const col = body.createDiv({ cls: 'ctt-col' });
     colEls.push({ day: d, el: col });
     if (!offset && d === ti) col.addClass('is-today');
-
-    // 공강 — 칸이 넉넉할 때만, 수업 사이의 빈 시간에 길이를 흐리게 적는다
-    if (colW >= 84 && mode === 'view') {
-      const busy = byDay[d].filter((it) => !it.cancelled).map((it) => it.slot).sort((a, b) => a.start - b.start);
-      let end = -1;
-      for (const sl of busy) {
-        if (end >= 0 && sl.start - end >= 60 && (sl.start - end) * pxPerMin >= 18) {
-          const gap = col.createDiv({ cls: 'ctt-gap', text: humanGap(sl.start - end) });
-          gap.style.top = (end - originMin) * pxPerMin + 'px';
-          gap.style.height = (sl.start - end) * pxPerMin + 'px';
-        }
-        end = Math.max(end, sl.end);
-      }
-    }
 
     for (let h = startHour + 1; h < endHour; h++) {
       col.createDiv({ cls: 'ctt-hline' }).style.top = (h - startHour) * hourH + 'px';
@@ -5086,19 +5061,6 @@ function renderUpcoming(plugin, parent, list, o) {
   const today = today0();
   const box = parent.createDiv({ cls: 'ctt-upcoming' });
   const limit = o.limit || list.length;
-  // 사이드바: 가장 급한 줄 하나와, 나머지가 모인 할 일 탭으로 가는 "+N"
-  if (o.onMore) {
-    box.addClass('is-single');
-    const rows1 = list.slice(0, limit);
-    renderUpcomingRows(plugin, box, rows1, today);
-    if (list.length > limit) {
-      const more = box.createEl('button', { cls: 'ctt-up-more is-pill', text: '+' + (list.length - limit) });
-      more.setAttr('title', t('seeAllTodo'));
-      more.setAttr('aria-label', t('seeAllTodo'));
-      more.onclick = (e) => { e.preventDefault(); e.stopPropagation(); o.onMore(); };
-    }
-    return box;
-  }
   const folded = list.length > limit + 1 && !o.open;
   const rows = folded ? list.slice(0, limit) : list;
   renderUpcomingRows(plugin, box, rows, today);
@@ -5194,12 +5156,10 @@ function renderTabs(plugin, parent, tab, badge, animate) {
   const pill = wrap.createDiv({ cls: 'ctt-tabs-pill' });
   const idx = Math.max(0, TABS.indexOf(tab));
   const labels = { today: t('tabToday'), week: t('tabWeek'), todo: t('tabTodo') };
-  const icons = { today: 'sun', week: 'calendar-days', todo: 'list-checks' };
   for (const id of TABS) {
     const b = wrap.createEl('button', { cls: 'ctt-tab' + (id === tab ? ' is-active' : '') });
     b.setAttr('role', 'tab');
     b.setAttr('aria-selected', id === tab ? 'true' : 'false');
-    icon(b.createSpan({ cls: 'ctt-tab-icon' }), icons[id], '');
     b.createSpan({ cls: 'ctt-tab-label', text: labels[id] });
     if (id === 'todo' && badge) {
       const n = b.createSpan({ cls: 'ctt-tab-badge', text: badge > 99 ? '99+' : String(badge) });
@@ -5302,10 +5262,10 @@ function renderAgenda(plugin, parent, o) {
     body.createDiv({ cls: 'ctt-notice', text: t('semesterOver', { date: end ? ymd(end) : '' }) });
   }
 
+  // 지금 수업과 다음 수업은 따로 카드를 두지 않고 그 줄에서 말한다 — 같은 수업이 두 번 보이지 않게
   const running = (it) => !it.cancelled && now >= it.slot.start && now < it.slot.end;
   const live = isToday ? items.find(running) : null;
   const upnext = isToday && !live ? items.find((it) => !it.cancelled && it.slot.start > now) : null;
-  if (live || upnext) renderNowCard(plugin, body, live || upnext, !!live, now, date, !!anim);
 
   // 그 날의 할 일 — 공강 줄에 개수를 붙이고, 맨 아래에 목록으로 둔다
   const key = ymd(date);
@@ -5322,9 +5282,9 @@ function renderAgenda(plugin, parent, o) {
   let prevEnd = null, i = 0;
   for (const it of items) {
     if (prevEnd != null && !it.cancelled && it.slot.start - prevEnd >= GAP_MIN) {
-      renderAgendaGap(plugin, list, it.slot.start - prevEnd, chores, i++);
+      renderAgendaGap(list, it.slot.start - prevEnd, i++);
     }
-    renderAgendaRow(plugin, list, it, { date, isToday, now, i: i++, isLive: it === live });
+    renderAgendaRow(plugin, list, it, { date, isToday, now, i: i++, isLive: it === live, isNext: it === upnext });
     if (!it.cancelled) prevEnd = Math.max(prevEnd == null ? 0 : prevEnd, it.slot.end);
   }
 
@@ -5352,70 +5312,13 @@ function renderAgenda(plugin, parent, o) {
   if (!o.embed) renderTodoInput(plugin, sec, { ctx: 'agenda', date: key, courses: res.courses, compact: true });
 }
 
-// 지금 수업(또는 곧 시작할 수업) 카드. 남은 시간 막대와, 수업 중에 제일 먼저 찾는 두 버튼.
-function renderNowCard(plugin, parent, it, live, now, date, animate) {
-  const isPlan = it.kind === 'plan';
-  const color = isPlan ? (it.plan.color || PLAN_COLOR) : it.course.color;
-  const card = parent.createDiv({ cls: 'ctt-nowcard' + (live ? ' is-live' : ' is-next') + (animate ? ' is-enter' : '') });
-  card.style.setProperty('--ctt-color', color);
-
-  const top = card.createDiv({ cls: 'ctt-nowcard-top' });
-  const tag = top.createSpan({ cls: 'ctt-nowcard-tag', text: live ? t('nowTag') : t('nextTag') });
-  if (live) tag.addClass('is-live');
-  top.createSpan({ cls: 'ctt-nowcard-time', text: hhmm(it.slot.start) + ' – ' + hhmm(it.slot.end) });
-
-  card.createDiv({ cls: 'ctt-nowcard-name', text: isPlan ? it.plan.title : it.course.name });
-  const sub = isPlan ? String(it.plan.note || '').split(/\r?\n/)[0]
-    : [it.slot.location, it.course.subtitle ? String(it.course.subtitle).split(/\r?\n/)[0] : ''].filter((x, k, a) => x && a.indexOf(x) === k).join(' · ');
-  if (sub) card.createDiv({ cls: 'ctt-nowcard-sub', text: sub });
-
-  const meter = card.createDiv({ cls: 'ctt-nowcard-meter' });
-  if (live) {
-    const p = Math.max(0, Math.min(1, (now - it.slot.start) / (it.slot.end - it.slot.start)));
-    const bar = meter.createDiv({ cls: 'ctt-progress' });
-    bar.createDiv({ cls: 'ctt-progress-fill' }).style.setProperty('--p', String(p));
-    meter.createDiv({ cls: 'ctt-nowcard-left', text: t('nowLeft', { v: humanGap(it.slot.end - now) }) });
-  } else {
-    meter.createDiv({ cls: 'ctt-nowcard-left', text: t('startsIn', { v: humanGap(it.slot.start - now) }) });
-  }
-
-  if (!isPlan) {
-    const course = it.course;
-    const actions = card.createDiv({ cls: 'ctt-nowcard-actions' });
-    const existing = plugin.noteFileOn(course, it.slot, date);
-    const note = actions.createEl('button', { cls: 'ctt-pill is-primary' });
-    icon(note.createSpan({ cls: 'ctt-pill-icon' }), existing ? 'file-text' : 'file-plus', '');
-    note.createSpan({ text: existing ? t('noteOpen') : t('todayNoteShort') });
-    note.onclick = (e) => {
-      e.stopPropagation();
-      if (existing) plugin.openNote(existing, e.ctrlKey || e.metaKey);
-      else plugin.createFromTemplate(course, it.slot, undefined, date);
-    };
-    const shelf = actions.createEl('button', { cls: 'ctt-pill' });
-    icon(shelf.createSpan({ cls: 'ctt-pill-icon' }), 'library', '');
-    shelf.createSpan({ text: t('openShelf') });
-    shelf.onclick = (e) => { e.stopPropagation(); plugin.openCourseView(course, e.ctrlKey || e.metaKey); };
-    card.onclick = (e) => plugin.openCourseView(course, e.ctrlKey || e.metaKey);
-    card.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      courseMenu(plugin, course, it.slot, date, it.cancelled, it.holiday).showAtMouseEvent(e);
-    });
-  } else {
-    card.onclick = () => new PlanEditModal(plugin, { plan: it.plan }).open();
-  }
-}
-
-function renderAgendaGap(plugin, list, mins, chores, i) {
+function renderAgendaGap(list, mins, i) {
   const gap = list.createDiv({ cls: 'ctt-agap' });
   gap.style.setProperty('--i', String(Math.min(i, 12)));
-  gap.createSpan({ cls: 'ctt-agap-line' });
   gap.createSpan({ cls: 'ctt-agap-text', text: t('gapFree', { v: humanGap(mins) }) });
-  if (chores) {
-    const a = gap.createEl('button', { cls: 'ctt-agap-link', text: t('gapChores', { n: chores }) });
-    a.onclick = () => plugin.setTab('todo');
-  }
 }
 
+// 하루의 한 줄. 지금 수업은 남은 시간과 가는 막대를, 다음 수업은 몇 분 뒤인지를 이 줄에 단다.
 function renderAgendaRow(plugin, list, it, o) {
   const isPlan = it.kind === 'plan';
   const color = isPlan ? (it.plan.color || PLAN_COLOR) : it.course.color;
@@ -5440,9 +5343,19 @@ function renderAgendaRow(plugin, list, it, o) {
     : it.cancelled ? t('cancelled')
       : isPlan ? String(it.plan.note || '').split(/\r?\n/)[0]
         : [it.slot.location, it.course.subtitle ? String(it.course.subtitle).split(/\r?\n/)[0] : ''].filter((x, k, a) => x && a.indexOf(x) === k).join(' · ');
-  if (sub) main.createDiv({ cls: 'ctt-arow-sub', text: sub });
+  const when = o.isLive ? t('nowLeft', { v: humanGap(it.slot.end - o.now) })
+    : o.isNext ? t('startsIn', { v: humanGap(it.slot.start - o.now) }) : '';
+  if (sub || when) {
+    const line = main.createDiv({ cls: 'ctt-arow-sub' });
+    if (when) line.createSpan({ cls: 'ctt-arow-when', text: when });
+    if (sub) line.createSpan({ text: (when ? ' · ' : '') + sub });
+  }
+  if (o.isLive) {
+    const p = Math.max(0, Math.min(1, (o.now - it.slot.start) / (it.slot.end - it.slot.start)));
+    card.createDiv({ cls: 'ctt-arow-progress' }).style.setProperty('--p', String(p));
+  }
 
-  // 지났거나 진행 중인 수업: 노트 없이 끝냈다고 체크하고(출석 · 제출), 그 날 노트가 있으면 열고, 없으면 바로 만든다
+  // 지났거나 진행 중인 수업: 노트 없이 끝냈다고 체크한다(출석 · 제출)
   if (!isPlan && !it.cancelled && started) {
     const checked = isChecked(it.course, it.slot, ymd(o.date));
     if (checked) row.addClass('is-checked');
@@ -5455,9 +5368,13 @@ function renderAgendaRow(plugin, list, it, o) {
       box.toggleClass('is-on', !checked);
       plugin.toggleChecked(it.course, it.slot, o.date);
     };
+  }
+
+  // 지났거나 진행 중인 수업, 그리고 바로 다음 수업: 그 날 노트가 있으면 열고, 없으면 바로 만든다
+  if (!isPlan && !it.cancelled && (started || o.isNext)) {
     const file = plugin.noteFileOn(it.course, it.slot, o.date);
     const btn = card.createEl('button', { cls: 'ctt-arow-note' + (file ? ' is-has' : '') });
-    icon(btn.createSpan({ cls: 'ctt-pill-icon' }), file ? 'file-text' : 'file-plus', '');
+    icon(btn.createSpan({ cls: 'ctt-arow-note-icon' }), file ? 'file-text' : 'file-plus', '');
     btn.createSpan({ text: file ? t('noteShort') : t('noteAdd') });
     btn.setAttr('title', file ? file.path : t('todayNoteHint', { name: it.course.name }));
     btn.onclick = (e) => {
@@ -5836,9 +5753,9 @@ function renderDeadlineRow(plugin, list, dl, o) {
   }
 
   const main = row.createDiv({ cls: 'ctt-trow-main' });
-  const title = main.createDiv({ cls: 'ctt-trow-text' });
-  title.createSpan({ cls: 'ctt-trow-kind', text: t(dl.kind === 'exam' ? 'examKind' : 'dueKind') });
-  title.createSpan({ text: dl.title });
+  // 시험인지 마감인지는 왼쪽(깃발 · 체크 칸)이 말한다. 글자로는 마우스를 올렸을 때만.
+  const title = main.createDiv({ cls: 'ctt-trow-text', text: dl.title });
+  title.setAttr('title', t(dl.kind === 'exam' ? 'examKind' : 'dueKind') + ' · ' + dl.title);
   const meta = main.createDiv({ cls: 'ctt-trow-meta' });
   if (!o.hideCourse) { meta.createSpan({ cls: 'ctt-trow-dot' }); meta.createSpan({ text: dl.course.name }); }
   const when = o.full ? deadlineWhen(dl) : (dl.time != null ? hhmm(dl.time) + (dl.end != null ? '–' + hhmm(dl.end) : '') : '');
@@ -6110,7 +6027,8 @@ function renderBlock(plugin, col, item, geo) {
   const label = course.short || (tiny ? autoShort(course.name) : fitWords(course.name, laneW, nameFont));
   if (tiny) el.addClass('is-tiny');
 
-  const subCount = sub && !tiny ? String(sub).split(/\r?\n/).length : 0;
+  // 블록에는 보조 정보 첫 줄만. 나머지는 마우스를 올리면 보인다.
+  const subCount = sub && !tiny ? 1 : 0;
   const fit = fitBlockText(el, height, label, subCount, geo);
   if (fit.nameLines) {
     el.style.setProperty('--ctt-name-lines', String(tiny ? 2 : fit.nameLines));
@@ -6129,15 +6047,6 @@ function renderBlock(plugin, col, item, geo) {
     }
   }
   if (fit.subLines) addSubLines(el, sub, fit.subLines);
-
-  // 지났거나 진행 중인 수업에 필기 노트가 있는지: ● 있음 · ○ 없음
-  if (!item.cancelled && geo.attend && geo.density === 'full' && height >= 26 && !tiny) {
-    const has = geo.attend(course, slot, item.date);
-    if (has != null) {
-      const dot = el.createSpan({ cls: 'ctt-att' + (has ? ' is-on' : '') });
-      dot.setAttr('aria-hidden', 'true');
-    }
-  }
 
   const tip = [course.name, dayLabel(slot.day) + ' ' + hhmm(slot.start) + '~' + hhmm(slot.end)
     + (slot.parity ? ' · ' + parityLabel(slot.parity) : '')];
@@ -6327,7 +6236,7 @@ function renderPlanBlock(plugin, col, item, geo) {
   const laneW = (geo.colW || 80) / item.lanes - 3 - (geo.density === 'compact' ? 8 : 14);
   const tiny = laneW < 30;
   if (tiny) el.addClass('is-tiny');
-  const noteCount = plan.note && !tiny ? String(plan.note).split(/\r?\n/).length : 0;
+  const noteCount = plan.note && !tiny ? 1 : 0;   // 수업 블록처럼 메모 첫 줄만
   const fit = fitBlockText(el, height, plan.title, noteCount, geo);
   if (fit.nameLines) {
     const name = el.createDiv({ cls: 'ctt-block-name' });
@@ -7188,8 +7097,6 @@ class FolderView extends ItemView {
       const h = card.createDiv({ cls: 'ctf-panel-head' });
       h.createSpan({ cls: 'ctf-panel-title', text: t('attendTitle') });
       h.createSpan({ cls: 'ctf-panel-count', text: t('attendCount', { n: have, m: sessions.length }) });
-      const bar = card.createDiv({ cls: 'ctt-progress is-thin' });
-      bar.createDiv({ cls: 'ctt-progress-fill' }).style.setProperty('--p', String(have / sessions.length));
       const dots = card.createDiv({ cls: 'ctf-dots' });
       for (const m of marks.slice(-40)) {
         const dot = dots.createEl('button', { cls: 'ctf-dot' + (m.has ? ' is-on' : '') + (m.checked ? ' is-checked' : '') });

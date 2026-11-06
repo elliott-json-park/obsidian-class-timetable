@@ -22,8 +22,14 @@
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 7px 6px 8px 10px;
+  gap: 2px;
+  padding: 8px 6px 8px 8px;
+}
+
+/* 사이드바의 머리(탭 · 버튼)와 내용 사이에 헤어라인 하나 */
+.ctt-root:not(.is-embed) > .ctt-bar {
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .ctt-status {
@@ -1003,13 +1009,12 @@
   max-width: 45%;
 }
 
-/* 책장은 정사각형 — 줄지어 놓인 파일 칸과 한눈에 갈린다 */
-.ctf-grid.is-shelves { grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); }
+.ctf-grid.is-shelves { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 
-/* 책장 칸 — 띠 대신 폴더 아이콘이 수업 색을 띤다. 어느 수업의 책장인지는 아이콘 색으로 */
+/* 책장 칸 — 띠 대신 폴더 아이콘이 수업 색을 띤다. 어느 수업의 책장인지는 아이콘 색으로.
+   높이는 담긴 만큼만 — 빈 네모가 화면을 차지하지 않게 */
 .ctf-card.is-shelf {
   cursor: pointer;
-  aspect-ratio: 1 / 1;
   display: flex;
   flex-direction: column;
 }
@@ -1263,7 +1268,7 @@
   align-items: center;
   gap: 1px;
   min-width: 0;
-  padding: 0 6px 3px 6px;
+  padding: 0 6px 8px 6px;
 }
 
 .ctt-root .ctt-weekbtn,
@@ -1353,24 +1358,24 @@
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 9.5px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.4;
-  color: var(--text-normal);
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ctt-color) 55%, transparent);
+  background: color-mix(in srgb, var(--ctt-color) 10%, transparent);
 }
 
 .ctt-due.is-exam {
-  font-weight: 700;
-  background: color-mix(in srgb, var(--ctt-color) 24%, transparent);
-  box-shadow: inset 0 0 0 1px var(--ctt-color);
+  font-weight: 600;
+  color: var(--text-normal);
+  background: color-mix(in srgb, var(--ctt-color) 20%, transparent);
 }
 
-.ctt-due:hover { background: color-mix(in srgb, var(--ctt-color) 16%, transparent); }
-.ctt-due.is-exam:hover { background: color-mix(in srgb, var(--ctt-color) 34%, transparent); }
+.ctt-due:hover { background: color-mix(in srgb, var(--ctt-color) 18%, transparent); }
+.ctt-due.is-exam:hover { background: color-mix(in srgb, var(--ctt-color) 28%, transparent); }
 
 .ctt-due.is-more {
   color: var(--text-faint);
@@ -1388,7 +1393,6 @@
   font-weight: 500;
   text-decoration: line-through;
   background: transparent;
-  box-shadow: inset 0 0 0 1px var(--background-modifier-border);
 }
 
 /* 수업 없는 날 — 누를 것이 없는 이름표 */
@@ -1578,32 +1582,30 @@
 .ctt-root { --ctt-ease: cubic-bezier(.2, .8, .2, 1); container-type: inline-size; }
 .ctf-root, .ctt-modal { --ctt-ease: cubic-bezier(.2, .8, .2, 1); }
 
-/* ── 탭 ── */
+/* ── 탭 ──
+ * 상단 바의 왼쪽에 글자 셋. 고른 탭만 옅은 바탕을 깐다. 세 칸이 같은 폭이라 바탕은 칸 번호만큼 옮긴다. */
 .ctt-tabs {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-right: auto;
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0 8px 8px;
-  padding: 3px;
-  border-radius: 10px;
-  background: var(--background-modifier-hover);
 }
 
 .ctt-tabs-pill {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 3px;
-  width: calc((100% - 6px) / 3);
-  border-radius: 8px;
-  background: var(--background-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .07), 0 0 0 .5px var(--background-modifier-border);
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(100% / 3);
+  border-radius: 6px;
+  background: var(--background-modifier-hover);
   transform: translateX(calc(var(--i, 0) * 100%));
   pointer-events: none;
 }
 
-.ctt-tabs-pill.is-moving { transition: transform 340ms var(--ctt-ease); }
+.ctt-tabs-pill.is-moving { transition: transform 260ms var(--ctt-ease); }
 
 .ctt-root .ctt-tab {
   position: relative;
@@ -1611,64 +1613,38 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
-  height: 28px;
-  padding: 0 6px;
+  height: 26px;
+  padding: 0 10px;
   border: none;
   box-shadow: none;
   background: transparent;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: var(--font-ui-smaller);
-  font-weight: 600;
-  color: var(--text-muted);
+  font-weight: 500;
+  color: var(--text-faint);
   cursor: pointer;
-  transition: color 160ms ease;
+  transition: color 140ms ease;
 }
 
-.ctt-root .ctt-tab:hover { color: var(--text-normal); background: transparent; }
-.ctt-root .ctt-tab.is-active { color: var(--text-normal); }
+.ctt-root .ctt-tab:hover { color: var(--text-muted); background: transparent; }
+.ctt-root .ctt-tab.is-active { color: var(--text-normal); font-weight: 600; }
 .ctt-root .ctt-tab:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background-modifier-border-focus, var(--interactive-accent)); }
-.ctt-tab-icon { display: inline-flex; opacity: .75; }
-.ctt-tab-icon:empty { display: none; }
-.ctt-tab-icon .svg-icon { width: 13px; height: 13px; }
-.ctt-tab.is-active .ctt-tab-icon { opacity: 1; color: var(--text-accent); }
 .ctt-tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* 할 일 탭의 숫자 — 채운 동그라미 없이 빨간 글자만 */
 .ctt-tab-badge {
   flex: 0 0 auto;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9.5px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: var(--text-on-accent, #fff);
-  background: var(--text-error, #e5534b);
+  color: var(--text-error, #e5534b);
 }
 
-/* 아주 좁은 사이드바에서는 아이콘을 접는다 — 글자가 먼저 읽혀야 한다 */
-@container (max-width: 250px) {
-  .ctt-tab-icon { display: none; }
-}
-
-/* ── 다가오는 것: 사이드바에서는 한 줄 + "+N" ── */
-.ctt-upcoming.is-single { flex-direction: row; align-items: center; gap: 4px; }
-.ctt-upcoming.is-single .ctt-up-row { flex: 1 1 auto; }
-
-.ctt-root .ctt-up-more.is-pill {
-  flex: 0 0 auto;
-  align-self: center;
-  height: 20px;
-  padding: 0 8px;
-  font-weight: 700;
-  color: var(--text-muted);
-  background: var(--background-modifier-hover);
+@container (max-width: 260px) {
+  .ctt-root .ctt-tab { padding: 0 7px; }
 }
 
 /* ── 주간 격자: 넘길 때의 움직임 ── */
@@ -1681,58 +1657,9 @@
 @keyframes ctt-from-left { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
 @keyframes ctt-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-/* 공강 — 수업 사이에 흐리게 적는 빈 시간의 길이 (칸이 넉넉할 때만) */
-.ctt-gap {
-  position: absolute;
-  left: 2px;
-  right: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--text-faint);
-  opacity: .7;
-  pointer-events: none;
-  font-variant-numeric: tabular-nums;
-}
-
-/* 노트 기록 점: ● 그 날의 노트가 있다 · ○ 없다 */
-.ctt-att {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1.2px color-mix(in srgb, var(--ctt-color) 65%, var(--text-faint));
-  pointer-events: none;
-}
-
-.ctt-att.is-on { background: var(--ctt-color); box-shadow: none; }
-
 /* 아주 좁은 칸(겹친 수업) — 짧은 이름 하나만 */
 .ctt-block.is-tiny { padding: 3px 2px 3px 5px; }
 .ctt-block.is-tiny .ctt-block-name { font-size: 9.5px; letter-spacing: -0.02em; overflow-wrap: anywhere; }
-
-/* 지금 시각의 점이 천천히 숨 쉰다 */
-.ctt-now::after {
-  content: '';
-  position: absolute;
-  left: -3px;
-  top: -3.5px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--text-error, #ff6b6b);
-  opacity: 0;
-  animation: ctt-ping 2.6s ease-out infinite;
-}
-
-@keyframes ctt-ping {
-  0% { transform: scale(1); opacity: .55; }
-  70%, 100% { transform: scale(3.2); opacity: 0; }
-}
 
 /* ── 오늘 ── */
 .ctt-agenda { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
@@ -1742,7 +1669,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 0 8px 6px;
+  padding: 0 8px 10px;
 }
 
 .ctt-root .ctt-daylabel {
@@ -1774,7 +1701,7 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 2px 10px 18px;
+  padding: 4px 10px 22px;
 }
 
 .ctt-agenda-body.is-enter,
@@ -1798,113 +1725,23 @@
 .ctt-holiday-icon { display: inline-flex; }
 .ctt-holiday-icon .svg-icon { width: 14px; height: 14px; }
 
-/* 지금 수업 카드 */
-.ctt-nowcard {
-  position: relative;
-  margin: 2px 0 14px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  cursor: pointer;
-  background:
-    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--ctt-color) 16%, transparent), transparent 60%),
-    color-mix(in srgb, var(--ctt-color) 7%, var(--background-primary));
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--ctt-color) 28%, transparent),
-    0 8px 22px -14px color-mix(in srgb, var(--ctt-color) 70%, transparent);
-  transition: transform 200ms var(--ctt-ease), box-shadow 200ms ease;
-}
-
-.ctt-nowcard:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--ctt-color) 40%, transparent),
-    0 12px 26px -14px color-mix(in srgb, var(--ctt-color) 80%, transparent);
-}
-
-.ctt-nowcard.is-enter { animation: ctt-rise 380ms var(--ctt-ease) both; }
-
-.ctt-nowcard-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-
-.ctt-nowcard-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .04em;
-  color: var(--text-muted);
-}
-
-.ctt-nowcard-tag.is-live { color: var(--text-normal); }
-
-.ctt-nowcard-tag.is-live::before {
-  content: '';
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--text-error, #e5534b);
-  animation: ctt-live 2s ease-out infinite;
-}
-
-@keyframes ctt-live {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--text-error, #e5534b) 45%, transparent); }
-  80%, 100% { box-shadow: 0 0 0 6px transparent; }
-}
-
-.ctt-nowcard-time { font-size: 10.5px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-
-.ctt-nowcard-name {
-  margin-top: 6px;
-  font-size: 16px;
-  font-weight: 750;
-  line-height: 1.25;
-  letter-spacing: -0.02em;
-  color: var(--text-normal);
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-
-.ctt-nowcard-sub { margin-top: 2px; font-size: var(--font-ui-smaller); color: var(--text-muted); }
-
-.ctt-nowcard-meter { display: flex; align-items: center; gap: 10px; margin-top: 11px; }
-.ctt-nowcard-meter .ctt-progress { flex: 1 1 auto; }
-.ctt-nowcard-left { flex: 0 0 auto; font-size: 10.5px; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-
-.ctt-nowcard-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-
-/* 막대 — 지나간 만큼. 빛 한 줄이 천천히 지나간다 */
+/* 막대 — 지나간 만큼 */
 .ctt-progress {
   position: relative;
-  height: 5px;
+  height: 4px;
   border-radius: 999px;
   overflow: hidden;
   background: color-mix(in srgb, var(--ctt-color, var(--ctf-color, var(--interactive-accent))) 16%, transparent);
 }
 
-.ctt-progress.is-thin { height: 4px; margin-top: 9px; }
+.ctt-progress.is-thin { height: 3px; margin-top: 9px; }
 
 .ctt-progress-fill {
-  position: relative;
   height: 100%;
   width: calc(var(--p, 0) * 100%);
   border-radius: inherit;
   background: var(--ctt-color, var(--ctf-color, var(--interactive-accent)));
-  overflow: hidden;
 }
-
-.ctt-nowcard .ctt-progress-fill::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .45), transparent);
-  transform: translateX(-100%);
-  animation: ctt-shine 2.8s ease-in-out infinite;
-}
-
-@keyframes ctt-shine { 0% { transform: translateX(-100%); } 60%, 100% { transform: translateX(100%); } }
-
-.ctt-nowcard.is-enter .ctt-progress-fill { animation: ctt-grow 700ms var(--ctt-ease) both 120ms; transform-origin: left center; }
-@keyframes ctt-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 /* 알약 버튼 */
 .ctt-root .ctt-pill,
@@ -1943,22 +1780,22 @@
 .ctt-pill-icon:empty { display: none; }
 .ctt-pill-icon .svg-icon { width: 13px; height: 13px; }
 
-/* 하루의 줄 */
+/* 하루의 줄 — 시간 · 왼쪽 가는 색 선 · 이름. 바탕은 지금 수업에만 깐다. */
 .ctt-agenda-list { display: flex; flex-direction: column; }
 
 .ctt-arow {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr);
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .ctt-agenda-body.is-enter .ctt-arow,
 .ctt-agenda-body.is-enter .ctt-agap,
-.ctt-agenda-body.is-day-back .ctt-arow { animation: ctt-rise 360ms var(--ctt-ease) both; animation-delay: calc(var(--i, 0) * 32ms + 60ms); }
+.ctt-agenda-body.is-day-back .ctt-arow { animation: ctt-rise 320ms var(--ctt-ease) both; animation-delay: calc(var(--i, 0) * 24ms + 40ms); }
 
-.ctt-arow-time { padding-top: 8px; text-align: right; font-variant-numeric: tabular-nums; line-height: 1.2; }
-.ctt-arow-start { font-size: var(--font-ui-smaller); font-weight: 700; color: var(--text-normal); }
+.ctt-arow-time { padding-top: 7px; text-align: right; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.ctt-arow-start { font-size: var(--font-ui-smaller); font-weight: 600; color: var(--text-normal); }
 .ctt-arow-end { font-size: 10px; color: var(--text-faint); }
 
 .ctt-arow-card {
@@ -1967,23 +1804,22 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 9px 8px 12px;
-  border-radius: 10px;
+  padding: 7px 6px 7px 11px;
+  border-radius: 8px;
+  overflow: hidden;
   cursor: pointer;
-  background: color-mix(in srgb, var(--ctt-color) 8%, transparent);
-  box-shadow: inset 3px 0 0 var(--ctt-color);
-  transition: background 160ms ease, transform 180ms var(--ctt-ease);
+  background: transparent;
+  box-shadow: inset 2px 0 0 var(--ctt-color);
+  transition: background 140ms ease;
 }
 
-.theme-dark .ctt-arow-card { background: color-mix(in srgb, var(--ctt-color) 13%, transparent); }
-.ctt-arow-card:hover { background: color-mix(in srgb, var(--ctt-color) 14%, transparent); transform: translateX(2px); }
-.theme-dark .ctt-arow-card:hover { background: color-mix(in srgb, var(--ctt-color) 20%, transparent); }
+.ctt-arow-card:hover { background: var(--background-modifier-hover); }
 
 .ctt-arow-main { flex: 1 1 auto; min-width: 0; }
 
 .ctt-arow-name {
   font-size: var(--font-ui-small, 13px);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.3;
   color: var(--text-normal);
   word-break: keep-all;
@@ -1993,87 +1829,80 @@
 .ctt-arow-sub {
   margin-top: 1px;
   font-size: 10.5px;
-  color: var(--text-muted);
+  color: var(--text-faint);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.ctt-arow-when { font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
 .ctt-arow.is-past .ctt-arow-card,
-.ctt-arow.is-past .ctt-arow-time { opacity: .55; }
+.ctt-arow.is-past .ctt-arow-time { opacity: .5; }
 .ctt-arow.is-past:hover .ctt-arow-card,
 .ctt-arow.is-past:hover .ctt-arow-time { opacity: 1; }
 
-.ctt-arow.is-live .ctt-arow-card {
-  box-shadow: inset 3px 0 0 var(--ctt-color), inset 0 0 0 1px color-mix(in srgb, var(--ctt-color) 55%, transparent);
-}
+/* 지금 수업 — 옅은 색면과, 바닥에 지나간 만큼의 가는 막대 */
+.ctt-arow.is-live .ctt-arow-card { background: color-mix(in srgb, var(--ctt-color) 9%, transparent); }
+.ctt-arow.is-live .ctt-arow-card:hover { background: color-mix(in srgb, var(--ctt-color) 14%, transparent); }
+.theme-dark .ctt-arow.is-live .ctt-arow-card { background: color-mix(in srgb, var(--ctt-color) 14%, transparent); }
+.ctt-arow.is-live .ctt-arow-when { color: var(--text-normal); }
 
-.ctt-arow.is-live .ctt-arow-start { color: var(--text-accent); }
+.ctt-arow-progress {
+  position: absolute;
+  left: 2px;
+  bottom: 0;
+  height: 2px;
+  width: calc(var(--p, 0) * (100% - 2px));
+  background: var(--ctt-color);
+  opacity: .7;
+}
 
 .ctt-arow.is-cancelled .ctt-arow-card {
   opacity: .6;
-  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ctt-color) 12%, transparent) 0 4px, transparent 4px 8px);
-  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--ctt-color) 45%, transparent);
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ctt-color) 10%, transparent) 0 4px, transparent 4px 8px);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--ctt-color) 45%, transparent);
 }
 
 .ctt-arow.is-cancelled .ctt-arow-name { text-decoration: line-through; font-weight: 500; }
 
-.ctt-arow.is-plan .ctt-arow-card {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ctt-color) 50%, transparent);
-}
+.ctt-arow.is-plan .ctt-arow-card { box-shadow: inset 2px 0 0 color-mix(in srgb, var(--ctt-color) 55%, transparent); }
+.ctt-arow.is-plan .ctt-arow-name { font-weight: 500; }
 
+/* 노트 — 테두리 없는 글자 버튼 */
 .ctt-root .ctt-arow-note {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   height: 22px;
-  padding: 0 8px;
+  min-width: 0;
+  padding: 0 7px;
   border: none;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-muted);
-  background: var(--background-primary);
-  box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-faint);
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
   transition: background 140ms ease, color 140ms ease;
 }
 
+.ctt-arow-note-icon { display: inline-flex; }
 .ctt-root .ctt-arow-note .svg-icon { width: 12px; height: 12px; }
 .ctt-root .ctt-arow-note:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
-.ctt-root .ctt-arow-note.is-has { color: var(--text-accent); }
+.ctt-root .ctt-arow-note.is-has { color: var(--text-muted); }
 
 /* 노트 없이 체크한 수업 — 체크 칸은 노트 버튼 앞에 */
 .ctt-arow .ctt-arow-check { margin-right: 6px; }
 .ctt-arow.is-checked .ctt-arow-name { color: var(--text-muted); }
 
-/* 공강 줄 */
+/* 공강 줄 — 흐린 글자 한 줄 */
 .ctt-agap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 6px 46px;
-  min-height: 20px;
+  margin: 0 0 8px 57px;
   font-size: 10.5px;
-  font-weight: 600;
   color: var(--text-faint);
-}
-
-.ctt-agap-line { flex: 0 0 16px; border-top: 1.5px dotted var(--background-modifier-border); }
-
-.ctt-root .ctt-agap-link {
-  height: 18px;
-  padding: 0 7px;
-  border: none;
-  box-shadow: none;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-accent);
-  background: color-mix(in srgb, var(--interactive-accent, var(--text-accent)) 10%, transparent);
-  cursor: pointer;
 }
 
 .ctt-agenda-empty { padding: 26px 8px 18px; text-align: center; }
@@ -2096,7 +1925,8 @@
 .ctt-agenda-done-icon { display: inline-flex; color: var(--color-green, #51cf66); }
 .ctt-agenda-done-icon .svg-icon { width: 14px; height: 14px; }
 
-.ctt-agenda-todo { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--background-modifier-border); }
+.ctt-agenda-todo { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--background-modifier-border); }
+.ctt-agenda-todo > .ctt-tsec-head { margin-bottom: 6px; }
 
 /* ── 할 일 ── */
 .ctt-todo { min-width: 0; }
@@ -2106,7 +1936,7 @@
 
 /* 입력줄 */
 .ctt-tadd {
-  margin-bottom: 14px;
+  margin-bottom: 4px;
   padding: 0 4px 0 10px;
   border-radius: 11px;
   background: var(--background-primary);
@@ -2213,36 +2043,31 @@
 }
 
 /* 묶음 */
-.ctt-tsec { margin-bottom: 14px; }
+/* 묶음 사이는 헤어라인으로 가른다. 줄 사이는 여백만 */
+.ctt-tsec { padding: 14px 0 10px; }
+.ctt-tsec + .ctt-tsec { border-top: 1px solid var(--background-modifier-border); }
+.ctt-tsec > .ctt-tsec-head { margin-bottom: 6px; }
 
+/* 묶음 이름 — 작은 흐린 글자와 개수. 지난 것만 빨갛다 */
 .ctt-tsec-head {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 0 0 4px 4px;
+  gap: 5px;
+  margin: 0 0 2px 5px;
   font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: .03em;
-  color: var(--text-faint);
-}
-
-.ctt-tsec-count {
-  min-width: 16px;
-  height: 16px;
-  padding: 0 5px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9.5px;
-  font-variant-numeric: tabular-nums;
-  background: var(--background-modifier-hover);
+  font-weight: 600;
   color: var(--text-muted);
 }
 
-.ctt-tsec.is-late .ctt-tsec-title { color: var(--text-error, #e5534b); }
-.ctt-tsec.is-late .ctt-tsec-count { color: var(--text-error, #e5534b); background: color-mix(in srgb, var(--text-error, #e5534b) 12%, transparent); }
-.ctt-tsec.is-today .ctt-tsec-title { color: var(--text-accent); }
+.ctt-tsec-count {
+  font-size: 10.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+
+.ctt-tsec.is-late .ctt-tsec-title,
+.ctt-tsec.is-late .ctt-tsec-count { color: var(--text-error, #e5534b); }
 
 .ctt-tsec-head.is-toggle { cursor: pointer; }
 .ctt-tsec-head.is-toggle:hover .ctt-tsec-title { color: var(--text-muted); }
@@ -2267,15 +2092,15 @@
 
 .ctt-tsec .ctt-tsec-action:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
 
-.ctt-tlist { display: flex; flex-direction: column; gap: 1px; }
+.ctt-tlist { display: flex; flex-direction: column; gap: 3px; }
 
-.ctt-tgroup + .ctt-tgroup { margin-top: 8px; }
+.ctt-tgroup + .ctt-tgroup { margin-top: 14px; }
 
 .ctt-tgroup-head {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 2px 0 2px 6px;
+  margin: 2px 0 4px 6px;
   font-size: 11px;
   font-weight: 650;
   color: var(--text-muted);
@@ -2303,9 +2128,9 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 36px;
-  padding: 5px 4px 5px 5px;
-  border-radius: 9px;
+  min-height: 34px;
+  padding: 4px 4px 4px 5px;
+  border-radius: 7px;
   transition: background 140ms ease, opacity 320ms ease;
 }
 
@@ -2315,12 +2140,13 @@
 .ctt-todo.is-enter .ctt-trow,
 .ctt-todo.is-enter .ctt-tsec-head { animation: ctt-rise 340ms var(--ctt-ease) both; animation-delay: calc(var(--i, 0) * 26ms + 40ms); }
 
-/* 둥근 체크 칸 — 켜면 수업 색으로 차오르고 체크가 그어진다 */
+/* 둥근 체크 칸 — 비어 있을 때는 무채색, 켜면 수업 색으로 차오르고 체크가 그어진다.
+   어느 수업인지는 아래 줄의 점이 말한다 */
 :is(.ctt-trow, .ctt-arow) .ctt-check {
   flex: 0 0 auto;
   position: relative;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -2328,7 +2154,7 @@
   place-items: center;
   color: var(--text-on-accent, #fff);
   background: transparent;
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ctt-color, var(--text-faint)) 70%, var(--text-faint));
+  box-shadow: inset 0 0 0 1.5px var(--text-faint);
   cursor: pointer;
   transition: background 180ms ease, box-shadow 180ms ease, transform 160ms var(--ctt-ease);
 }
@@ -2395,26 +2221,12 @@
 .ctt-trow.is-done .ctt-trow-text { color: var(--text-faint); background-size: 100% 1px; }
 .ctt-trow.is-checking { opacity: .55; }
 
-.ctt-trow-kind {
-  display: inline-block;
-  margin-right: 6px;
-  padding: 0 5px;
-  border-radius: 4px;
-  font-size: 9.5px;
-  font-weight: 800;
-  line-height: 1.6;
-  vertical-align: 1px;
-  color: var(--text-muted);
-  background: color-mix(in srgb, var(--ctt-color) 16%, transparent);
-}
-
-.ctt-trow.is-exam .ctt-trow-kind { color: var(--text-normal); background: color-mix(in srgb, var(--ctt-color) 30%, transparent); }
-.ctt-trow.is-exam .ctt-trow-text { font-weight: 650; }
+.ctt-trow.is-exam .ctt-trow-text { font-weight: 600; }
 
 .ctt-trow-flag {
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   display: grid;
   place-items: center;
   color: var(--ctt-color);
@@ -2435,13 +2247,13 @@
   text-overflow: ellipsis;
 }
 
-.ctt-trow-dot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; background: var(--ctt-color); }
+.ctt-trow-dot { flex: 0 0 auto; width: 5px; height: 5px; border-radius: 50%; background: var(--ctt-color); }
 
 .ctt-trow-when {
   flex: 0 0 auto;
   font-size: 10.5px;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-weight: 500;
+  color: var(--text-faint);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2521,20 +2333,21 @@
   .ctf-aside { position: sticky; top: 0; }
 }
 
-.ctf-panel {
-  padding: 12px 12px 10px;
-  border-radius: 12px;
-  box-shadow: inset 0 0 0 1px var(--background-modifier-border);
-}
+/* 오른쪽 패널 — 상자 없이, 묶음 사이에 헤어라인 하나 */
+.ctf-aside { gap: 0; }
+.ctf-panel { padding: 14px 0; }
+.ctf-panel:first-child { padding-top: 2px; }
+.ctf-panel + .ctf-panel { border-top: 1px solid var(--background-modifier-border); }
 
 .ctf-panel-head { display: flex; align-items: baseline; gap: 8px; margin: 0 2px 6px; }
-.ctf-panel-title { font-size: var(--font-ui-smaller); font-weight: 800; letter-spacing: .02em; color: var(--text-muted); }
+.ctf-panel-title { font-size: var(--font-ui-smaller); font-weight: 600; color: var(--text-muted); }
 .ctf-panel-count { margin-left: auto; font-size: 10.5px; font-weight: 700; color: var(--text-faint); font-variant-numeric: tabular-nums; }
 .ctf-panel-hint { margin: 8px 2px 0; font-size: 10.5px; line-height: 1.45; color: var(--text-faint); }
 .ctf-panel-actions { display: flex; flex-wrap: wrap; gap: 2px; margin: 6px -4px 0; }
 .ctf-panel .ctt-trow { --ctt-color: var(--ctf-color); }
 .ctf-panel .ctt-tadd { margin-bottom: 10px; }
-.ctf-panel .ctt-tsec { margin-bottom: 8px; }
+.ctf-panel .ctt-tsec { padding: 8px 0 4px; }
+.ctf-panel .ctt-tsec + .ctt-tsec { border-top: none; }
 .ctf-panel.is-todo .ctt-todo-empty { padding: 4px 6px 6px; }
 .ctf-panel.is-todo .ctt-todo-empty-icon,
 .ctf-panel.is-todo .ctt-todo-empty-title { display: none; }
@@ -2578,21 +2391,6 @@
 .ctf-recent-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ctf-recent-date { flex: 0 0 auto; font-size: 10px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
 
-/* 책장 칸 — 수업 색 띠를 위에 얇게, 누를 수 있는 곳은 살짝 떠오른다 */
-.ctf-card.is-shelf,
-.ctf-card.is-file { transition: background 140ms ease, box-shadow 160ms ease, transform 180ms var(--ctt-ease); }
-
-.ctf-card.is-file:hover {
-  transform: translateY(-1px);
-  box-shadow: inset 0 0 0 1px var(--background-modifier-border), 0 6px 16px -12px rgba(0, 0, 0, .35);
-}
-
-.ctf-card.is-shelf { box-shadow: inset 0 0 0 1px var(--background-modifier-border), inset 0 2px 0 color-mix(in srgb, var(--ctf-color) 70%, transparent); }
-
-.ctf-card.is-shelf:hover {
-  transform: translateY(-1px);
-  box-shadow: inset 0 0 0 1px var(--background-modifier-border), inset 0 2px 0 var(--ctf-color), 0 6px 16px -12px rgba(0, 0, 0, .35);
-}
 
 /* ── 한 번에 등록 ── */
 .ctt-seg {
@@ -2728,7 +2526,7 @@
 .ctt-empty-more p { margin: 8px 0 0; line-height: 1.5; }
 
 /* 블록 이름 — 두 줄이 되면 줄 길이를 고르게 ("선형대/수" 대신 "선형/대수") */
-.ctt-block-name, .ctt-arow-name, .ctt-nowcard-name { text-wrap: balance; }
+.ctt-block-name, .ctt-arow-name { text-wrap: balance; }
 
 /* 수업 기간: 시작일 – 종료일 */
 .ctt-field .ctt-rangerow input.ctt-date-input { flex: 0 1 9em; text-align: center; }
