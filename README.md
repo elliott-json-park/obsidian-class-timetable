@@ -47,6 +47,8 @@ Or install **Class Timetable** from Settings → Community plugins.
 
 **Exams and deadlines, where you will see them.** Write them under `exam:` and `due:` in the class note, or give each assignment a note of its own with *New assignment note*. They sit under the day they fall on, and the next ones are listed above the grid with the days left. A deadline you missed does not quietly disappear: it stays at the top in red — *2d late* — until you mark it done. Done items keep their record, struck through on their day. Click one to open its note.
 
+**Classes with no set time.** An online class may never meet at a fixed hour. In the class editor, press × on its last time and save: it leaves the grid and sits in a row below it. Click it for its shelves, right-click to add a deadline or edit it. Its exams, deadlines and to-dos work like any other class. In frontmatter this is `schedule: []`.
+
 **The timetable inside a note.** A `class-timetable` code block draws the same week in a daily note or a dashboard — or just the list of what is coming up.
 
 **See where you are in the day.** The class in progress is outlined and fills up as it goes; classes already over today step back. The shelves say whether you're in class now or when the next session is.

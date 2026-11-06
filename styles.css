@@ -187,6 +187,45 @@
 .ctt-notice.is-warn { cursor: pointer; }
 .ctt-notice.is-warn:hover { color: var(--text-normal); }
 
+/* 시간이 정해지지 않은 수업 — 격자 아래 한 줄 */
+.ctt-notime {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.ctt-notime-label {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.ctt-root .ctt-notime-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: auto;
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  box-shadow: none;
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+  cursor: pointer;
+}
+.ctt-root .ctt-notime-chip::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ctt-chip, var(--text-faint));
+}
+
 /* ────────────────────── 격자 ────────────────────── */
 
 .ctt-scroll {

@@ -128,6 +128,8 @@ const I18N = {
     pickFolder: '폴더 선택',
     time: '시간',
     addTime: '시간 추가',
+    noSetTime: '정해진 시간 없음',
+    noSetTimeHint: '격자에는 나오지 않고 격자 아래 줄에 나옵니다. 시험과 마감은 그대로 쓸 수 있습니다.',
     save: '저장',
     cancel: '취소',
     close: '닫기',
@@ -237,6 +239,8 @@ const I18N = {
     pickFolder: 'Choose a folder',
     time: 'Time',
     addTime: 'Add time',
+    noSetTime: 'No set time',
+    noSetTimeHint: 'This class stays off the grid and shows in the row below it. Exams and deadlines still work.',
     save: 'Save',
     cancel: 'Cancel',
     close: 'Close',
@@ -344,6 +348,8 @@ const I18N = {
     pickFolder: '选择文件夹',
     time: '时间',
     addTime: '添加时间',
+    noSetTime: '无固定时间',
+    noSetTimeHint: '这门课不会出现在课程表格中，而是显示在表格下方。考试和截止日期照常可用。',
     save: '保存',
     cancel: '取消',
     close: '关闭',
@@ -451,6 +457,8 @@ const I18N = {
     pickFolder: 'フォルダを選ぶ',
     time: '時間',
     addTime: '時間を追加',
+    noSetTime: '時間指定なし',
+    noSetTimeHint: 'この授業は時間割の表には出ず、その下の列に表示されます。試験と締め切りはそのまま使えます。',
     save: '保存',
     cancel: 'キャンセル',
     close: '閉じる',
@@ -2023,6 +2031,7 @@ function humanGap(mins) {
 }
 
 function scheduleSummary(course) {
+  if (!course.slots.length && !(course.badSlots && course.badSlots.length)) return t('noSetTime');
   const groups = [];
   for (const s of course.slots) {
     const key = s.start + '|' + s.end + '|' + s.location + '|' + (s.parity || '');
@@ -3526,7 +3535,8 @@ class ClassTimetablePlugin extends Plugin {
           if (slot) slots.push(slot);
           else if (String(raw).trim()) bad.push(String(raw));
         }
-        if (!slots.length && !bad.length) continue;
+        // schedule: [] 는 정해진 시간이 없는 수업이다 (온라인 수업 등, 이슈 #7). 빈 문자열은 전처럼 수업이 아니다.
+        if (!slots.length && !bad.length && !(Array.isArray(fm.schedule) && !fm.schedule.length)) continue;
 
         found.set(key, {
           key,
@@ -4641,7 +4651,7 @@ class ClassTimetablePlugin extends Plugin {
     const CARRY = ['exam', 'exams', 'due', 'cancelled', 'canceled', 'checked', 'todo', 'todos', 'shortcuts', 'notes', 'semester'];
     const DROP = ['schedule', 'subtitle', 'color', 'short', 'template', 'from', 'until'];
     const carried = {};
-    this.markPending(fromFile.path, { schedule: [] });
+    this.markPending(fromFile.path, { schedule: null });
     await this.app.fileManager.processFrontMatter(fromFile, (fm) => {
       for (const k of CARRY) if (fm[k] != null) { carried[k] = fm[k]; delete fm[k]; }
       for (const k of DROP) delete fm[k];
@@ -4656,7 +4666,7 @@ class ClassTimetablePlugin extends Plugin {
 
   async removeFromTimetable(course) {
     if (!course.file) return;
-    this.markPending(course.file.path, { schedule: [] });
+    this.markPending(course.file.path, { schedule: null });
     await this.app.fileManager.processFrontMatter(course.file, (fm) => { delete fm.schedule; });
     this.refreshAll();
   }
@@ -5023,6 +5033,58 @@ function renderTimetableNow(plugin, containerEl, opts) {
 
     if (mode !== 'view') attachDragCreate(plugin, col, d, geo);
   }
+
+  /* ── 시간이 정해지지 않은 수업 — 격자에 자리가 없으니 그 아래 한 줄에 둔다 (이슈 #7) ── */
+  if (mode !== 'plan') {
+    const loose = courses.filter((c) => !c.slots.length && !c.badSlots.length && week.dates.some((d) => courseOpenOn(c, d)));
+    if (loose.length) renderNoTimeRow(plugin, containerEl, loose, mode);
+  }
+}
+
+function renderNoTimeRow(plugin, parent, list, mode) {
+  const row = parent.createDiv({ cls: 'ctt-notime' });
+  row.createSpan({ cls: 'ctt-notime-label', text: t('noSetTime') });
+  for (const course of list) {
+    const chip = row.createEl('button', { cls: 'ctt-notime-chip', text: course.short || course.name });
+    chip.style.setProperty('--ctt-chip', course.color);
+    chip.setAttr('title', course.name);
+    chip.onclick = () => {
+      if (mode === 'edit') new CourseEditModal(plugin, { course }).open();
+      else plugin.openCourseView(course, false);
+    };
+    chip.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      noTimeMenu(plugin, course).showAtMouseEvent(e);
+    });
+  }
+}
+
+// 시간 없는 수업의 메뉴. 그 날의 칸이 없으니 휴강 · 체크처럼 날짜에 묶인 것은 뺀다.
+function noTimeMenu(plugin, course) {
+  const menu = new Menu();
+  if (plugin.courseTemplate(course)) {
+    menu.addItem((i) => i.setTitle(t('newNoteCreate')).setIcon('file-plus')
+      .onClick(() => plugin.createFromTemplate(course, null, undefined, new Date())));
+  }
+  menu.addItem((i) => i.setTitle(t('openShelf')).setIcon('library')
+    .onClick(() => plugin.openCourseView(course, false)));
+  menu.addSeparator();
+  menu.addItem((i) => i.setTitle(t('addDeadline')).setIcon('flag')
+    .onClick(() => new DeadlineModal(plugin, { course }).open()));
+  menu.addItem((i) => i.setTitle(t('todoAddFor')).setIcon('list-checks')
+    .onClick(() => new TodoModal(plugin, { courseKey: course.key }).open()));
+  menu.addSeparator();
+  menu.addItem((i) => i.setTitle(t('editTime')).setIcon('pencil')
+    .onClick(() => new CourseEditModal(plugin, { course }).open()));
+  menu.addItem((i) => i.setTitle(t('removeFromTable')).setIcon('minus-circle')
+    .onClick(() => new ConfirmModal(plugin.app, {
+      title: t('removeFromTable'),
+      body: t('removeBody', { name: course.name }),
+      cta: t('removeCta'),
+      onConfirm: () => plugin.removeFromTimetable(course),
+    }).open()));
+  return menu;
 }
 
 function upcomingHorizon(settings) {
@@ -6614,7 +6676,7 @@ function wrapLines(ctx, text, width, maxLines) {
 
 function drawTimetableImage(plugin) {
   const week = weekDates(mondayOf(new Date()));
-  const courses = plugin.getCourses().courses.filter((c) => week.some((d) => courseOpenOn(c, d)));
+  const courses = plugin.getCourses().courses.filter((c) => c.slots.length && week.some((d) => courseOpenOn(c, d)));
   const plans = plugin.plans();
   if (!courses.length && !plans.length) return null;
 
@@ -8036,6 +8098,8 @@ class CourseEditModal extends Modal {
       parityHint.setText(n != null && n > 0 ? t('parityHint', { n, p: label }) : t('parityHintNoStart', { p: label }));
     };
 
+    if (!this.rows.length) timeField.createDiv({ cls: 'ctt-field-hint', text: t('noSetTimeHint') });
+
     this.rows.forEach((row, idx) => {
       const r = timeField.createDiv({ cls: 'ctt-timerow' });
 
@@ -8071,7 +8135,6 @@ class CourseEditModal extends Modal {
 
       const del = r.createEl('button', { cls: 'ctt-rowbtn', text: '×' });
       del.onclick = () => {
-        if (this.rows.length === 1) return;
         this.rows.splice(idx, 1);
         this.draw();
       };
@@ -8080,7 +8143,9 @@ class CourseEditModal extends Modal {
 
     timeField.createEl('button', { cls: 'ctt-addrow', text: t('addTime') }).onclick = () => {
       const last = this.rows[this.rows.length - 1];
-      this.rows.push({ day: (last.day + 2) % 7, start: last.start, end: last.end, location: last.location, parity: last.parity || '' });
+      this.rows.push(last
+        ? { day: (last.day + 2) % 7, start: last.start, end: last.end, location: last.location, parity: last.parity || '' }
+        : { day: Math.min(todayIndex(), 4), start: '09:00', end: '10:15', location: '', parity: '' });
       this.draw();
     };
     parityHint = timeField.createDiv({ cls: 'ctt-field-hint' });
