@@ -37,7 +37,7 @@ Or install **Class Timetable** from Settings → Community plugins.
 
 <img src="docs/sidebar.png" width="420" alt="The Week tab mid-lecture: the class in progress outlined, earlier classes today dimmed, long names shortened instead of broken, and a countdown to the end of class">
 
-**Click a class, get its shelves.** Obsidian can't "open a folder", so the plugin opens a view of one: the folders belonging to that class, laid out like a bookshelf. Square cards are folders, wide cards are files. Create, rename and delete them right there — names are typed in place, on the card itself.
+**Click a class, get its shelves.** Obsidian can't "open a folder", so the plugin opens a view of one: the folders belonging to that class, laid out like a bookshelf. Square cards are folders, wide cards are files. A note's card shows the day of its lecture: a `date:` property if it has one, else a date in its name (like the `0914` of a note made from the timetable), else the day it was last edited. Create, rename and delete them right there — names are typed in place, on the card itself.
 
 ![The shelf view for one course, in class now — Today's note, its shelves and notes, and beside them the notes taken this semester, its deadlines, to-dos and recent notes](docs/shelf.png)
 

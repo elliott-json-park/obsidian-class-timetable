@@ -3477,6 +3477,20 @@ class ClassTimetablePlugin extends Plugin {
    *   그냥 노트 →  그 노트가 든 폴더 하나가 책장이 된다 (메모처럼 쓰는 사람)
    */
 
+  // 노트 카드 아래에 보일 날짜. 수업 노트는 고친 날보다 그 수업의 날이 쓸모 있다 (#9):
+  // frontmatter 의 date: → 이름에 든 날짜(수업 체크와 같은 규칙) → 마지막으로 고친 날.
+  noteDate(file) {
+    if (/\.md$/i.test(file.name)) {
+      const cache = this.app.metadataCache.getFileCache(file);
+      const fm = (cache && cache.frontmatter) || {};
+      const d = fmDate(fm.date);
+      if (d) return d;
+      const named = datesInName(file.basename || file.name.replace(/\.md$/i, ''));
+      if (named.length) return parseYmd(named[0]);
+    }
+    return file.stat && file.stat.mtime ? new Date(file.stat.mtime) : null;
+  }
+
   markdownFiles(root) {
     const out = [];
     const walk = (f) => {
@@ -7446,7 +7460,8 @@ class FolderView extends ItemView {
 
         const parts = [];
         if (!md) parts.push(String(f.extension || f.name.split('.').pop() || '').toUpperCase());
-        if (f.stat && f.stat.mtime) parts.push(formatDate(new Date(f.stat.mtime), 'YYYY-MM-DD'));
+        const when = this.plugin.noteDate(f);
+        if (when) parts.push(formatDate(when, 'YYYY-MM-DD'));
         card.createDiv({ cls: 'ctf-card-sub', text: parts.join(' · ') });
 
         card.onclick = (e) => this.plugin.openNote(f, e.ctrlKey || e.metaKey);
