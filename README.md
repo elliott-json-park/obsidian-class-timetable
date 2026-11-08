@@ -101,6 +101,7 @@ Times are read generously: `월`, `월요일`, `mon`, `m`, `月`, `一` all work
 schedule:
   - mon 10:30-12:00 @ Room 301
   - wed 10:30-12:00 odd @ Lab 2     # odd weeks only; `even` for the others
+  - 2027-01-08 09:00-17:00 @ Hall C  # a date instead of a day: that day only
 exam:
   - 2026-10-22 13:00-15:00 Midterm
 due:
@@ -113,8 +114,9 @@ checked:
 ---
 ```
 
-You rarely type any of this. *Edit class* has an every week / odd weeks / even weeks choice per time, the right-click menu has *Mark 10/5 (Mon) as cancelled* and *Add an exam or deadline…*, and right-clicking a deadline has *Mark as done*.
+You rarely type any of this. *Edit class* has an every week / odd weeks / even weeks / on one date choice per time, the right-click menu has *Mark 10/5 (Mon) as cancelled* and *Add an exam or deadline…*, and right-clicking a deadline has *Mark as done*.
 
+- **A class that only meets on a few dates** (a block seminar, say two Fridays and Saturdays) gets one dated time per meeting. Each shows on its own day and in the calendar export; in the weeks it doesn't meet, the class waits in the row below the grid. A dated time ignores the semester's end and the class's `from`/`until`.
 - **Odd and even weeks** are counted from the *Semester start* in Settings — that week is week 1. The edit window tells you which kind this week is, so you do not pick the wrong one.
 - **A date is enough** for an exam or a deadline. A time (`13:00` or `13:00-15:00`) and a name are read if they are there.
 - **Done is a mark, not a deletion.** *Mark as done* adds a `✓` to the end of the line (or `done: true` to an assignment note). The item leaves the upcoming list and stays on its day, struck through. *Mark as not done* takes it back.
@@ -300,7 +302,7 @@ schedule:
 
 수업 중에는 **지금 수업의 오늘 노트 만들기** 명령(단축키 지정 가능)이나 책장의 **＋ 오늘 노트** 버튼으로 템플릿에 맞춘 필기 노트를 바로 엽니다.
 
-격자 위의 화살표로 **지난주·다음 주**를 넘겨 볼 수 있습니다. 수업을 우클릭하면 **그 날 하루만 휴강**으로 표시할 수 있고, 격주 수업은 시간 뒤에 `odd`(홀수 주)·`even`(짝수 주)을 붙입니다. 설정에 **학기 시작일·종료일**을 적으면 주차가 표시되고, 종료일 뒤에는 수업을 그리지 않습니다.
+격자 위의 화살표로 **지난주·다음 주**를 넘겨 볼 수 있습니다. 수업을 우클릭하면 **그 날 하루만 휴강**으로 표시할 수 있고, 격주 수업은 시간 뒤에 `odd`(홀수 주)·`even`(짝수 주)을 붙입니다. 몇 번만 모이는 집중 수업은 요일 대신 날짜를 씁니다(`2027-01-08 09:00-17:00`). 그 날에만 나오고, 모이지 않는 주에는 격자 아래 줄에 있습니다. 설정에 **학기 시작일·종료일**을 적으면 주차가 표시되고, 종료일 뒤에는 수업을 그리지 않습니다.
 
 **시험과 과제 마감**은 수업 노트의 `exam:` · `due:` 에 한 줄씩 적습니다(우클릭 → **시험·마감 추가…** 로도 됩니다). 그 날짜의 요일 아래에 뜨고, 가까운 것은 시간표 위에 D-day 와 함께 나옵니다. 과제 노트에 `due: 2026-10-15` 만 적어도, 그 노트가 수업 폴더 안에 있으면 마감으로 잡힙니다.
 

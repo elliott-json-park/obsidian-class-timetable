@@ -1067,6 +1067,7 @@ const I18N_V20 = {
     semesterEndDesc: '이 날이 지나면 수업을 그리지 않고 {{week}} 도 더 세지 않습니다. 비우면 끝이 없습니다. (YYYY-MM-DD)',
     semesterOver: '학기가 {date} 에 끝나 이 주에는 수업을 그리지 않습니다',
     repeatEvery: '매주',
+    repeatOnce: '날짜 한 번',
     repeatOdd: '홀수 주',
     repeatEven: '짝수 주',
     thisWeekOdd: '홀수 주',
@@ -1128,6 +1129,7 @@ const I18N_V20 = {
     semesterEndDesc: 'After this date classes are no longer drawn and {{week}} stops counting. Leave empty for no end. (YYYY-MM-DD)',
     semesterOver: 'The semester ended on {date} — no classes are drawn this week',
     repeatEvery: 'Every week',
+    repeatOnce: 'On one date',
     repeatOdd: 'Odd weeks',
     repeatEven: 'Even weeks',
     thisWeekOdd: 'an odd week',
@@ -1189,6 +1191,7 @@ const I18N_V20 = {
     semesterEndDesc: '过了这一天就不再显示课程，{{week}} 也不再计数。留空表示没有结束日。(YYYY-MM-DD)',
     semesterOver: '学期已于 {date} 结束，这一周不显示课程',
     repeatEvery: '每周',
+    repeatOnce: '指定日期',
     repeatOdd: '单周',
     repeatEven: '双周',
     thisWeekOdd: '单周',
@@ -1250,6 +1253,7 @@ const I18N_V20 = {
     semesterEndDesc: 'この日を過ぎると授業を表示せず、{{week}} も数えません。空欄なら終わりはありません。(YYYY-MM-DD)',
     semesterOver: '学期は {date} に終わったため、この週の授業は表示しません',
     repeatEvery: '毎週',
+    repeatOnce: '日付で一回',
     repeatOdd: '奇数週',
     repeatEven: '偶数週',
     thisWeekOdd: '奇数週',
@@ -1997,26 +2001,49 @@ function parseSlot(raw) {
   const m = /^(\S+)\s*[,·]?\s+(\d{1,2}(?::\d{1,2})?|\d{4})\s*[-~–—]\s*(\d{1,2}(?::\d{1,2})?|\d{4})$/.exec(s);
   if (!m) return null;
 
-  const day = DAY_ALIASES[m[1].toLowerCase()];
-  if (day === undefined) return null;
+  // 요일 대신 날짜를 쓰면 그날 한 번만 열리는 수업 시간이다 (2.5.0, 이슈 #10 — 몇 번만 모이는 집중 수업).
+  // 날짜로 적은 시간은 격주 · 수업 기간 · 학기 종료일을 보지 않는다. 적은 날이 곧 수업 날이다
+  let day = DAY_ALIASES[m[1].toLowerCase()];
+  let date = '';
+  if (day === undefined && /^\d{4}-\d{2}-\d{2}$/.test(m[1]) && parseYmd(m[1])) {
+    date = m[1];
+    day = weekdayOfDate(date);
+  }
+  if (day === undefined || day === null) return null;
 
   const start = parseTime(m[2]);
   const end = parseTime(m[3]);
   if (start === null || end === null || end <= start) return null;
 
-  return { day, start, end, location, parity };
+  return date ? { day, start, end, location, parity: '', date } : { day, start, end, location, parity };
+}
+
+// 슬롯을 그대로 베낀다 (날짜로 적은 시간이면 날짜까지)
+function copySlot(s) {
+  const out = { day: s.day, start: s.start, end: s.end, location: s.location, parity: s.parity };
+  if (s.date) out.date = s.date;
+  return out;
 }
 
 // 파일에 쓰는 표기. 언어와 무관하게 늘 같은 모양이어야 한다.
 function formatSlot(slot) {
-  const base = DAY_CANON[slot.day] + ' ' + hhmm(slot.start) + '-' + hhmm(slot.end) + (slot.parity ? ' ' + slot.parity : '');
+  const base = slot.date
+    ? slot.date + ' ' + hhmm(slot.start) + '-' + hhmm(slot.end)
+    : DAY_CANON[slot.day] + ' ' + hhmm(slot.start) + '-' + hhmm(slot.end) + (slot.parity ? ' ' + slot.parity : '');
   return slot.location ? base + ' @ ' + slot.location : base;
 }
 
 // 홀수 주 수업과 짝수 주 수업은 같은 시각이어도 만나지 않는다
 function slotsOverlap(a, b) {
   if (a.parity && b.parity && a.parity !== b.parity) return false;
+  if (a.date && b.date && a.date !== b.date) return false;
   return a.day === b.day && a.start < b.end && b.start < a.end;
+}
+
+// 요일 이름. 날짜로 적은 시간이면 1/9(금) 처럼 날짜를 붙인다
+function slotDayLabel(slot) {
+  const d = slot.date && parseYmd(slot.date);
+  return d ? shortMD(d) + '(' + dayLabel(slot.day) + ')' : dayLabel(slot.day);
 }
 
 function parityLabel(parity) {
@@ -2034,10 +2061,10 @@ function scheduleSummary(course) {
   if (!course.slots.length && !(course.badSlots && course.badSlots.length)) return t('noSetTime');
   const groups = [];
   for (const s of course.slots) {
-    const key = s.start + '|' + s.end + '|' + s.location + '|' + (s.parity || '');
+    const key = s.start + '|' + s.end + '|' + s.location + '|' + (s.parity || '') + (s.date ? '|d' : '');
     let g = groups.find((x) => x.key === key);
     if (!g) { g = { key, days: [], slot: s }; groups.push(g); }
-    g.days.push(dayLabel(s.day));
+    g.days.push(slotDayLabel(s));
   }
   return groups.map((g) => {
     let time = g.days.join('·') + ' ' + hhmm(g.slot.start) + '~' + hhmm(g.slot.end);
@@ -2063,6 +2090,16 @@ function nextSession(settings, course) {
       }
       if (d === 0 && slot.start <= now) continue;
       if (!best || slot.start < best.slot.start) best = { slot, date, d };
+    }
+  }
+  // 두 주 안에 없으면 날짜로 적은 다음 수업을 찾는다 (집중 수업은 몇 주씩 건너뛴다)
+  if (!best) {
+    for (const slot of course.slots) {
+      const date = slot.date && parseYmd(slot.date);
+      if (!date) continue;
+      const d = dayDiff(date, today);
+      if (d < 14 || holidayOf(settings, date) || isCancelled(course, slot, slot.date)) continue;
+      if (!best || d < best.d || (d === best.d && slot.start < best.slot.start)) best = { slot, date, d };
     }
   }
   if (!best) return null;
@@ -2250,6 +2287,7 @@ function rangesMeet(a, b) {
 
 // 그 날짜에 이 시간이 실제로 열리는가: 학기가 끝났거나, 수업 기간 밖이거나, 격주가 아닌 주면 아니다
 function slotRuns(settings, slot, date, course) {
+  if (slot.date) return ymd(date) === slot.date;
   const end = parseYmd(settings && settings.semesterEnd);
   if (end && dayDiff(date, end) > 0) return false;
   if (!courseOpenOn(course, date)) return false;
@@ -2835,6 +2873,7 @@ function buildItems(courses, plans) {
 
   for (const c of courses) {
     for (const s of c.slots) {
+      if (s.date && !dates.some((d) => ymd(d) === s.date)) continue; // 날짜로 적은 시간은 이번 주에 있을 때만
       byDay[s.day].push({ kind: 'course', course: c, slot: s, date: null, cancelled: false, lane: 0, lanes: 1, conflicts: [] });
     }
   }
@@ -2865,9 +2904,13 @@ function buildWeek(settings, courses, plans, monday) {
   for (const c of courses) {
     for (const s of c.slots) {
       const date = dates[s.day];
-      if (end && dayDiff(date, end) > 0) { ended = true; continue; }
-      if (s.parity && s.parity !== weekParity(settings, date)) continue;
-      if (!courseOpenOn(c, date)) continue;   // 수업 기간 밖 — 학기가 끝난 것은 아니다
+      if (s.date) {
+        if (ymd(date) !== s.date) continue;   // 날짜로 적은 시간은 그 날짜가 든 주에만
+      } else {
+        if (end && dayDiff(date, end) > 0) { ended = true; continue; }
+        if (s.parity && s.parity !== weekParity(settings, date)) continue;
+        if (!courseOpenOn(c, date)) continue;   // 수업 기간 밖 — 학기가 끝난 것은 아니다
+      }
       const holiday = holidays[s.day];
       byDay[s.day].push({
         kind: 'course', course: c, slot: s, date,
@@ -4522,9 +4565,13 @@ class ClassTimetablePlugin extends Plugin {
     const idx = course.slots.indexOf(slot);
     if (idx === -1) return;
 
-    const slots = course.slots.map((s, i) => (i === idx
-      ? { day: next.day, start: next.start, end: next.end, location: s.location, parity: s.parity }
-      : { day: s.day, start: s.start, end: s.end, location: s.location, parity: s.parity }));
+    const moveTo = (s) => {
+      if (!s.date) return { day: next.day, start: next.start, end: next.end, location: s.location, parity: s.parity };
+      // 날짜로 적은 시간은 보고 있는 주의 그 요일로 날짜도 옮긴다. 주를 모르면 시각만 바꾼다
+      const date = next.date || s.date;
+      return { day: weekdayOfDate(date), start: next.start, end: next.end, location: s.location, parity: '', date };
+    };
+    const slots = course.slots.map((s, i) => (i === idx ? moveTo(s) : copySlot(s)));
 
     for (let i = 0; i < slots.length; i++) {
       for (let j = i + 1; j < slots.length; j++) {
@@ -4538,7 +4585,7 @@ class ClassTimetablePlugin extends Plugin {
     }
 
     // 끌어서 옮긴 것은 확인 없이 바로 쓴다. 대신 되돌릴 길을 남긴다.
-    const before = course.slots.map((s) => ({ day: s.day, start: s.start, end: s.end, location: s.location, parity: s.parity }));
+    const before = course.slots.map(copySlot);
     const file = course.file;
     const save = async () => {
       await this.saveCourse({ file }, slots);
@@ -5050,7 +5097,10 @@ function renderTimetableNow(plugin, containerEl, opts) {
 
   /* ── 시간이 정해지지 않은 수업 — 격자에 자리가 없으니 그 아래 한 줄에 둔다 (이슈 #7) ── */
   if (mode !== 'plan') {
-    const loose = courses.filter((c) => !c.slots.length && !c.badSlots.length && week.dates.some((d) => courseOpenOn(c, d)));
+    const days = week.dates.map(ymd);
+    const loose = courses.filter((c) => (!c.slots.length && !c.badSlots.length && week.dates.some((d) => courseOpenOn(c, d)))
+      // 날짜로만 적은 수업(집중 수업)은 모이지 않는 주에도 여기서 찾을 수 있다 (이슈 #10)
+      || (c.slots.length && c.slots.every((s) => s.date) && !c.slots.some((s) => days.includes(s.date))));
     if (loose.length) renderNoTimeRow(plugin, containerEl, loose, mode);
   }
 }
@@ -5061,7 +5111,8 @@ function renderNoTimeRow(plugin, parent, list, mode) {
   for (const course of list) {
     const chip = row.createEl('button', { cls: 'ctt-notime-chip', text: course.short || course.name });
     chip.style.setProperty('--ctt-chip', course.color);
-    chip.setAttr('title', course.name);
+    const dated = course.slots.filter((s) => s.date).map(slotDayLabel);
+    chip.setAttr('title', dated.length ? course.name + ' · ' + dated.join(', ') : course.name);
     chip.onclick = () => {
       if (mode === 'edit') new CourseEditModal(plugin, { course }).open();
       else plugin.openCourseView(course, false);
@@ -6215,7 +6266,7 @@ function renderBlock(plugin, col, item, geo) {
     }
   }
 
-  const tip = [course.name, dayLabel(slot.day) + ' ' + hhmm(slot.start) + '~' + hhmm(slot.end)
+  const tip = [course.name, slotDayLabel(slot) + ' ' + hhmm(slot.start) + '~' + hhmm(slot.end)
     + (slot.parity ? ' · ' + parityLabel(slot.parity) : '')];
   if (sub) tip.push(sub);
   tip.push(course.notesPath ? t('notesTo', { path: course.notesPath }) : t('notesUnset'));
@@ -6544,7 +6595,9 @@ function attachBlockDrag(plugin, el, item, geo) {
             () => plugin.savePlan(before));
         });
       } else {
-        plugin.moveSlot(item.course, item.slot, cur);
+        const next = Object.assign({}, cur);
+        if (item.slot.date && geo.week) next.date = ymd(geo.week.dates[cur.day]);
+        plugin.moveSlot(item.course, item.slot, next);
       }
     };
 
@@ -6864,22 +6917,30 @@ function buildIcs(plugin) {
     const cFrom = c.from && dayDiff(c.from, from) > 0 ? c.from : from;
     const cUntil = c.until && dayDiff(until, c.until) > 0 ? c.until : until;
     c.slots.forEach((slot, i) => {
-      const from = cFrom, until = cUntil;
-      let d = addDays(from, (slot.day - (from.getDay() + 6) % 7 + 7) % 7);
-      if (slot.parity && weekParity(s, d) !== slot.parity) d = addDays(d, 7);
-      if (dayDiff(until, d) < 0) return;
-      const step = slot.parity ? 14 : 7;
-      const skip = [];
-      for (let x = d; dayDiff(until, x) >= 0; x = addDays(x, step)) {
-        if (holidayOf(s, x) || isCancelled(c, slot, ymd(x))) skip.push(icsLocal(x, slot.start));
-      }
-      out.push('BEGIN:VEVENT',
+      const head = ['BEGIN:VEVENT',
         'UID:ctt-' + hashKey(c.key + '|' + i + '|' + formatSlot(slot)) + '@class-timetable',
-        'DTSTAMP:' + stamp,
-        'DTSTART:' + icsLocal(d, slot.start),
-        'DTEND:' + icsLocal(d, slot.end),
-        'RRULE:FREQ=WEEKLY;INTERVAL=' + (slot.parity ? 2 : 1) + ';UNTIL=' + icsLocal(until, 23 * 60 + 59));
-      if (skip.length) out.push('EXDATE:' + skip.join(','));
+        'DTSTAMP:' + stamp];
+      if (slot.date) {
+        // 날짜로 적은 시간은 그날 한 번 (2.5.0, 이슈 #10)
+        const d = parseYmd(slot.date);
+        if (!d || holidayOf(s, d) || isCancelled(c, slot, slot.date)) return;
+        out.push(...head, 'DTSTART:' + icsLocal(d, slot.start), 'DTEND:' + icsLocal(d, slot.end));
+      } else {
+        const from = cFrom, until = cUntil;
+        let d = addDays(from, (slot.day - (from.getDay() + 6) % 7 + 7) % 7);
+        if (slot.parity && weekParity(s, d) !== slot.parity) d = addDays(d, 7);
+        if (dayDiff(until, d) < 0) return;
+        const step = slot.parity ? 14 : 7;
+        const skip = [];
+        for (let x = d; dayDiff(until, x) >= 0; x = addDays(x, step)) {
+          if (holidayOf(s, x) || isCancelled(c, slot, ymd(x))) skip.push(icsLocal(x, slot.start));
+        }
+        out.push(...head,
+          'DTSTART:' + icsLocal(d, slot.start),
+          'DTEND:' + icsLocal(d, slot.end),
+          'RRULE:FREQ=WEEKLY;INTERVAL=' + (slot.parity ? 2 : 1) + ';UNTIL=' + icsLocal(until, 23 * 60 + 59));
+        if (skip.length) out.push('EXDATE:' + skip.join(','));
+      }
       out.push('SUMMARY:' + icsEscape(c.name));
       if (slot.location) out.push('LOCATION:' + icsEscape(slot.location));
       if (c.subtitle) out.push('DESCRIPTION:' + icsEscape(c.subtitle));
@@ -7993,7 +8054,7 @@ class CourseEditModal extends Modal {
     this.color = c && c.hasColor ? c.color : ''; // 빈 값 = 자동
 
     if (c) {
-      this.rows = c.slots.map((s) => ({ day: s.day, start: hhmm(s.start), end: hhmm(s.end), location: s.location, parity: s.parity || '' }));
+      this.rows = c.slots.map((s) => ({ day: s.day, start: hhmm(s.start), end: hhmm(s.end), location: s.location, parity: s.parity || '', date: s.date || '' }));
     } else if (this.opts.prefill) {
       const p = this.opts.prefill;
       this.rows = [{ day: p.day, start: hhmm(p.start), end: hhmm(p.end), location: '', parity: '' }];
@@ -8118,13 +8179,24 @@ class CourseEditModal extends Modal {
     this.rows.forEach((row, idx) => {
       const r = timeField.createDiv({ cls: 'ctt-timerow' });
 
-      const day = r.createEl('select', { cls: 'dropdown' });
-      DAY_CANON.forEach((_, i) => {
-        const o = day.createEl('option', { text: dayLabel(i) });
-        o.value = String(i);
-        if (i === row.day) o.selected = true;
-      });
-      day.onchange = () => { row.day = Number(day.value); };
+      if (row.date) {
+        // 날짜로 적은 시간: 요일 대신 날짜를 고른다 (이슈 #10)
+        const date = r.createEl('input', { type: 'date', cls: 'ctt-date-input' });
+        date.value = row.date;
+        date.onchange = () => {
+          if (!parseYmd(date.value)) return;
+          row.date = ymdOrEmpty(date.value);
+          row.day = weekdayOfDate(row.date);
+        };
+      } else {
+        const day = r.createEl('select', { cls: 'dropdown' });
+        DAY_CANON.forEach((_, i) => {
+          const o = day.createEl('option', { text: dayLabel(i) });
+          o.value = String(i);
+          if (i === row.day) o.selected = true;
+        });
+        day.onchange = () => { row.day = Number(day.value); };
+      }
 
       const start = r.createEl('input', { type: 'text', cls: 'ctt-time-input' });
       start.value = row.start;
@@ -8138,12 +8210,24 @@ class CourseEditModal extends Modal {
 
       // 매주 · 홀수 주 · 짝수 주
       const every = r.createEl('select', { cls: 'dropdown ctt-parity' });
-      for (const [v, text] of [['', t('repeatEvery')], ['odd', t('repeatOdd')], ['even', t('repeatEven')]]) {
+      const cur = row.date ? 'date' : (row.parity || '');
+      for (const [v, text] of [['', t('repeatEvery')], ['odd', t('repeatOdd')], ['even', t('repeatEven')], ['date', t('repeatOnce')]]) {
         const o = every.createEl('option', { text });
         o.value = v;
-        if (v === (row.parity || '')) o.selected = true;
+        if (v === cur) o.selected = true;
       }
-      every.onchange = () => { row.parity = every.value; paintParity(); };
+      every.onchange = () => {
+        const was = !!row.date;
+        if (every.value === 'date') {
+          // 이번 주의 그 요일을 먼저 넣어 둔다
+          row.date = row.date || ymd(dateOfWeekday(row.day));
+          row.parity = '';
+        } else {
+          row.date = '';
+          row.parity = every.value;
+        }
+        if (was !== !!row.date) this.draw(); else paintParity();
+      };
 
       const spacer = r.createDiv({ cls: 'ctt-rowspacer' });
       spacer.setText('');
@@ -8158,8 +8242,12 @@ class CourseEditModal extends Modal {
 
     timeField.createEl('button', { cls: 'ctt-addrow', text: t('addTime') }).onclick = () => {
       const last = this.rows[this.rows.length - 1];
+      // 날짜로 적은 시간 다음은 그다음 날 (금 · 토 이틀 모이는 집중 수업)
+      const nextDate = last && last.date && parseYmd(last.date) ? ymd(addDays(parseYmd(last.date), 1)) : '';
       this.rows.push(last
-        ? { day: (last.day + 2) % 7, start: last.start, end: last.end, location: last.location, parity: last.parity || '' }
+        ? (nextDate
+          ? { day: weekdayOfDate(nextDate), start: last.start, end: last.end, location: last.location, parity: '', date: nextDate }
+          : { day: (last.day + 2) % 7, start: last.start, end: last.end, location: last.location, parity: last.parity || '' })
         : { day: Math.min(todayIndex(), 4), start: '09:00', end: '10:15', location: '', parity: '' });
       this.draw();
     };
@@ -8232,6 +8320,12 @@ class CourseEditModal extends Modal {
         return null;
       }
       // 강의실 칸은 없앴지만 이미 적혀 있던 값은 지우지 않는다
+      if (row.date) {
+        const date = ymdOrEmpty(row.date);
+        if (!date) { failNotice('errTime', { v: row.date }); return null; }
+        slots.push({ day: weekdayOfDate(date), start, end, location: (row.location || '').trim(), parity: '', date });
+        continue;
+      }
       slots.push({ day: row.day, start, end, location: (row.location || '').trim(), parity: row.parity || '' });
     }
     return slots;
