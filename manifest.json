@@ -1,7 +1,7 @@
 {
   "id": "class-timetable",
   "name": "Class Timetable",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "minAppVersion": "1.4.0",
   "description": "Weekly class schedule and to-do list for students: exams and assignment deadlines in your sidebar. Paste your timetable or import .ics, open lecture notes in one click. Desktop and mobile.",
   "author": "Elliott Park",

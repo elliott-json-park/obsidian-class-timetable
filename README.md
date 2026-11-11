@@ -278,6 +278,10 @@ The plugin makes no network requests and collects nothing. It only writes to the
 
 Something broken, or something your semester needs that is not here? [Report a bug](https://github.com/elliott-json-park/obsidian-class-timetable/issues/new?template=bug_report.yml) or [suggest a feature](https://github.com/elliott-json-park/obsidian-class-timetable/issues/new?template=feature_request.yml) — the same two links are at the bottom of the plugin's settings. Questions and setups go in [Discussions](https://github.com/elliott-json-park/obsidian-class-timetable/discussions). 한국어로 적으셔도 됩니다.
 
+## One-time message
+
+After you update Class Timetable, the first time you open the timetable yourself, a small window asks you to star this repository on GitHub if you find the plugin useful. It appears **once**, only for people who updated (never on a fresh install), never at start-up, and never again after that. Its button opens the repository in your browser only when you press it, and nothing in the plugin depends on it. There are no other messages or ads.
+
 ## More from the same author
 
 - **[Vault Orrery](https://community.obsidian.md/plugins/vault-orrery)**: your vault as a 3D galaxy, where every folder is a solar system. Replay how it grew, note by note.

@@ -2969,8 +2969,17 @@ class ClassTimetablePlugin extends Plugin {
       this.settings.defaultTemplate = this.settings.templates[0].id;
     }
     if (!Array.isArray(this.settings.plans)) this.settings.plans = [];
+    const prevStar = data && data.starAsk;
+    this.settings.starAsk = starOnLoad(prevStar, !!data, this.manifest.version);
+    if (!prevStar || prevStar.seen !== this.settings.starAsk.seen || !!prevStar.pending !== !!this.settings.starAsk.pending) {
+      await this.saveData(this.settings);
+    }
 
     this.registerView(VIEW_TYPE, (leaf) => new TimetableView(leaf, this));
+    // 이미 열려 있던 시간표를 골랐을 때도 별 안내 (askForStar)
+    this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
+      if (leaf && leaf.view && leaf.view.getViewType() === VIEW_TYPE) this.askForStar();
+    }));
     this.registerView(FOLDER_VIEW_TYPE, (leaf) => new FolderView(leaf, this));
 
     this.ribbonEl = this.addRibbonIcon('calendar-days', t('timetable'), () => this.activateView());
@@ -3008,7 +3017,9 @@ class ClassTimetablePlugin extends Plugin {
       if (!this.settings.welcomed) {
         this.settings.welcomed = true;
         this.saveData(this.settings);
-        this.activateView();
+        // 플러그인이 스스로 연 시간표에는 별 안내를 띄우지 않는다
+        this.autoOpening = true;
+        Promise.resolve(this.activateView()).finally(() => { window.setTimeout(() => { this.autoOpening = false; }, 1500); });
       }
     });
   }
@@ -3261,6 +3272,19 @@ class ClassTimetablePlugin extends Plugin {
     }
   }
 
+  // 업데이트 뒤 처음 시간표를 열 때 별 안내를 한 번 (StarModal). 띄우기 전에 '물어봤음'을 저장한다
+  askForStar() {
+    const s = this.settings.starAsk;
+    if (!s || !s.pending || s.asked) return;
+    // 옵시디언이 켜지며 되살린 시간표(사이드바)는 아무도 연 게 아니다 — 켜자마자 뜨는 창이 되지 않게, 직접 열거나 고를 때까지 기다린다
+    // 클릭·키 입력 바로 뒤(브라우저의 사용자 활성화)에만 — 옵시디언이 늦게 연 사이드바 시간표에는 띄우지 않는다
+    const ua = navigator.userActivation;
+    if (!this.app.workspace.layoutReady || this.autoOpening || (ua && !ua.isActive)) return;
+    this.settings.starAsk = Object.assign({}, s, { pending: false, asked: true });
+    this.saveData(this.settings);
+    window.setTimeout(() => new StarModal(this.app, this.manifest.name).open(), 900);
+  }
+
   async saveSettings() {
     LANG = I18N[this.settings.lang] ? this.settings.lang : 'en';
     syncSemester(this.settings);
@@ -3289,7 +3313,11 @@ class ClassTimetablePlugin extends Plugin {
 
   async activateView() {
     const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE);
-    if (existing.length) { this.app.workspace.revealLeaf(existing[0]); return; }
+    if (existing.length) {
+      await this.app.workspace.revealLeaf(existing[0]);
+      this.askForStar(); // 리본·명령으로 이미 있던 시간표를 불렀을 때 (사용자가 연 것)
+      return;
+    }
 
     const leaf = this.app.workspace.getRightLeaf(false);
     if (!leaf) return;
@@ -6978,6 +7006,7 @@ class TimetableView extends ItemView {
   getIcon() { return 'calendar-days'; }
   async onOpen() {
     this.render();
+    this.plugin.askForStar();
     // 휴대폰에서는 시간표가 닫힌 서랍 안에서(폭 0) 먼저 그려진다. 서랍이 열려 폭이 생기면 그 폭으로 다시 그린다 —
     // 칸 폭으로 이름을 줄이므로, 폭을 모르고 그린 그림은 틀린 그림이다.
     if (typeof ResizeObserver === 'function') {
@@ -7636,6 +7665,38 @@ class FolderView extends ItemView {
 }
 
 /* ────────────────────────────── 모달 ────────────────────────────── */
+
+// 업데이트한 사람에게 한 번만 보여 주는 GitHub 별 안내 (처음 설치한 사람에게는 보이지 않는다).
+// 버튼을 눌렀을 때만 저장소를 연다. 보상과 묶지 않는다. README "One-time message" 에 적어 두었다.
+const STAR_URL_CT = 'https://github.com/elliott-json-park/obsidian-class-timetable';
+const STAR_TEXT = {
+  en: { title: 'Enjoying {name}?', body: 'A star on GitHub means a lot to a solo developer. You will only see this once.', star: 'Star on GitHub', later: 'Maybe later' },
+  ko: { title: '{name}, 잘 쓰고 계신가요?', body: 'GitHub에서 별(Star)을 눌러 주시면 혼자 만드는 개발자에게 큰 힘이 돼요. 이 안내는 한 번만 보여요.', star: '별 누르러 가기', later: '다음에요' },
+  zh: { title: '喜欢 {name} 吗？', body: '在 GitHub 上点个星标（Star），对独立开发者是很大的鼓励。这条提示只会出现一次。', star: '去点星标', later: '下次再说' },
+  ja: { title: '{name} を使っていただけていますか？', body: 'GitHub でスター（Star）を押していただけると、一人で作っている開発者の大きな励みになります。この案内は一度だけ表示されます。', star: 'スターを押しに行く', later: 'また今度' },
+};
+
+// 켤 때: 저장된 자료가 있고(업데이트) 지난번 버전과 다르면 한 번 걸어 둔다
+function starOnLoad(prev, hadData, version) {
+  const s = Object.assign({}, prev || {});
+  if (!s.asked && hadData && s.seen !== version) s.pending = true;
+  s.seen = version;
+  return s;
+}
+
+class StarModal extends Modal {
+  constructor(app, name) { super(app); this.name = name; }
+  onOpen() {
+    const tx = STAR_TEXT[LANG] || STAR_TEXT.en;
+    this.modalEl.addClass('star-ask-modal');
+    this.titleEl.setText(tx.title.replace('{name}', this.name));
+    this.contentEl.createEl('p', { text: tx.body });
+    new Setting(this.contentEl)
+      .addButton((b) => b.setButtonText(tx.later).onClick(() => this.close()))
+      .addButton((b) => b.setButtonText(tx.star).setCta().onClick(() => { window.open(STAR_URL_CT); this.close(); }));
+  }
+  onClose() { this.contentEl.empty(); }
+}
 
 class ConfirmModal extends Modal {
   constructor(app, opts) { super(app); this.opts = opts; }
