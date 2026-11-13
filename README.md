@@ -27,7 +27,7 @@ Or install **Class Timetable** from Settings → Community plugins.
 - **Paste your timetable.** Copy rows from your school portal, a spreadsheet or a note — `Statistics Mon,Wed 10:30-12:00 Room 301` — and every class is created at once, with a folder, a folder note and a lecture-notes folder. Or pick an `.ics` file exported from your calendar.
 - **Export to your phone's calendar.** One `.ics` file with the semester's classes (cancelled days left out) and every exam and open deadline, each with a reminder the day before.
 - **Semesters.** *Start a new semester…* keeps this term's classes where they are and starts the next one empty. Switch back any time.
-- **Classes done.** On a class's shelves, one dot per class held this semester — filled when that day's note exists, a ring when you ticked it off without a note (2.2). Click an empty dot to write the note, right-click it to tick it off.
+- **Classes done.** On a class's shelves, one dot per class held this semester — filled when that day's note exists, a ring when you ticked it off without a note (2.2). Click an empty dot to write the note, right-click it to tick it off. If you don't keep a note for every class, turn this off with *Show classes done* in settings; the dots on the timetable go away too (2.7).
 - **Readable in a narrow sidebar.** Names are never broken mid-word; long words are shortened (`Organic Chemist.`), and split columns show a short name. Set your own with `short:`.
 - **Small things:** the current class in the status bar, a reminder a few minutes before class, *Undo* after moving or cancelling a class, and a shorter right-click menu.
 

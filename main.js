@@ -1449,6 +1449,8 @@ const I18N_V40 = {
     advancedDesc: '처음에는 몰라도 됩니다. 볼트 전체에서 schedule: 이 있는 노트를 찾습니다.',
     noteTasksToggle: '노트 속 체크박스도 할 일로 보기',
     noteTasksDesc: '수업 폴더의 노트에 적은 - [ ] 를 할 일 탭에 모읍니다. 체크하면 그 노트의 줄도 바뀝니다.',
+    classLogToggle: '수업 기록 보기',
+    classLogDesc: '지난 수업마다 노트를 남겼는지 점으로 보여 줍니다 (수업 페이지의 수업 기록, 시간표 칸의 점). 노트를 매번 쓰지 않는다면 꺼 두세요.',
     remindTitle: '수업 시작 알림', remindOff: '알리지 않음', remindN: '{n}분 전',
     remindHint: '옵시디언이 켜져 있을 때 알림을 띄웁니다. 오늘 노트를 바로 열 수 있습니다.',
     remindIn: '{v} 뒤 시작',
@@ -1523,6 +1525,8 @@ const I18N_V40 = {
     advancedDesc: 'Safe to skip. By default the whole vault is searched for notes with schedule:.',
     noteTasksToggle: 'Show checkboxes from notes as to-dos',
     noteTasksDesc: 'Collects - [ ] items from notes in your class folders into the To-do tab. Checking one changes the note too.',
+    classLogToggle: 'Show classes done',
+    classLogDesc: 'Shows with a dot whether each past class has a note (the Classes done panel on a class page and the dots on the timetable). Turn it off if you do not write a note for every class.',
     remindTitle: 'Class reminder', remindOff: 'Off', remindN: '{n} min before',
     remindHint: 'Shows a notice while Obsidian is open, with a button for today\'s note.',
     remindIn: 'starts in {v}',
@@ -1596,6 +1600,8 @@ const I18N_V40 = {
     advancedDesc: '一开始可以不管。默认会在整个仓库中查找带 schedule: 的笔记。',
     noteTasksToggle: '把笔记里的复选框也显示为待办',
     noteTasksDesc: '把课程文件夹笔记中的 - [ ] 汇集到待办。勾选时笔记里的那一行也会改变。',
+    classLogToggle: '显示上课记录',
+    classLogDesc: '用圆点显示每节上过的课是否有笔记（课程页的上课记录和课程表格子上的圆点）。如果不是每节课都写笔记，可以关掉。',
     remindTitle: '上课提醒', remindOff: '不提醒', remindN: '提前 {n} 分钟',
     remindHint: 'Obsidian 打开时显示提醒，并可直接打开今天的笔记。',
     remindIn: '{v} 后开始',
@@ -1669,6 +1675,8 @@ const I18N_V40 = {
     advancedDesc: '最初は気にしなくて大丈夫です。既定では保管庫全体から schedule: のあるノートを探します。',
     noteTasksToggle: 'ノートのチェックボックスもやることとして表示',
     noteTasksDesc: '授業フォルダのノートの - [ ] をやることタブに集めます。チェックするとノートの行も変わります。',
+    classLogToggle: '授業の記録を表示',
+    classLogDesc: '終わった授業ごとにノートがあるかを点で表示します（授業ページの「授業の記録」と時間割のマスの点）。毎回ノートを書かない場合はオフにできます。',
     remindTitle: '授業開始の通知', remindOff: '通知しない', remindN: '{n} 分前',
     remindHint: 'Obsidian を開いているときに通知を出します。今日のノートをすぐに開けます。',
     remindIn: '{v} 後に開始',
@@ -1881,6 +1889,7 @@ const DEFAULT_SETTINGS = {
   tab: '',                            // 사이드바의 탭: today · week · todo. 비어 있으면 viewMode 에서 옮겨 온다
   todos: [],                          // 수업에 묶이지 않은 할 일 { id, text, date, done, doneAt }
   noteTasks: true,                    // 수업 폴더 노트 안의 - [ ] 도 할 일로 보여 준다
+  classLog: true,                     // 지난 수업마다 노트를 남겼는지 보여 준다 (수업 페이지의 수업 기록 · 시간표 칸의 점)
   statusBar: true,                    // 데스크톱 상태 표시줄에 지금 수업을 띄운다
   remindMins: 10,                     // 수업 시작 몇 분 전에 알릴지. 0 이면 안 알린다
   semesters: [],                      // 저장해 둔 학기들 { id, name, start, end, holidays }
@@ -5074,7 +5083,7 @@ function renderTimetableNow(plugin, containerEl, opts) {
   };
 
   // 다른 주를 볼 때는 "오늘"도 "지금"도 없다 (ti 가 어느 요일과도 안 맞게 둔다)
-  const geo = { originMin, pxPerMin, colEls, density, hourH, colW, ti: offset ? -1 : ti, now, mode, week, embed, attend };
+  const geo = { originMin, pxPerMin, colEls, density, hourH, colW, ti: offset ? -1 : ti, now, mode, week, embed, attend: settings.classLog === false ? null : attend };
 
   // 오늘 칸 밖으로도 지금 시각을 흐리게 이어 준다. 다른 요일의 같은 시각과 견주어 보기 쉽다.
   const nowInRange = !offset && days.includes(ti) && now >= originMin && now <= endHour * 60;
@@ -7342,7 +7351,7 @@ class FolderView extends ItemView {
     const res = plugin.getCourses();
 
     /* 노트 기록 — 수업이 열린 날마다 점 하나. 채운 점은 그 날의 노트가 있다는 뜻. */
-    const sessions = plugin.sessionDates(course);
+    const sessions = plugin.settings.classLog === false ? [] : plugin.sessionDates(course);
     if (sessions.length) {
       const idx = plugin.noteIndex(course);
       const marks = sessions.map((s) => {
@@ -9017,6 +9026,7 @@ class PrefsModal extends Modal {
       cb.onchange = async () => { set(cb.checked); await this.plugin.saveSettings(); };
     };
     toggle(t('noteTasksToggle'), s.noteTasks !== false, (v) => { s.noteTasks = v; });
+    toggle(t('classLogToggle'), s.classLog !== false, (v) => { s.classLog = v; });
     if (!Platform.isMobile) toggle(t('statusBarToggle'), s.statusBar !== false, (v) => { s.statusBar = v; });
 
     /* 공유 — 보이는 시간 범위가 그림에도 그대로 쓰이므로 그 바로 아래에 둔다 */
@@ -9303,6 +9313,11 @@ class TimetableSettingTab extends PluginSettingTab {
       .setName(t('noteTasksToggle'))
       .setDesc(t('noteTasksDesc'))
       .addToggle((x) => x.setValue(s.noteTasks !== false).onChange((v) => { s.noteTasks = v; save(); }));
+
+    new Setting(containerEl)
+      .setName(t('classLogToggle'))
+      .setDesc(t('classLogDesc'))
+      .addToggle((x) => x.setValue(s.classLog !== false).onChange((v) => { s.classLog = v; save(); }));
 
     /* ── 알림과 표시 ── */
     heading(t('remindSection'));
