@@ -2980,7 +2980,8 @@ class ClassTimetablePlugin extends Plugin {
     if (!Array.isArray(this.settings.plans)) this.settings.plans = [];
     const prevStar = data && data.starAsk;
     this.settings.starAsk = starOnLoad(prevStar, !!data, this.manifest.version);
-    if (!prevStar || prevStar.seen !== this.settings.starAsk.seen || !!prevStar.pending !== !!this.settings.starAsk.pending) {
+    if (!prevStar || prevStar.seen !== this.settings.starAsk.seen || !!prevStar.pending !== !!this.settings.starAsk.pending
+      || prevStar.round !== this.settings.starAsk.round) {
       await this.saveData(this.settings);
     }
 
@@ -3281,17 +3282,22 @@ class ClassTimetablePlugin extends Plugin {
     }
   }
 
-  // 업데이트 뒤 처음 시간표를 열 때 별 안내를 한 번 (StarModal). 띄우기 전에 '물어봤음'을 저장한다
+  // 업데이트 뒤 처음 시간표를 열 때 별 안내를 (회차마다 한 번) 띄운다 (StarModal). 띄우기 전에 '이번 회차 보여 줌'을 저장한다
   askForStar() {
     const s = this.settings.starAsk;
-    if (!s || !s.pending || s.asked) return;
+    if (!s || !s.pending || s.starred || starShownRound(s) >= STAR_ROUND) return;
     // 옵시디언이 켜지며 되살린 시간표(사이드바)는 아무도 연 게 아니다 — 켜자마자 뜨는 창이 되지 않게, 직접 열거나 고를 때까지 기다린다
     // 클릭·키 입력 바로 뒤(브라우저의 사용자 활성화)에만 — 옵시디언이 늦게 연 사이드바 시간표에는 띄우지 않는다
     const ua = navigator.userActivation;
     if (!this.app.workspace.layoutReady || this.autoOpening || (ua && !ua.isActive)) return;
-    this.settings.starAsk = Object.assign({}, s, { pending: false, asked: true });
+    this.settings.starAsk = Object.assign({}, s, { pending: false, asked: true, round: STAR_ROUND });
     this.saveData(this.settings);
-    window.setTimeout(() => new StarModal(this.app, this.manifest.name).open(), 900);
+    // 별 버튼을 누르면 다시는 묻지 않는다
+    const onStar = () => {
+      this.settings.starAsk = Object.assign({}, this.settings.starAsk, { starred: true });
+      this.saveData(this.settings);
+    };
+    window.setTimeout(() => new StarModal(this.app, this.manifest.name, onStar).open(), 900);
   }
 
   async saveSettings() {
@@ -7675,34 +7681,56 @@ class FolderView extends ItemView {
 
 /* ────────────────────────────── 모달 ────────────────────────────── */
 
-// 업데이트한 사람에게 한 번만 보여 주는 GitHub 별 안내 (처음 설치한 사람에게는 보이지 않는다).
-// 버튼을 눌렀을 때만 저장소를 연다. 보상과 묶지 않는다. README "One-time message" 에 적어 두었다.
+// 업데이트한 사람에게 보여 주는 GitHub 별 안내 (처음 설치한 사람에게는 보이지 않는다). 회차마다 한 번만,
+// 별 버튼을 누른 사람에게는 다시 보이지 않는다. 버튼을 눌렀을 때만 저장소를 연다. 보상과 묶지 않는다.
+// README "One-time message" 에 적어 두었다.
 const STAR_URL_CT = 'https://github.com/elliott-json-park/obsidian-class-timetable';
+// 지금 회차. 1회차(밋밋한 창)는 대부분 닫았다 — 2회차는 새 디자인을 별을 안 누른 모든 사람에게 한 번 더 보여 준다.
+// 새 디자인을 낼 때만 올린다
+const STAR_ROUND = 2;
 const STAR_TEXT = {
-  en: { title: 'Enjoying {name}?', body: 'A star on GitHub means a lot to a solo developer. You will only see this once.', star: 'Star on GitHub', later: 'Maybe later' },
-  ko: { title: '{name}, 잘 쓰고 계신가요?', body: 'GitHub에서 별(Star)을 눌러 주시면 혼자 만드는 개발자에게 큰 힘이 돼요. 이 안내는 한 번만 보여요.', star: '별 누르러 가기', later: '다음에요' },
-  zh: { title: '喜欢 {name} 吗？', body: '在 GitHub 上点个星标（Star），对独立开发者是很大的鼓励。这条提示只会出现一次。', star: '去点星标', later: '下次再说' },
-  ja: { title: '{name} を使っていただけていますか？', body: 'GitHub でスター（Star）を押していただけると、一人で作っている開発者の大きな励みになります。この案内は一度だけ表示されます。', star: 'スターを押しに行く', later: 'また今度' },
+  en: { title: 'Enjoying {name}?', body: 'A star on GitHub means a lot to a solo developer. This won\'t show again.', star: 'Star on GitHub', later: 'Maybe later' },
+  ko: { title: '{name}, 잘 쓰고 계신가요?', body: 'GitHub에서 별(Star)을 눌러 주시면 혼자 만드는 개발자에게 큰 힘이 돼요. 이 안내는 다시 뜨지 않아요.', star: '별 누르러 가기', later: '다음에요' },
+  zh: { title: '喜欢 {name} 吗？', body: '在 GitHub 上点个星标（Star），对独立开发者是很大的鼓励。这条提示不会再出现。', star: '去点星标', later: '下次再说' },
+  ja: { title: '{name} を使っていただけていますか？', body: 'GitHub でスター（Star）を押していただけると、一人で作っている開発者の大きな励みになります。この案内はもう表示されません。', star: 'スターを押しに行く', later: 'また今度' },
 };
 
-// 켤 때: 저장된 자료가 있고(업데이트) 지난번 버전과 다르면 한 번 걸어 둔다
+// 마지막으로 보여 준 회차 (round 가 생기기 전 자료는 asked 로 읽는다)
+function starShownRound(s) {
+  return typeof s.round === 'number' ? s.round : (s.asked ? 1 : 0);
+}
+
+// 켤 때: 저장된 자료가 있고(업데이트) 지난번 버전과 다르며, 별을 안 눌렀고 이번 회차를 아직 안 보여 줬으면 걸어 둔다
 function starOnLoad(prev, hadData, version) {
   const s = Object.assign({}, prev || {});
-  if (!s.asked && hadData && s.seen !== version) s.pending = true;
+  if (hadData && s.seen !== version && !s.starred && starShownRound(s) < STAR_ROUND) s.pending = true;
   s.seen = version;
   return s;
 }
 
 class StarModal extends Modal {
-  constructor(app, name) { super(app); this.name = name; }
+  constructor(app, name, onStar) { super(app); this.name = name; this.onStar = onStar; }
   onOpen() {
     const tx = STAR_TEXT[LANG] || STAR_TEXT.en;
     this.modalEl.addClass('star-ask-modal');
-    this.titleEl.setText(tx.title.replace('{name}', this.name));
-    this.contentEl.createEl('p', { text: tx.body });
-    new Setting(this.contentEl)
-      .addButton((b) => b.setButtonText(tx.later).onClick(() => this.close()))
-      .addButton((b) => b.setButtonText(tx.star).setCta().onClick(() => { window.open(STAR_URL_CT); this.close(); }));
+    const box = this.contentEl.createDiv({ cls: 'star-ask' });
+    const icon = box.createDiv({ cls: 'star-ask-icon' });
+    setIcon(icon.createSpan({ cls: 'star-ask-mark' }), 'star');
+    setIcon(icon.createSpan({ cls: 'star-ask-spark star-ask-spark-a' }), 'sparkle');
+    setIcon(icon.createSpan({ cls: 'star-ask-spark star-ask-spark-b' }), 'sparkle');
+    box.createDiv({ cls: 'star-ask-title', text: tx.title.replace('{name}', this.name) });
+    box.createEl('p', { cls: 'star-ask-body', text: tx.body });
+    const star = box.createEl('button', { cls: 'mod-cta star-ask-cta' });
+    setIcon(star.createSpan({ cls: 'star-ask-cta-icon' }), 'star');
+    star.createSpan({ text: tx.star });
+    star.addEventListener('click', () => {
+      if (this.onStar) this.onStar();
+      window.open(STAR_URL_CT);
+      this.close();
+    });
+    const later = box.createEl('button', { cls: 'star-ask-later', text: tx.later });
+    later.addEventListener('click', () => this.close());
+    star.focus();
   }
   onClose() { this.contentEl.empty(); }
 }

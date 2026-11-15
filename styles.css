@@ -2786,3 +2786,70 @@
 .is-tablet :is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) .ctt-seg-btn { padding: 0 14px; }
 /* 그래도 칸이 좁으면 아이콘이 먼저 줄어들지 않게 */
 :is(.ctt-root, .ctf-root, .ctt-modal, .ctt-settings) :is(.ctt-add, .ctt-iconbtn, .ctt-weekbtn) .svg-icon { flex-shrink: 0; }
+
+/* The request to star the repository (star window). It takes the theme's own
+   accent and colors, so it fits whatever theme is in use. */
+.modal.star-ask-modal {
+  width: min(340px, calc(100vw - 32px));
+  border-radius: 14px;
+  animation: star-ask-pop 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.star-ask-modal .modal-content { padding: 0; }
+.star-ask { padding: 12px 6px 2px; text-align: center; word-break: keep-all; overflow-wrap: anywhere; }
+.star-ask-icon {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+}
+.star-ask-icon::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--interactive-accent) 30%, transparent), transparent 70%);
+  animation: star-ask-glow 2.4s ease-in-out infinite;
+}
+.star-ask-mark { position: relative; display: flex; color: var(--interactive-accent); animation: star-ask-twinkle 2.4s ease-in-out infinite; }
+.star-ask-mark svg { width: 32px; height: 32px; fill: currentColor; }
+.star-ask-spark { position: absolute; display: flex; color: var(--interactive-accent); }
+.star-ask-spark svg { width: 10px; height: 10px; fill: currentColor; }
+.star-ask-spark-a { right: -6px; top: 2px; }
+.star-ask-spark-b { left: -4px; bottom: 6px; }
+.star-ask-spark-b svg { width: 7px; height: 7px; }
+.star-ask-title { font-size: 1.15em; font-weight: var(--font-semibold); color: var(--text-normal); margin: 0 0 6px; }
+.star-ask-body { font-size: var(--font-ui-small); color: var(--text-muted); margin: 0 0 18px; }
+.star-ask .star-ask-cta {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  height: auto;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: var(--font-semibold);
+}
+.star-ask-cta-icon { display: flex; }
+.star-ask-cta-icon svg { width: 15px; height: 15px; fill: currentColor; }
+.star-ask .star-ask-later {
+  margin-top: 6px;
+  background: none;
+  box-shadow: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: var(--font-ui-small);
+  padding: 6px;
+  height: auto;
+}
+.star-ask .star-ask-later:hover { color: var(--text-muted); background: none; }
+@keyframes star-ask-pop { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: none; } }
+@keyframes star-ask-glow { 50% { transform: scale(1.15); opacity: 0.6; } }
+@keyframes star-ask-twinkle { 50% { transform: scale(1.08) rotate(8deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .modal.star-ask-modal, .star-ask-icon::before, .star-ask-mark { animation: none; }
+}
